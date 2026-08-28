@@ -1,0 +1,144 @@
+{
+ "actions": [],
+ "creation": "2026-08-27 13:07:05.079517",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "section_meta",
+  "meta_phone_number_id",
+  "meta_waba_id",
+  "meta_app_id",
+  "meta_access_token",
+  "meta_app_secret",
+  "webhook_verify_token",
+  "graph_api_version",
+  "section_preferences",
+  "default_language",
+  "conversation_ttl_minutes",
+  "col_br_1",
+  "proactive_notifications_enabled",
+  "max_messages_per_minute",
+  "message_retention_days"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "section_meta",
+   "fieldtype": "Section Break",
+   "label": "Meta / WhatsApp Cloud API"
+  },
+  {
+   "description": "The Phone Number ID from your Meta App Dashboard (not the phone number itself)",
+   "fieldname": "meta_phone_number_id",
+   "fieldtype": "Data",
+   "label": "Meta Phone Number ID"
+  },
+  {
+   "fieldname": "meta_waba_id",
+   "fieldtype": "Data",
+   "label": "WhatsApp Business Account ID (WABA ID)"
+  },
+  {
+   "fieldname": "meta_app_id",
+   "fieldtype": "Data",
+   "label": "Meta App ID"
+  },
+  {
+   "description": "Permanent or temporary access token from Meta. Stored encrypted.",
+   "fieldname": "meta_access_token",
+   "fieldtype": "Password",
+   "label": "Meta Access Token"
+  },
+  {
+   "description": "Used to validate incoming webhook signatures (X-Hub-Signature-256). Stored encrypted.",
+   "fieldname": "meta_app_secret",
+   "fieldtype": "Password",
+   "label": "Meta App Secret"
+  },
+  {
+   "description": "A secret token you define and configure in Meta App Dashboard for webhook verification.",
+   "fieldname": "webhook_verify_token",
+   "fieldtype": "Data",
+   "label": "Webhook Verify Token"
+  },
+  {
+   "default": "v18.0",
+   "description": "e.g. v18.0",
+   "fieldname": "graph_api_version",
+   "fieldtype": "Data",
+   "label": "Graph API Version"
+  },
+  {
+   "fieldname": "section_preferences",
+   "fieldtype": "Section Break",
+   "label": "Application Preferences"
+  },
+  {
+   "default": "en",
+   "description": "ISO 639-1 language code, e.g. en, ur",
+   "fieldname": "default_language",
+   "fieldtype": "Data",
+   "label": "Default Language"
+  },
+  {
+   "default": "30",
+   "description": "Conversation session TTL in minutes before expiring.",
+   "fieldname": "conversation_ttl_minutes",
+   "fieldtype": "Int",
+   "label": "Conversation TTL (Minutes)"
+  },
+  {
+   "fieldname": "col_br_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Phase 1: must remain disabled. Reserved for future phases.",
+   "fieldname": "proactive_notifications_enabled",
+   "fieldtype": "Check",
+   "label": "Proactive Notifications Enabled"
+  },
+  {
+   "default": "30",
+   "description": "Rate limiting foundation. Full enforcement added in a future phase.",
+   "fieldname": "max_messages_per_minute",
+   "fieldtype": "Int",
+   "label": "Max Messages Per Minute"
+  },
+  {
+   "default": "30",
+   "description": "How many days WhatsApp Message Log records are retained.",
+   "fieldname": "message_retention_days",
+   "fieldtype": "Int",
+   "label": "Message Retention (Days)"
+  }
+ ],
+ "icon": "fa fa-cog",
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-27 13:34:05.314345",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "AI Workplace Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

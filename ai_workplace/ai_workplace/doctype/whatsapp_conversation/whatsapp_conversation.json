@@ -1,0 +1,177 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:WACN-{YYYY}-{MM}-{DD}-{#####}",
+ "creation": "2026-08-28 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "whatsapp_identity",
+  "wa_id",
+  "erp_user",
+  "employee",
+  "conversation_status",
+  "current_state",
+  "col_br_1",
+  "current_intent",
+  "active_service",
+  "active_record",
+  "preferred_language",
+  "started_at",
+  "last_activity_at",
+  "expires_at",
+  "last_message_id",
+  "trace_id",
+  "section_draft",
+  "draft_payload"
+ ],
+ "fields": [
+  {
+   "fieldname": "whatsapp_identity",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "WhatsApp Identity",
+   "options": "WhatsApp Identity",
+   "description": "Linked WhatsApp Identity record"
+  },
+  {
+   "fieldname": "wa_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "WA ID",
+   "description": "WhatsApp sender ID (digits)"
+  },
+  {
+   "fieldname": "erp_user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "ERP User",
+   "options": "User",
+   "description": "Linked ERPNext User"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "description": "Linked ERPNext Employee"
+  },
+  {
+   "default": "Active",
+   "fieldname": "conversation_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Conversation Status",
+   "options": "\nActive\nExpired\nCompleted\nCancelled"
+  },
+  {
+   "default": "NEW",
+   "fieldname": "current_state",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Current State",
+   "options": "\nNEW\nMENU\nAWAITING_SELECTION\nPROCESSING\nCONFIRMATION\nCOMPLETED\nCANCELLED"
+  },
+  {
+   "fieldname": "col_br_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "current_intent",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Current Intent"
+  },
+  {
+   "fieldname": "active_service",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Active Service"
+  },
+  {
+   "fieldname": "active_record",
+   "fieldtype": "Data",
+   "label": "Active Record"
+  },
+  {
+   "default": "English",
+   "fieldname": "preferred_language",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Preferred Language",
+   "options": "\nEnglish\nUrdu\nRoman Urdu"
+  },
+  {
+   "fieldname": "started_at",
+   "fieldtype": "Datetime",
+   "label": "Started At"
+  },
+  {
+   "fieldname": "last_activity_at",
+   "fieldtype": "Datetime",
+   "label": "Last Activity At"
+  },
+  {
+   "fieldname": "expires_at",
+   "fieldtype": "Datetime",
+   "label": "Expires At"
+  },
+  {
+   "fieldname": "last_message_id",
+   "fieldtype": "Data",
+   "label": "Last Message ID"
+  },
+  {
+   "fieldname": "trace_id",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Trace ID"
+  },
+  {
+   "fieldname": "section_draft",
+   "fieldtype": "Section Break",
+   "label": "Draft Data"
+  },
+  {
+   "fieldname": "draft_payload",
+   "fieldtype": "Long Text",
+   "label": "Draft Payload",
+   "description": "JSON payload for draft conversation data"
+  }
+ ],
+ "icon": "fa fa-comments-o",
+ "index_web_pages_for_search": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "WhatsApp Conversation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "export": 1,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "search_fields": "wa_id,whatsapp_identity,erp_user,employee,trace_id",
+ "sort_field": "last_activity_at",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

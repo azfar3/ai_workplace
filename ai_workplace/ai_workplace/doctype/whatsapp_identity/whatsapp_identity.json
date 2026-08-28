@@ -1,0 +1,112 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:WAID-{#####}",
+ "creation": "2026-08-27 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "whatsapp_id",
+  "phone_number",
+  "normalized_phone",
+  "status",
+  "col_br_1",
+  "erp_user",
+  "employee",
+  "preferred_language",
+  "last_seen_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "whatsapp_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "WhatsApp ID",
+   "reqd": 1,
+   "description": "Sender's WhatsApp ID from Meta (wa_id)"
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Phone Number",
+   "description": "Raw phone number as received"
+  },
+  {
+   "fieldname": "normalized_phone",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Normalized Phone",
+   "description": "E.164 format, e.g. +923001234567"
+  },
+  {
+   "default": "Guest",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nActive\nGuest\nAmbiguous\nInactive"
+  },
+  {
+   "fieldname": "col_br_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "erp_user",
+   "fieldtype": "Link",
+   "label": "ERP User",
+   "options": "User",
+   "description": "Linked ERPNext User (null for Guest)"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "description": "Linked ERPNext Employee (null for Guest)"
+  },
+  {
+   "default": "en",
+   "fieldname": "preferred_language",
+   "fieldtype": "Data",
+   "label": "Preferred Language",
+   "description": "ISO 639-1, e.g. en, ur"
+  },
+  {
+   "fieldname": "last_seen_at",
+   "fieldtype": "Datetime",
+   "label": "Last Seen At"
+  }
+ ],
+ "icon": "fa fa-id-card",
+ "index_web_pages_for_search": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "WhatsApp Identity",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "export": 1,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "search_fields": "whatsapp_id,normalized_phone,erp_user,employee",
+ "sort_field": "last_seen_at",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

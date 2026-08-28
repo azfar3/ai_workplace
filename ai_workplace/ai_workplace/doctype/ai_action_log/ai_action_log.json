@@ -1,0 +1,156 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:AIACT-{YYYY}-{MM}-{DD}-{#####}",
+ "creation": "2026-08-28 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "trace_id",
+  "whatsapp_conversation",
+  "whatsapp_identity",
+  "col_br_1",
+  "erp_user",
+  "employee",
+  "status",
+  "created_at",
+  "section_action",
+  "intent",
+  "service",
+  "action",
+  "section_details",
+  "sources_records",
+  "result",
+  "error"
+ ],
+ "fields": [
+  {
+   "fieldname": "trace_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Trace ID"
+  },
+  {
+   "fieldname": "whatsapp_conversation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "WhatsApp Conversation",
+   "options": "WhatsApp Conversation"
+  },
+  {
+   "fieldname": "whatsapp_identity",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "WhatsApp Identity",
+   "options": "WhatsApp Identity"
+  },
+  {
+   "fieldname": "col_br_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "erp_user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "ERP User",
+   "options": "User"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "default": "Success",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nSuccess\nFailed\nBlocked\nIgnored"
+  },
+  {
+   "fieldname": "created_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Created At"
+  },
+  {
+   "fieldname": "section_action",
+   "fieldtype": "Section Break",
+   "label": "Action Overview"
+  },
+  {
+   "fieldname": "intent",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Intent"
+  },
+  {
+   "fieldname": "service",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Service"
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Data",
+   "label": "Action"
+  },
+  {
+   "fieldname": "section_details",
+   "fieldtype": "Section Break",
+   "label": "Details & Sources"
+  },
+  {
+   "fieldname": "sources_records",
+   "fieldtype": "Long Text",
+   "label": "Sources / Records"
+  },
+  {
+   "fieldname": "result",
+   "fieldtype": "Long Text",
+   "label": "Result"
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Long Text",
+   "label": "Error"
+  }
+ ],
+ "icon": "fa fa-history",
+ "index_web_pages_for_search": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "AI Action Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 1,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "search_fields": "trace_id,whatsapp_conversation,service,intent",
+ "sort_field": "created_at",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

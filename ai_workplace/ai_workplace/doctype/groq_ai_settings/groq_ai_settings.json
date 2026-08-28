@@ -1,0 +1,100 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-08-27 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "section_groq",
+  "api_key",
+  "model",
+  "col_br_1",
+  "temperature",
+  "max_tokens",
+  "section_prompt",
+  "system_prompt"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "description": "Phase 2+ only. Do NOT enable in Phase 1."
+  },
+  {
+   "fieldname": "section_groq",
+   "fieldtype": "Section Break",
+   "label": "Groq API Configuration"
+  },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Password",
+   "label": "Groq API Key",
+   "description": "Stored encrypted. Not used in Phase 1."
+  },
+  {
+   "default": "llama3-8b-8192",
+   "fieldname": "model",
+   "fieldtype": "Data",
+   "label": "Model",
+   "description": "Groq model name, e.g. llama3-8b-8192"
+  },
+  {
+   "fieldname": "col_br_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0.7",
+   "fieldname": "temperature",
+   "fieldtype": "Float",
+   "label": "Temperature",
+   "description": "Model temperature (0.0 – 2.0)"
+  },
+  {
+   "default": "1024",
+   "fieldname": "max_tokens",
+   "fieldtype": "Int",
+   "label": "Max Tokens"
+  },
+  {
+   "fieldname": "section_prompt",
+   "fieldtype": "Section Break",
+   "label": "System Prompt"
+  },
+  {
+   "fieldname": "system_prompt",
+   "fieldtype": "Long Text",
+   "label": "System Prompt",
+   "description": "Prepended to every AI conversation. Phase 2+."
+  }
+ ],
+ "icon": "fa fa-robot",
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "Groq AI Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:AISEC-{YYYY}-{MM}-{DD}-{#####}",
+ "creation": "2026-08-27 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "event_type",
+  "severity",
+  "timestamp",
+  "col_br_1",
+  "trace_id",
+  "whatsapp_id",
+  "phone_number",
+  "section_identity",
+  "erp_user",
+  "employee",
+  "section_detail",
+  "description",
+  "metadata"
+ ],
+ "fields": [
+  {
+   "fieldname": "event_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Event Type",
+   "options": "\nInvalid Webhook Signature\nInvalid Webhook Verification\nDuplicate Message\nUnknown Identity\nAmbiguous Identity\nInactive Identity\nRate Limit Exceeded\nUnauthorized Service Access\nInvalid Conversation State\nExpired Conversation\nInvalid Menu Selection\nOther"
+  },
+  {
+   "fieldname": "severity",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Severity",
+   "options": "\nLow\nMedium\nHigh\nCritical"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Timestamp"
+  },
+  {
+   "fieldname": "col_br_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "trace_id",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Trace ID"
+  },
+  {
+   "fieldname": "whatsapp_id",
+   "fieldtype": "Data",
+   "label": "WhatsApp ID"
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number"
+  },
+  {
+   "fieldname": "section_identity",
+   "fieldtype": "Section Break",
+   "label": "ERPNext Identity"
+  },
+  {
+   "fieldname": "erp_user",
+   "fieldtype": "Link",
+   "label": "ERP User",
+   "options": "User"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "section_detail",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Long Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "metadata",
+   "fieldtype": "Long Text",
+   "label": "Metadata",
+   "description": "Additional JSON metadata (no secrets stored)"
+  }
+ ],
+ "icon": "fa fa-shield",
+ "index_web_pages_for_search": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "AI Security Event",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 1,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "search_fields": "event_type,trace_id,whatsapp_id",
+ "sort_field": "timestamp",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

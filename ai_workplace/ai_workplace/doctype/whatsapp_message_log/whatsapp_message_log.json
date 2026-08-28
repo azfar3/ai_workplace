@@ -1,0 +1,189 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:WAMSG-{YYYY}-{MM}-{DD}-{#####}",
+ "creation": "2026-08-27 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "meta_message_id",
+  "direction",
+  "status",
+  "col_br_1",
+  "trace_id",
+  "timestamp",
+  "col_br_2",
+  "message_type",
+  "latency",
+  "section_parties",
+  "sender",
+  "recipient",
+  "col_br_3",
+  "whatsapp_id",
+  "message",
+  "section_identity",
+  "erp_user",
+  "employee",
+  "col_br_4",
+  "identity_status",
+  "section_error",
+  "error"
+ ],
+ "fields": [
+  {
+   "fieldname": "meta_message_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Meta Message ID",
+   "description": "WhatsApp message ID (wamid) from Meta. Used for idempotency."
+  },
+  {
+   "fieldname": "direction",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Direction",
+   "options": "\nInbound\nOutbound"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nReceived\nProcessing\nSent\nFailed\nDuplicate"
+  },
+  {
+   "fieldname": "col_br_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "trace_id",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Trace ID"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Timestamp"
+  },
+  {
+   "fieldname": "col_br_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "message_type",
+   "fieldtype": "Data",
+   "label": "Message Type",
+   "description": "e.g. text, image, audio, status, unsupported"
+  },
+  {
+   "fieldname": "latency",
+   "fieldtype": "Int",
+   "label": "Latency (ms)",
+   "description": "End-to-end processing time in milliseconds"
+  },
+  {
+   "fieldname": "section_parties",
+   "fieldtype": "Section Break",
+   "label": "Parties"
+  },
+  {
+   "fieldname": "sender",
+   "fieldtype": "Data",
+   "label": "Sender"
+  },
+  {
+   "fieldname": "recipient",
+   "fieldtype": "Data",
+   "label": "Recipient"
+  },
+  {
+   "fieldname": "col_br_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "whatsapp_id",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "WhatsApp ID",
+   "description": "Sender's WhatsApp ID (wa_id)"
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Long Text",
+   "label": "Message"
+  },
+  {
+   "fieldname": "section_identity",
+   "fieldtype": "Section Break",
+   "label": "Identity"
+  },
+  {
+   "fieldname": "erp_user",
+   "fieldtype": "Link",
+   "label": "ERP User",
+   "options": "User"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "col_br_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "identity_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Identity Status",
+   "options": "\nmatched\nguest\nambiguous\ninactive"
+  },
+  {
+   "fieldname": "section_error",
+   "fieldtype": "Section Break",
+   "label": "Error"
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Long Text",
+   "label": "Error"
+  }
+ ],
+ "icon": "fa fa-comments",
+ "in_create": 0,
+ "index_web_pages_for_search": 0,
+ "is_submittable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "WhatsApp Message Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 1,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "search_fields": "meta_message_id,whatsapp_id,trace_id",
+ "sort_field": "timestamp",
+ "sort_order": "DESC",
+ "track_changes": 0
+}
