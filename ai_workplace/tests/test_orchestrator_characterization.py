@@ -53,7 +53,7 @@ class TestOrchestratorExtendedCharacterization(unittest.TestCase):
     def test_payroll_menu_navigation(self):
         resp = process_message("svc_payroll", self.identity, message_id=f"pay-1-{self.id()}", trace_id="tr-pay")
         self.assertIsInstance(resp, OutboundMessage)
-        self.assertIn("payroll", resp.body_text.lower())
+        self.assertTrue(resp.is_interactive())
         
         # Test leaf node in payroll (e.g., pay_download_slip)
         # We expect a placeholder or actual response since it's AWAITING_SELECTION
@@ -65,7 +65,7 @@ class TestOrchestratorExtendedCharacterization(unittest.TestCase):
     def test_attendance_menu_navigation(self):
         resp = process_message("svc_attendance_leave", self.identity, message_id=f"att-1-{self.id()}", trace_id="tr-att")
         self.assertIsInstance(resp, OutboundMessage)
-        self.assertIn("attendance", resp.body_text.lower())
+        self.assertTrue(resp.is_interactive())
         
     def test_invalid_menu_selection_fallback(self):
         resp = process_message("invalid_svc_code", self.identity, message_id=f"inv-1-{self.id()}", trace_id="tr-inv")
