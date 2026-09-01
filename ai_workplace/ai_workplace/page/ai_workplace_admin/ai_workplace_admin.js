@@ -3,420 +3,412 @@ frappe.pages["ai-workplace-admin"].on_page_load = function (wrapper) {
 
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
-		title: "AI Workplace Admin",
+		title: "AI Workplace Admin Control Center",
 		single_column: true,
 	});
 
-	const $root = $(`
-		<div class="ai-workplace-admin">
-			<ul class="nav nav-tabs awa-tabs" role="tablist">
-				<li class="nav-item"><a class="nav-link active" href="#" data-tab="tab-providers">Providers</a></li>
-				<li class="nav-item"><a class="nav-link" href="#" data-tab="tab-models">Models</a></li>
-				<li class="nav-item"><a class="nav-link" href="#" data-tab="tab-knowledge">Knowledge</a></li>
-				<li class="nav-item"><a class="nav-link" href="#" data-tab="tab-usage">Usage</a></li>
-				<li class="nav-item"><a class="nav-link" href="#" data-tab="tab-agents">Agent Settings</a></li>
-			</ul>
-			<div class="awa-tab-content" style="padding-top: 1rem;">
-				<div data-tab-pane="tab-providers"></div>
-				<div data-tab-pane="tab-models" style="display:none;"></div>
-				<div data-tab-pane="tab-knowledge" style="display:none;"></div>
-				<div data-tab-pane="tab-usage" style="display:none;"></div>
-				<div data-tab-pane="tab-agents" style="display:none;"></div>
-			</div>
-		</div>
-	`);
-
+	const $root = $(`<div id="ai-workplace-admin-vue"></div>`);
 	page.main.empty().append($root);
 
-	const panes = {
-		providers: $root.find('[data-tab-pane="tab-providers"]'),
-		models: $root.find('[data-tab-pane="tab-models"]'),
-		knowledge: $root.find('[data-tab-pane="tab-knowledge"]'),
-		usage: $root.find('[data-tab-pane="tab-usage"]'),
-		agents: $root.find('[data-tab-pane="tab-agents"]'),
-	};
+	function initVueApp() {
+		const { createApp, ref, onMounted, computed, watch } = window.Vue;
 
-	function switch_tab(tab_id) {
-		$root.find(".awa-tabs .nav-link").removeClass("active");
-		$root.find(`.awa-tabs .nav-link[data-tab="${tab_id}"]`).addClass("active");
-		$root.find("[data-tab-pane]").hide();
-		$root.find(`[data-tab-pane="${tab_id}"]`).show();
-		if (tab_id === "tab-providers") load_providers();
-		if (tab_id === "tab-models") load_models();
-		if (tab_id === "tab-agents") load_agents();
-	}
-
-	$root.find(".awa-tabs .nav-link").on("click", function (e) {
-		e.preventDefault();
-		switch_tab($(this).data("tab"));
-	});
-
-	function esc(s) {
-		return frappe.utils.escape_html(String(s ?? ""));
-	}
-
-	function summary_cards(items) {
-		return `<div class="awa-summary-grid">${items
-			.map(
-				(c) => `
-			<div class="awa-summary-card">
-				<div class="label">${esc(c.label)}</div>
-				<div class="value">${esc(c.value)}</div>
-				${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ""}
-			</div>`
-			)
-			.join("")}</div>`;
-	}
-
-	function load_providers() {
-		panes.providers.html(`<div class="text-muted">${__("Loading providers...")}</div>`);
-		frappe.call({
-			method: "ai_workplace.api.ai_admin.get_providers_dashboard",
-			callback(r) {
-				const d = r.message || {};
-				const s = d.summary || {};
-				panes.providers.html(`
-					<div class="awa-page-header">
-						<div>
-							<h4>${__("AI Provider Infrastructure")}<span class="awa-badge awa-badge-danger">${__("Super Admin Only")}</span></h4>
-							<div class="text-muted">${__("Configure multi-provider AI engines, encrypted API keys, default models, and fallback rules.")}</div>
-						</div>
-						<a class="btn btn-primary btn-sm" href="/app/ai-workplace-provider">${__("+ Add AI Provider")}</a>
-					</div>
-					${summary_cards([
-						{ label: __("Active Providers"), value: `${s.active_count || 0} / ${s.total_count || 0}`, sub: __("Ready for AI requests") },
-						{ label: __("Default Provider"), value: s.default_provider || "—", sub: s.default_model || "" },
-						{ label: __("Key Security"), value: __("Encrypted at Rest"), sub: __("Frappe Password field vault") },
-						{ label: __("Fallback Routing"), value: `${s.fallback_count || 0} ${__("Fallbacks")}`, sub: __("Auto rate-limit recovery") },
-					])}
-					<div class="awa-panel">
-						<div class="awa-panel-header">
-							<h5>${__("Configured AI Providers")}</h5>
-							<button class="btn btn-default btn-xs" id="btn-refresh-providers">${__("Refresh")}</button>
-						</div>
-						<div class="awa-table-wrap">
-							<table class="table table-bordered awa-table">
-								<thead>
-									<tr>
-										<th>${__("Provider")}</th>
-										<th>${__("API Base URL")}</th>
-										<th>${__("API Key Status")}</th>
-										<th>${__("Default Model")}</th>
-										<th>${__("Priority")}</th>
-										<th>${__("Status")}</th>
-										<th>${__("Actions")}</th>
-									</tr>
-								</thead>
-								<tbody>
-									${(d.providers || [])
-										.map(
-											(p) => `
-										<tr>
-											<td><strong>${esc(p.provider_name)}</strong>${p.is_default ? ` <span class="label label-primary">${__("DEFAULT")}</span>` : ""}</td>
-											<td><code>${esc(p.api_base_url)}</code></td>
-											<td class="${p.has_api_key ? "awa-status-ok" : "awa-status-warn"}">${p.has_api_key ? __("Configured") : __("Missing Key")}</td>
-											<td>${esc(p.default_model || "—")}</td>
-											<td>#${esc(p.priority)}</td>
-											<td class="${p.is_active ? "awa-status-ok" : ""}">${p.is_active ? __("Active") : __("Inactive")}</td>
-											<td>
-												<button class="btn btn-default btn-xs btn-test-provider" data-name="${esc(p.name)}">${__("Test Connection")}</button>
-												<a class="btn btn-default btn-xs" href="/app/ai-workplace-provider/${encodeURIComponent(p.name)}">${__("Edit")}</a>
-											</td>
-										</tr>`
-										)
-										.join("")}
-								</tbody>
-							</table>
-						</div>
-					</div>
-					<div class="list-group" style="max-width: 480px; margin-top: 1rem;">
-						<a class="list-group-item list-group-item-action" href="/app/employee-profile-change-request">${__("Profile Change Requests")}</a>
-						<a class="list-group-item list-group-item-action" href="/app/whatsapp-service-security-policy">${__("Service Security Policies")}</a>
-					</div>
-				`);
-				panes.providers.find("#btn-refresh-providers").on("click", load_providers);
-				panes.providers.find(".btn-test-provider").on("click", function () {
-					const name = $(this).data("name");
-					frappe.call({
-						method: "ai_workplace.api.ai_admin.test_provider_connection",
-						args: { provider_name: name },
-						freeze: true,
-						freeze_message: __("Testing connection..."),
-						callback(res) {
-							const m = res.message || {};
-							if (m.success) {
-								frappe.msgprint({
-									title: __("Connection OK"),
-									message: `${__("Provider")}: ${esc(m.provider)}<br>${__("Model")}: ${esc(m.model)}<br>${__("Reply")}: ${esc(m.message)}`,
-									indicator: "green",
-								});
-							} else {
-								frappe.msgprint({
-									title: __("Connection Failed"),
-									message: esc(m.error || m.message || __("Unknown error")),
-									indicator: "red",
-								});
-							}
-						},
-					});
-				});
-			},
-		});
-	}
-
-	function load_models() {
-		panes.models.html(`<div class="text-muted">${__("Loading models...")}</div>`);
-		frappe.call({
-			method: "ai_workplace.api.ai_admin.get_models_dashboard",
-			callback(r) {
-				const d = r.message || {};
-				const s = d.summary || {};
-				panes.models.html(`
-					<div class="awa-page-header">
-						<div>
-							<h4>${__("AI Models & Capability Registry")}<span class="awa-badge awa-badge-pink">${__("Super Admin Only")}</span></h4>
-							<div class="text-muted">${__("Manage vision capabilities and active status across configured AI models.")}</div>
-						</div>
-						<a class="btn btn-primary btn-sm" href="/app/ai-workplace-model">${__("+ Add AI Model")}</a>
-					</div>
-					${summary_cards([
-						{ label: __("Active Models"), value: `${s.active_count || 0} / ${s.total_count || 0}`, sub: __("Registered in platform") },
-					])}
-					<div class="awa-panel">
-						<div class="awa-panel-header">
-							<h5>${esc(s.active_count || 0)} ${__("Active Models")} / ${esc(s.total_count || 0)} ${__("Total")}</h5>
-							<button class="btn btn-default btn-xs" id="btn-refresh-models">${__("Refresh")}</button>
-						</div>
-						<div class="awa-table-wrap">
-							<table class="table table-bordered awa-table">
-								<thead>
-									<tr>
-										<th>${__("Model Name / Slug")}</th>
-										<th>${__("Provider")}</th>
-										<th>${__("Capabilities")}</th>
-										<th>${__("Vision")}</th>
-										<th>${__("Max Tokens")}</th>
-										<th>${__("Active")}</th>
-										<th>${__("Actions")}</th>
-									</tr>
-								</thead>
-								<tbody>
-									${(d.models || [])
-										.map(
-											(m) => `
-										<tr>
-											<td><strong>${esc(m.display_name)}</strong><br><code>${esc(m.model_slug)}</code></td>
-											<td>${esc(m.provider)}</td>
-											<td>${(m.capabilities || []).map((c) => `<span class="awa-cap-badge">${esc(c)}</span>`).join("")}</td>
-											<td class="${m.supports_vision ? "awa-status-ok" : ""}">${m.supports_vision ? __("Supported") : __("—")}</td>
-											<td>${esc(m.max_tokens)}</td>
-											<td class="${m.is_active ? "awa-status-ok" : ""}">${m.is_active ? __("Yes") : __("No")}</td>
-											<td><a class="btn btn-default btn-xs" href="/app/ai-workplace-model/${encodeURIComponent(m.name)}">${__("Edit")}</a></td>
-										</tr>`
-										)
-										.join("")}
-								</tbody>
-							</table>
-						</div>
-					</div>
-				`);
-				panes.models.find("#btn-refresh-models").on("click", load_models);
-			},
-		});
-	}
-
-	panes.knowledge.html(`
-		<p>${__("Knowledge sources power the AI HR Agent.")}</p>
-		<button class="btn btn-primary btn-sm" id="btn-reindex-all">${__("Re-index All Sources")}</button>
-		<div id="reindex-result" style="margin-top: 0.5rem; white-space: pre-wrap; font-size: 12px;"></div>
-		<div class="list-group" style="max-width: 480px; margin-top: 1rem;">
-			<a class="list-group-item list-group-item-action" href="/app/ai-workplace-knowledge-source">${__("Knowledge Sources")}</a>
-			<a class="list-group-item list-group-item-action" href="/app/ai-onboarding-playbook">${__("Onboarding Playbooks")}</a>
-		</div>
-	`);
-
-	panes.usage.html(`
-		<p>${__("AI usage log summary (last 7 days).")}</p>
-		<div id="usage-summary">${__("Loading...")}</div>
-		<a class="btn btn-default btn-sm" href="/app/ai-workplace-usage-log" style="margin-top: 0.5rem;">${__("View Full Usage Log")}</a>
-	`);
-
-	function load_agents() {
-		panes.agents.html(`<div class="text-muted">${__("Loading agent settings...")}</div>`);
-		frappe.call({
-			method: "ai_workplace.api.ai_admin.get_agents_dashboard",
-			callback(r) {
-				const d = r.message || {};
-				const prefs = d.agent_settings || {};
-				const agents_html = (d.agents || [])
-					.map((a) => {
-						const curl = `curl -X POST "${a.endpoint_url}" \\
-  -H "Content-Type: application/json" \\
-  -H "X-AI-Workplace-Key: YOUR_API_KEY" \\
-  -H "X-AI-Workplace-App: hrms_portal" \\
-  -d '{"agent_slug": "${a.agent_slug}", "message": "What is the leave policy?", "employee": "EMP-001"}'`;
-						return `
-						<div class="awa-agent-card" data-slug="${esc(a.agent_slug)}">
-							<div class="title-row">
-								<h5>${esc(a.agent_name)} <span class="label label-default">${esc(a.agent_type)}</span></h5>
-								<span class="${a.is_active ? "awa-status-ok" : "awa-status-warn"}">${a.is_active ? __("Active") : __("Inactive")}</span>
-							</div>
-							<div class="awa-meta">${__("Slug")}: <code>${esc(a.agent_slug)}</code> · ${__("Model")}: ${esc(a.default_model_slug || "—")}</div>
-							<div class="awa-form-row">
-								<label>${__("Share with other apps")}</label>
-								<input type="checkbox" class="agent-share-toggle" ${a.allow_external_access ? "checked" : ""} />
-							</div>
-							<div class="awa-form-row">
-								<label>${__("Allowed applications")}</label>
-								<input type="text" class="form-control input-sm agent-allowed-apps" value="${esc(a.allowed_applications || "")}" placeholder="hrms_portal, ai_analytics, mobile_app" />
-							</div>
-							<div class="awa-form-row">
-								<label>${__("API key")}</label>
-								<span class="text-muted">${a.has_api_key ? __("Configured (hidden)") : __("Not generated")}</span>
-								<button class="btn btn-default btn-xs btn-gen-key">${__("Generate / Regenerate Key")}</button>
-							</div>
-							<div class="awa-form-row">
-								<label>${__("Endpoint")}</label>
-								<input type="text" class="form-control input-sm" readonly value="${esc(a.endpoint_url)}" />
-								<button class="btn btn-default btn-xs btn-copy-endpoint">${__("Copy")}</button>
-							</div>
-							<div class="text-muted" style="font-size:12px;">${__("Integration example")}:</div>
-							<div class="awa-code-block agent-curl">${esc(curl)}</div>
-							<div style="margin-top:8px;">
-								<button class="btn btn-primary btn-xs btn-save-agent">${__("Save Sharing Settings")}</button>
-								<a class="btn btn-default btn-xs" href="/app/ai-workplace-agent/${encodeURIComponent(a.name)}">${__("Open Agent Form")}</a>
-							</div>
-							<div class="agent-key-result text-muted" style="font-size:12px; margin-top:6px;"></div>
-						</div>`;
-					})
-					.join("");
-
-				panes.agents.html(`
-					<div class="awa-page-header">
-						<div>
-							<h4>${__("Agent Sharing & Integration")}</h4>
-							<div class="text-muted">${__("Configure agents for WhatsApp, HRMS Portal, mobile apps, and ai_analytics via API key.")}</div>
-						</div>
-						<a class="btn btn-primary btn-sm" href="/app/ai-workplace-agent">${__("+ Add Agent")}</a>
-					</div>
-					${agents_html || `<p class="text-muted">${__("No agents configured yet.")}</p>`}
-					<div class="awa-panel" style="margin-top: 1rem;">
-						<div class="awa-panel-header"><h5>${__("Agent Behaviour Preferences")}</h5></div>
-						<div style="padding: 14px;">
-							<div class="awa-form-row">
-								<label>${__("Proactive notifications")}</label>
-								<input type="checkbox" id="pref-proactive" ${prefs.proactive_notifications_enabled ? "checked" : ""} />
-							</div>
-							<div class="awa-form-row">
-								<label>${__("Gap threshold")}</label>
-								<input type="number" id="pref-gap" class="form-control input-sm" value="${esc(prefs.proactive_gap_threshold ?? 80)}" />
-							</div>
-							<div class="awa-form-row">
-								<label>${__("Attendance nudge")}</label>
-								<input type="checkbox" id="pref-attendance" ${prefs.proactive_attendance_nudge ? "checked" : ""} />
-							</div>
-							<div class="awa-form-row">
-								<label>${__("Cooldown (hours)")}</label>
-								<input type="number" id="pref-cooldown" class="form-control input-sm" value="${esc(prefs.proactive_cooldown_hours ?? 24)}" />
-							</div>
-							<div class="awa-form-row">
-								<label>${__("Confidence threshold")}</label>
-								<input type="number" step="0.1" id="pref-confidence" class="form-control input-sm" value="${esc(prefs.agent_confidence_threshold ?? 0)}" />
-							</div>
-							<button class="btn btn-primary btn-sm" id="btn-save-prefs">${__("Save Preferences")}</button>
-							<a class="btn btn-default btn-sm" href="/app/ai-workplace-settings">${__("Full Settings Form")}</a>
-						</div>
-					</div>
-				`);
-
-				panes.agents.find(".btn-gen-key").on("click", function () {
-					const $card = $(this).closest(".awa-agent-card");
-					const slug = $card.data("slug");
-					frappe.confirm(__("Regenerating will invalidate the existing API key. Continue?"), () => {
-						frappe.call({
-							method: "ai_workplace.api.ai_admin.generate_agent_api_key",
-							args: { agent_slug: slug },
-							freeze: true,
-							callback(res) {
-								const m = res.message || {};
-								if (m.api_key) {
-									$card.find(".agent-key-result").html(
-										`<strong>${__("New API key (copy now — shown once)")}:</strong><br><code>${esc(m.api_key)}</code>`
-									);
-									frappe.show_alert({ message: __("API key generated"), indicator: "green" });
-								}
-							},
-						});
-					});
-				});
-
-				panes.agents.find(".btn-copy-endpoint").on("click", function () {
-					const val = $(this).closest(".awa-form-row").find("input").val();
-					frappe.utils.copy_to_clipboard(val);
-					frappe.show_alert({ message: __("Copied"), indicator: "green" });
-				});
-
-				panes.agents.find(".btn-save-agent").on("click", function () {
-					const $card = $(this).closest(".awa-agent-card");
-					const slug = $card.data("slug");
-					frappe.call({
-						method: "ai_workplace.api.ai_admin.update_agent_share",
-						args: {
-							agent_slug: slug,
-							allow_external_access: $card.find(".agent-share-toggle").is(":checked") ? 1 : 0,
-							allowed_applications: $card.find(".agent-allowed-apps").val(),
-						},
-						callback() {
-							frappe.show_alert({ message: __("Agent sharing updated"), indicator: "green" });
-						},
-					});
-				});
-
-				panes.agents.find("#btn-save-prefs").on("click", function () {
-					frappe.call({
-						method: "ai_workplace.api.ai_admin.save_agent_preferences",
-						args: {
-							proactive_notifications_enabled: panes.agents.find("#pref-proactive").is(":checked") ? 1 : 0,
-							proactive_gap_threshold: panes.agents.find("#pref-gap").val(),
-							proactive_attendance_nudge: panes.agents.find("#pref-attendance").is(":checked") ? 1 : 0,
-							proactive_cooldown_hours: panes.agents.find("#pref-cooldown").val(),
-							agent_confidence_threshold: panes.agents.find("#pref-confidence").val(),
-						},
-						callback() {
-							frappe.show_alert({ message: __("Preferences saved"), indicator: "green" });
-						},
-					});
-				});
-			},
-		});
-	}
-
-	frappe.call({
-		method: "ai_workplace.api.ai_admin.get_usage_summary",
-		args: { days: 7 },
-		callback(r) {
-			const d = r.message || {};
-			panes.usage.find("#usage-summary").html(`
-				<ul>
-					<li>${__("Total calls")}: <strong>${d.total || 0}</strong></li>
-					<li>${__("Success")}: <strong>${d.success || 0}</strong></li>
-					<li>${__("Failed")}: <strong>${d.failed || 0}</strong></li>
+		const app = createApp({
+		template: `
+			<div class="ai-workplace-admin">
+				<ul class="nav nav-tabs awa-tabs" role="tablist">
+					<li class="nav-item"><a class="nav-link" :class="{active: activeTab==='overview'}" @click.prevent="activeTab='overview'" href="#">Overview</a></li>
+					<li class="nav-item"><a class="nav-link" :class="{active: activeTab==='providers'}" @click.prevent="activeTab='providers'" href="#">Providers</a></li>
+					<li class="nav-item"><a class="nav-link" :class="{active: activeTab==='rag'}" @click.prevent="activeTab='rag'" href="#">RAG & Knowledge</a></li>
+					<li class="nav-item"><a class="nav-link" :class="{active: activeTab==='conversations'}" @click.prevent="activeTab='conversations'" href="#">Conversations</a></li>
+					<li class="nav-item"><a class="nav-link" :class="{active: activeTab==='security'}" @click.prevent="activeTab='security'" href="#">Security</a></li>
+					<li class="nav-item"><a class="nav-link" :class="{active: activeTab==='logs'}" @click.prevent="activeTab='logs'" href="#">Activity & Logs</a></li>
 				</ul>
-			`);
-		},
+				<div class="awa-tab-content" style="padding-top: 1rem;">
+					
+					<!-- Overview Tab -->
+					<div v-if="activeTab==='overview'">
+                        <div class="awa-page-header">
+                            <div>
+                                <h4>System Health: <span class="awa-badge" :class="healthClass">{{ overview.health }}</span></h4>
+                                <div class="text-muted">Analytics for the last 30 days.</div>
+                            </div>
+                            <button class="btn btn-default btn-sm" @click="loadData">Refresh</button>
+                        </div>
+                        <div v-if="loadingOverview" class="text-muted">Loading overview...</div>
+                        <div v-else>
+                            <div class="awa-summary-grid">
+                                <div class="awa-summary-card">
+                                    <div class="label">AI Requests</div>
+                                    <div class="value">{{ overview.requests_total }}</div>
+                                </div>
+                                <div class="awa-summary-card">
+                                    <div class="label">Success Rate</div>
+                                    <div class="value">{{ overview.success_rate }}%</div>
+                                </div>
+                                <div class="awa-summary-card">
+                                    <div class="label">Avg Latency</div>
+                                    <div class="value">{{ overview.avg_latency_ms }} ms</div>
+                                </div>
+                                <div class="awa-summary-card">
+                                    <div class="label">Total Cost</div>
+                                    <div class="value">\${{ overview.total_cost }}</div>
+                                </div>
+                                <div class="awa-summary-card">
+                                    <div class="label">Active Conversations</div>
+                                    <div class="value">{{ overview.active_conversations }}</div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 2rem;">
+                                <h5>Requests & Usage Timeline</h5>
+                                <div id="usage-chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Providers Tab -->
+                    <div v-if="activeTab==='providers'">
+                        <div class="awa-page-header">
+                            <div>
+                                <h4>Provider Monitoring & Resilience</h4>
+                                <div class="text-muted">Manage Circuit Breaker status and fallback behavior.</div>
+                            </div>
+                        </div>
+                        <div v-if="loadingProviders" class="text-muted">Loading providers...</div>
+                        <div v-else>
+                            <table class="table table-bordered awa-table">
+                                <thead>
+                                    <tr>
+                                        <th>Provider</th>
+                                        <th>Circuit State</th>
+                                        <th>Consecutive Failures</th>
+                                        <th>Success Rate</th>
+                                        <th>Avg Latency</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="p in providers" :key="p.name">
+                                        <td><strong>{{ p.provider_name }}</strong></td>
+                                        <td><span class="awa-badge" :class="p.circuit_state === 'CLOSED' ? 'awa-badge-success' : (p.circuit_state === 'HALF_OPEN' ? 'awa-badge-warn' : 'awa-badge-danger')">{{ p.circuit_state }}</span></td>
+                                        <td>{{ p.consecutive_failures }}</td>
+                                        <td>{{ 100 - p.fail_rate }}%</td>
+                                        <td>{{ p.avg_latency }} ms</td>
+                                        <td>
+                                            <button class="btn btn-default btn-xs" @click="testProvider(p.name)">Test Connection</button>
+                                            <button class="btn btn-danger btn-xs" v-if="p.circuit_state !== 'CLOSED'" @click="resetCircuit(p.name)" style="margin-left: 5px;">Reset Circuit</button>
+                                            <a class="btn btn-default btn-xs" :href="'/app/ai-workplace-provider/' + encodeURIComponent(p.name)" style="margin-left: 5px;">Edit</a>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="!providers || !providers.length"><td colspan="6" class="text-muted">No providers configured.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- RAG Tab -->
+                    <div v-if="activeTab==='rag'">
+                        <div class="awa-page-header">
+                            <div>
+                                <h4>RAG & Knowledge Dashboard</h4>
+                                <div class="text-muted">Vector embedding limits and knowledge gaps.</div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" @click="reindexAll">Re-index Entire Knowledge Base</button>
+                        </div>
+                        <div v-if="loadingRag" class="text-muted">Loading RAG metrics...</div>
+                        <div v-else>
+                            <div class="awa-summary-grid">
+                                <div class="awa-summary-card">
+                                    <div class="label">Knowledge Sources</div>
+                                    <div class="value">{{ rag.sources }}</div>
+                                </div>
+                                <div class="awa-summary-card">
+                                    <div class="label">Total Chunks</div>
+                                    <div class="value">{{ rag.chunks }}</div>
+                                </div>
+                                <div class="awa-summary-card">
+                                    <div class="label">Embedded Chunks</div>
+                                    <div class="value">{{ rag.embedded }}</div>
+                                </div>
+                                <div class="awa-summary-card">
+                                    <div class="label">Failed Embeddings</div>
+                                    <div class="value" :style="{color: rag.failed_embeddings > 0 ? 'red' : 'inherit'}">{{ rag.failed_embeddings }}</div>
+                                </div>
+                            </div>
+                            <h5 style="margin-top: 2rem;">Top Knowledge Gaps</h5>
+                            <table class="table table-bordered awa-table">
+                                <thead><tr><th>Query</th><th>Frequency</th><th>Status</th><th>Last Seen</th></tr></thead>
+                                <tbody>
+                                    <tr v-for="g in rag.gaps" :key="g.name">
+                                        <td><a :href="'/app/ai-knowledge-gap-log/' + encodeURIComponent(g.name)">{{ g.query }}</a></td>
+                                        <td>{{ g.frequency }}</td>
+                                        <td>{{ g.status }}</td>
+                                        <td>{{ g.last_seen }}</td>
+                                    </tr>
+                                    <tr v-if="!rag.gaps || !rag.gaps.length"><td colspan="4" class="text-muted">No knowledge gaps recorded.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Conversations Tab -->
+                    <div v-if="activeTab==='conversations'">
+                        <div class="awa-page-header">
+                            <div>
+                                <h4>Conversation Analytics</h4>
+                                <div class="text-muted">Lifecycle of HR chat routing.</div>
+                            </div>
+                        </div>
+                        <div v-if="loadingConv" class="text-muted">Loading conversations...</div>
+                        <div v-else>
+                            <div class="awa-summary-grid">
+                                <div class="awa-summary-card">
+                                    <div class="label">Active Sessions</div>
+                                    <div class="value">{{ conv.active }}</div>
+                                </div>
+                                <div class="awa-summary-card">
+                                    <div class="label">Completed</div>
+                                    <div class="value">{{ conv.completed }}</div>
+                                </div>
+                                <div class="awa-summary-card">
+                                    <div class="label">Abandoned</div>
+                                    <div class="value">{{ conv.abandoned }}</div>
+                                </div>
+                            </div>
+                            <h5 style="margin-top: 2rem;">Channel Breakdown</h5>
+                            <ul class="list-group" style="max-width: 300px;">
+                                <li class="list-group-item" v-for="c in conv.channels" :key="c.channel">
+                                    {{ c.channel || 'Unknown' }}
+                                    <span class="badge">{{ c.cnt }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Security Tab -->
+                    <div v-if="activeTab==='security'">
+                        <div class="awa-page-header">
+                            <div>
+                                <h4>Security Dashboard</h4>
+                                <div class="text-muted">Auditable system blocks and Evidence Gateway actions.</div>
+                            </div>
+                        </div>
+                        <div v-if="loadingSec" class="text-muted">Loading security metrics...</div>
+                        <div v-else>
+                            <div class="awa-summary-grid">
+                                <div class="awa-summary-card">
+                                    <div class="label">Blocked / Escalated Actions</div>
+                                    <div class="value">{{ sec.blocked_actions }}</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <a class="btn btn-default btn-sm" href="/app/ai-action-log">View AI Action Logs</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logs Tab -->
+                    <div v-if="activeTab==='logs'">
+                        <div class="awa-page-header">
+                            <div>
+                                <h4>Recent AI Activity</h4>
+                                <div class="text-muted">Latest 50 usage requests.</div>
+                            </div>
+                            <a class="btn btn-default btn-sm" href="/app/ai-workplace-usage-log">View All Usage Logs</a>
+                        </div>
+                        <div v-if="loadingLogs" class="text-muted">Loading activity...</div>
+                        <table v-else class="table table-bordered awa-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Channel</th>
+                                    <th>Provider (Model)</th>
+                                    <th>Latency</th>
+                                    <th>Tokens</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="l in logs" :key="l.name">
+                                    <td><a :href="'/app/ai-workplace-usage-log/' + encodeURIComponent(l.name)">{{ l.creation }}</a></td>
+                                    <td>{{ l.channel }}</td>
+                                    <td>{{ l.provider }}<br><span class="text-muted" style="font-size:11px;">{{ l.model }}</span></td>
+                                    <td>{{ l.latency_ms }} ms</td>
+                                    <td>{{ l.tokens_total }}</td>
+                                    <td>
+                                        <span class="awa-badge" :class="l.success ? 'awa-badge-success' : 'awa-badge-danger'">
+                                            {{ l.success ? 'Success' : 'Failed' }}
+                                        </span>
+                                        <span v-if="l.fallback_used" class="awa-badge awa-badge-warn" style="margin-left: 5px;">Fallback</span>
+                                    </td>
+                                </tr>
+                                <tr v-if="!logs || !logs.length"><td colspan="6" class="text-muted">No recent AI activity.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+				</div>
+			</div>
+		`,
+		setup() {
+			const activeTab = ref('overview');
+			const overview = ref({});
+			const loadingOverview = ref(true);
+
+            const providers = ref([]);
+            const loadingProviders = ref(true);
+
+            const rag = ref({});
+            const loadingRag = ref(true);
+
+            const conv = ref({});
+            const loadingConv = ref(true);
+
+            const sec = ref({});
+            const loadingSec = ref(true);
+
+            const logs = ref([]);
+            const loadingLogs = ref(true);
+
+			const healthClass = computed(() => {
+				if (overview.value.health === 'HEALTHY') return 'awa-badge-success';
+				if (overview.value.health === 'CRITICAL') return 'awa-badge-danger';
+				return 'awa-badge-warn';
+			});
+
+            function renderChart(timelineData) {
+                if (!timelineData || !timelineData.length) return;
+                
+                const labels = timelineData.map(d => d.date);
+                const reqs = timelineData.map(d => d.total);
+                
+                new frappe.Chart("#usage-chart", {
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { name: "Requests", type: "bar", values: reqs }
+                        ]
+                    },
+                    title: "Requests Over Time",
+                    type: "bar",
+                    height: 250,
+                    colors: ["#7cd6fd"]
+                });
+            }
+
+            function loadData() {
+                frappe.call({
+                    method: "ai_workplace.api.analytics.get_dashboard_summary",
+                    callback: (r) => { overview.value = r.message || {}; loadingOverview.value = false; }
+                });
+                frappe.call({
+                    method: "ai_workplace.api.analytics.get_usage_metrics",
+                    callback: (r) => { 
+                        if (r.message && r.message.timeline) {
+                            setTimeout(() => renderChart(r.message.timeline), 300);
+                        }
+                    }
+                });
+                frappe.call({
+                    method: "ai_workplace.api.analytics.get_provider_health",
+                    callback: (r) => { providers.value = r.message || []; loadingProviders.value = false; }
+                });
+                frappe.call({
+                    method: "ai_workplace.api.analytics.get_rag_metrics",
+                    callback: (r) => { rag.value = r.message || {}; loadingRag.value = false; }
+                });
+                frappe.call({
+                    method: "ai_workplace.api.analytics.get_conversation_metrics",
+                    callback: (r) => { conv.value = r.message || {}; loadingConv.value = false; }
+                });
+                frappe.call({
+                    method: "ai_workplace.api.analytics.get_security_metrics",
+                    callback: (r) => { sec.value = r.message || {}; loadingSec.value = false; }
+                });
+                frappe.call({
+                    method: "ai_workplace.api.analytics.get_recent_activity",
+                    callback: (r) => { logs.value = r.message || []; loadingLogs.value = false; }
+                });
+            }
+
+            function testProvider(name) {
+                frappe.call({
+                    method: "ai_workplace.api.ai_admin.test_provider_connection",
+                    args: { provider_name: name },
+                    freeze: true,
+                    freeze_message: "Testing connection...",
+                    callback(res) {
+                        const m = res.message || {};
+                        if (m.success) {
+                            frappe.msgprint({ title: "Connection OK", message: `Latency: ${m.latency || 0}ms`, indicator: "green" });
+                        } else {
+                            frappe.msgprint({ title: "Connection Failed", message: m.error || "Error", indicator: "red" });
+                        }
+                    }
+                });
+            }
+
+            function resetCircuit(name) {
+                frappe.confirm(`Are you sure you want to reset the circuit breaker for ${name}?`, () => {
+                    frappe.call({
+                        method: "ai_workplace.api.analytics.reset_circuit_breaker",
+                        args: { provider_name: name },
+                        callback(res) {
+                            frappe.show_alert({ message: "Circuit reset.", indicator: "green" });
+                            loadData();
+                        }
+                    });
+                });
+            }
+
+            function reindexAll() {
+                frappe.confirm(`Are you sure you want to re-index the entire knowledge base? This operation will run in the background.`, () => {
+                    frappe.call({
+                        method: "ai_workplace.api.ai_admin.reindex_all_knowledge_sources",
+                        callback(res) {
+                            frappe.show_alert({ message: "Re-indexing started.", indicator: "green" });
+                        }
+                    });
+                });
+            }
+
+            watch(activeTab, (newTab) => {
+                if (newTab === 'overview') {
+                    frappe.call({
+                        method: "ai_workplace.api.analytics.get_usage_metrics",
+                        callback: (r) => { 
+                            if (r.message && r.message.timeline) {
+                                setTimeout(() => renderChart(r.message.timeline), 100);
+                            }
+                        }
+                    });
+                }
+            });
+
+			onMounted(() => {
+				loadData();
+			});
+
+			return {
+				activeTab,
+				overview, loadingOverview, healthClass, loadData,
+                providers, loadingProviders, testProvider, resetCircuit,
+                rag, loadingRag, reindexAll,
+                conv, loadingConv,
+                sec, loadingSec,
+                logs, loadingLogs
+			};
+		}
 	});
 
-	panes.knowledge.find("#btn-reindex-all").on("click", function () {
-		frappe.call({
-			method: "ai_workplace.api.ai_admin.reindex_all_knowledge_sources",
-			freeze: true,
-			freeze_message: __("Re-indexing knowledge sources..."),
-			callback(r) {
-				panes.knowledge.find("#reindex-result").text(JSON.stringify(r.message || {}, null, 2));
-				frappe.show_alert({ message: __("Re-index complete"), indicator: "green" });
-			},
-		});
-	});
+	app.mount("#ai-workplace-admin-vue");
+    }
 
-	load_providers();
+	if (!window.Vue) {
+        frappe.require("https://unpkg.com/vue@3/dist/vue.global.prod.js", () => {
+            initVueApp();
+        });
+	} else {
+        initVueApp();
+    }
 };

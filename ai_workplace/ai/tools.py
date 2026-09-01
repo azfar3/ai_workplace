@@ -17,6 +17,43 @@ from ai_workplace.ai.evidence import (
 )
 
 
+
+def get_latest_salary_slip(employee: str) -> dict[str, Any]:
+    from ai_workplace.services.payroll import get_past_salary_slips
+    slips = get_past_salary_slips(employee, months=1)
+    if not slips:
+        return {}
+    s = slips[0]
+    return {
+        "salary_slip_name": s.name,
+        "start_date": str(s.start_date),
+        "end_date": str(s.end_date),
+        "net_pay": s.rounded_total
+    }
+
+def get_tax_details(employee: str) -> dict[str, Any]:
+    from ai_workplace.services.payroll import get_past_salary_slips
+    slips = get_past_salary_slips(employee, months=1)
+    if not slips:
+        return {}
+    s = slips[0]
+    return {
+        "salary_slip_name": s.name,
+        "start_date": str(s.start_date),
+        "end_date": str(s.end_date),
+        "total_deductions": s.total_deduction
+    }
+
+def get_office_timings() -> dict[str, Any]:
+    return {
+        "monday_to_friday": "9:00 AM - 5:00 PM",
+        "saturday_sunday": "Closed"
+    }
+
+def create_leave_application(employee: str, from_date: str, to_date: str, leave_type: str, reason: str) -> dict[str, Any]:
+    return {"status": "pending_confirmation", "message": "Draft created, awaiting user confirmation"}
+
+
 def get_profile_gaps(employee: str) -> dict[str, Any]:
     from ai_workplace.services.profile_gaps import get_employee_profile_gaps
 
@@ -78,134 +115,28 @@ def search_knowledge(query: str, limit: int = 5, context: Optional[dict[str, Any
 
 
 # Tool Specification Registry with OpenAI Function Call Schemas & Security Metadata
-TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
-    "get_profile_gaps": {
-        "name": "get_profile_gaps",
-        "description": "Fetch profile completeness score, missing fields, and pending requests for the authenticated employee.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-        },
-        "read_write": "read",
-        "data_sensitivity": CLASS_EMPLOYEE_SPECIFIC,
-        "required_permissions": ["Employee"],
-        "pin_required": False,
-        "handler": get_profile_gaps,
-    },
-    "get_pending_profile_requests": {
-        "name": "get_pending_profile_requests",
-        "description": "Fetch pending profile update tickets submitted by the authenticated employee.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-        },
-        "read_write": "read",
-        "data_sensitivity": CLASS_EMPLOYEE_SPECIFIC,
-        "required_permissions": ["Employee"],
-        "pin_required": False,
-        "handler": get_pending_profile_requests,
-    },
-    "get_attendance_summary": {
-        "name": "get_attendance_summary",
-        "description": "Fetch attendance status snapshot for today (check-in/out time) and monthly present/absent counts.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-        },
-        "read_write": "read",
-        "data_sensitivity": CLASS_EMPLOYEE_SPECIFIC,
-        "required_permissions": ["Employee"],
-        "pin_required": False,
-        "handler": get_attendance_summary,
-    },
-    "get_leave_balance": {
-        "name": "get_leave_balance",
-        "description": "Fetch current leave allocations and remaining balances (annual, casual, sick) for the authenticated employee.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-        },
-        "read_write": "read",
-        "data_sensitivity": CLASS_EMPLOYEE_SPECIFIC,
-        "required_permissions": ["Employee"],
-        "pin_required": False,
-        "handler": get_leave_balance,
-    },
-    "get_published_policies": {
-        "name": "get_published_policies",
-        "description": "Retrieve list of published company policies and handbook guidelines.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-        },
-        "read_write": "read",
-        "data_sensitivity": CLASS_ORGANIZATIONAL,
-        "required_permissions": [],
-        "pin_required": False,
-        "handler": get_published_policies,
-    },
-    "get_menu_help": {
-        "name": "get_menu_help",
-        "description": "List available interactive WhatsApp menu services based on authenticated user context.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-        },
-        "read_write": "read",
-        "data_sensitivity": CLASS_ORGANIZATIONAL,
-        "required_permissions": [],
-        "pin_required": False,
-        "handler": get_menu_help,
-    },
-    "get_portal_url": {
-        "name": "get_portal_url",
-        "description": "Get deep link URL to HRMS web portal or specific route.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "route": {
-                    "type": "string",
-                    "description": "Portal route, e.g. '/hrms' or '/hrms/me'",
-                }
+
+from ai_workplace.ai.intent_catalog import INTENT_CATALOG
+
+TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {}
+for intent_name, meta in INTENT_CATALOG.items():
+    tool_name = meta["tool"]
+    # Only register actual functions as tools (skip clarification/search which might have custom handling)
+    if tool_name not in ["clarification"]:
+        TOOL_REGISTRY[tool_name] = {
+            "name": tool_name,
+            "description": f"Tool for {intent_name}",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
             },
-            "required": [],
-        },
-        "read_write": "read",
-        "data_sensitivity": CLASS_ORGANIZATIONAL,
-        "required_permissions": [],
-        "pin_required": False,
-        "handler": get_portal_url,
-    },
-    "search_knowledge": {
-        "name": "search_knowledge",
-        "description": "Perform hybrid RAG search across company policy documents, SOPs, and portal guides.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Search topic or question, e.g. 'maternity leave policy' or 'notice period'",
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "Maximum number of knowledge chunks to return (default 5).",
-                },
-            },
-            "required": ["query"],
-        },
-        "read_write": "read",
-        "data_sensitivity": CLASS_ORGANIZATIONAL,
-        "required_permissions": [],
-        "pin_required": False,
-        "handler": search_knowledge,
-    },
-}
+            "read_write": "read" if meta.get("read_only", True) else "write",
+            "data_sensitivity": "internal",
+            "required_permissions": ["Employee"] if meta.get("requires_employee") else [],
+            "pin_required": meta.get("requires_confirmation", False),
+            "handler": globals().get(tool_name) or search_knowledge
+        }
 
 
 def get_openai_tools_schema(allowed_tools: Optional[List[str]] = None) -> List[Dict[str, Any]]:

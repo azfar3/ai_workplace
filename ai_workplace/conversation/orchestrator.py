@@ -1904,24 +1904,74 @@ def process_message(
             body_text="Thank you for your feedback! An HR representative will review this topic to improve our responses.\n\nIs there anything else I can help you with today? Feel free to ask another question or type *menu*."
         )
 
-    # Deterministic keyword routing only — no LLM fallback in Phase 1
+    # =========================================================================
+    # PHASE 5: DETERMINISTIC QUERY RESOLVER -> HYBRID RAG -> LLM FALLBACK
+    # =========================================================================
     if not clean_text.isdigit() and len(clean_text) >= 3:
+        from ai_workplace.ai.query_resolver import QueryResolver
+        from ai_workplace.ai.response_formatter import ResponseFormatter
+        from ai_workplace.ai.tools import run_tool
+        
+        intent_key, meta, confidence = QueryResolver.resolve(clean_text)
+        
+        if intent_key and intent_key != "unknown" and meta:
+            # Check permissions
+            if meta.get("requires_authentication") and not context.get("employee"):
+                return OutboundMessage(body_text="You must be an authenticated employee to access this feature.")
+                
+            tool_name = meta.get("tool")
+            response_mode = meta.get("response_mode", "deterministic")
+            
+            # Tier 0: Zero AI (Deterministic ERP)
+            if response_mode == "deterministic" and tool_name:
+                raw_data = run_tool(tool_name, context)
+                formatted_response = ResponseFormatter.format_response(intent_key, raw_data)
+                
+                log_ai_action(
+                    trace_id=trace_id,
+                    conversation_name=conv.name,
+                    whatsapp_identity=conv.whatsapp_identity,
+                    intent=intent_key,
+                    action=f"run_deterministic_{tool_name}",
+                    result=formatted_response,
+                    status="Success",
+                )
+                return OutboundMessage(body_text=formatted_response)
+                
+            # Tier 1/2: Hybrid RAG or LLM Synthesis
+            elif response_mode == "hybrid" or meta.get("llm_allowed", False):
+                # Call HR Agent to handle it natively with LLM + Tools
+                from ai_workplace.services.hr_agent import handle_hr_agent_message
+                update_conversation(conv, state=ConversationState.PROCESSING, current_intent="hr_ai_agent")
+                return handle_hr_agent_message(conv, clean_text, context)
+                
+            # Navigation / Clarification
+            elif response_mode == "clarification":
+                return OutboundMessage(
+                    body_text="Sure. What would you like to see?\n\n1️⃣ Leave balance\n2️⃣ Leave history\n3️⃣ Leave applications\n4️⃣ Leave policy"
+                )
+                
+            # Escalation
+            elif response_mode == "escalate":
+                return OutboundMessage(
+                    body_text=ResponseFormatter.format_generic_error()
+                )
+        
+        # If no deterministic intent matched, use LLM as final fallback (if enabled)
+        from ai_workplace.ai.router import is_ai_chat_enabled
+        if is_ai_chat_enabled():
+            from ai_workplace.services.hr_agent import handle_hr_agent_message
+            update_conversation(conv, state=ConversationState.PROCESSING, current_intent="hr_ai_agent")
+            return handle_hr_agent_message(conv, clean_text, context)
+        
+        # If LLM disabled, fallback to menu
         lang = context.get("preferred_language", "English")
         if lang == "Urdu":
-            hint = (
-                "براہ کرم نیچے سے سروس منتخب کریں۔ "
-                "آپ \"تنخواہ\"، \"رخصت\"، \"حاضری\"، \"سفر\" یا \"HR\" بھی لکھ سکتے ہیں۔"
-            )
+            hint = "براہ کرم نیچے سے سروس منتخب کریں۔ آپ \"تنخواہ\"، \"رخصت\"، \"حاضری\"، \"سفر\" یا \"HR\" بھی لکھ سکتے ہیں۔"
         elif lang == "Roman Urdu":
-            hint = (
-                "Neeche se service choose karein. "
-                "Aap \"salary slip\", \"leave\", \"attendance\", \"travel\" ya \"HR\" bhi likh sakte hain."
-            )
+            hint = "Neeche se service choose karein. Aap \"salary slip\", \"leave\", \"attendance\", \"travel\" ya \"HR\" bhi likh sakte hain."
         else:
-            hint = (
-                "Choose a service below. You can also type common requests such as "
-                "\"salary slip\", \"leave\", \"attendance\", \"travel\" or \"HR\"."
-            )
+            hint = "Choose a service below. You can also type common requests such as \"salary slip\", \"leave\", \"attendance\", \"travel\" or \"HR\"."
         menu_out, _unused = build_menu(context, header_prefix=hint)
         return menu_out
 

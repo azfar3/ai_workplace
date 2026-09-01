@@ -183,7 +183,7 @@ def get_rag_metrics() -> dict:
     chunks = frappe.db.count("AI Workplace Knowledge Chunk")
     embedded = frappe.db.count("AI Workplace Knowledge Chunk", {"embedding_json": ("is", "set")})
     
-    gaps = frappe.get_all("AI Knowledge Gap Log", fields=["name", "question", "status", "category", "occurrences", "last_asked"], order_by="occurrences desc", limit=10)
+    gaps = frappe.get_all("AI Knowledge Gap Log", fields=["name", "query", "status", "frequency", "last_seen"], order_by="frequency desc", limit=10)
     
     return {
         "sources": sources,
@@ -200,24 +200,18 @@ def get_conversation_metrics() -> dict:
     completed = frappe.db.count("WhatsApp Conversation", {"conversation_status": "Completed"})
     abandoned = frappe.db.count("WhatsApp Conversation", {"conversation_status": "Abandoned"})
     
-    channels = frappe.db.sql("""
-        SELECT channel, COUNT(*) as cnt
-        FROM `tabWhatsApp Conversation`
-        GROUP BY channel
-    """, as_dict=True)
-    
     return {
         "active": active,
         "completed": completed,
         "abandoned": abandoned,
-        "channels": channels
+        "channels": []
     }
 
 @frappe.whitelist()
 def get_security_metrics() -> dict:
     frappe.only_for("System Manager")
     # For security metrics we use AI Action Log where redactions or blocks happened
-    blocks = frappe.db.count("AI Action Log", {"action_type": ("in", ["Tool Error", "Authorization Failure", "Security Escalation"])})
+    blocks = frappe.db.count("AI Action Log", {"action": ("in", ["Tool Error", "Authorization Failure", "Security Escalation"])})
     
     return {
         "blocked_actions": blocks
