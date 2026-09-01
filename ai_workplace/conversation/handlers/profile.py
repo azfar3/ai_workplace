@@ -8,7 +8,11 @@ from ai_workplace.services.response_helpers import wrap_with_menu_again
 class ProfileHandler:
     def can_handle(self, intent: str, state: str) -> bool:
         clean = intent.replace("svc_", "")
-        return clean in ("prof_my_requests", "update_profile", "my_profile", "prof_view", "prof_update", "my_requests") or clean.startswith("prof_")
+        return (
+            clean in ("prof_my_requests", "update_profile", "my_profile", "prof_view", "prof_update", "my_requests", "profile_gaps")
+            or clean.startswith("prof_")
+            or clean.startswith("gap_")
+        )
 
     def handle(self, conv: Any, intent: str, clean_text: str, context: Dict[str, Any], trace_id: str) -> Optional[OutboundMessage]:
         outbound = None
@@ -34,6 +38,17 @@ class ProfileHandler:
             outbound = build_my_requests_response(context)
             action = "view_profile_requests"
 
+        elif clean_intent.startswith("gap_"):
+            from ai_workplace.services.profile_completion import handle_profile_gap_action
+            gap_key = clean_intent[4:]
+            outbound = handle_profile_gap_action(conv, context, gap_key)
+            action = f"profile_gap_{gap_key}"
+
+        elif clean_intent.startswith("prof_"):
+            from ai_workplace.services.profile_completion import start_profile_flow
+            outbound = start_profile_flow(conv, context, clean_intent)
+            action = f"start_profile_flow_{clean_intent}"
+
         if outbound:
             log_ai_action(
                 trace_id=trace_id,
@@ -50,4 +65,3 @@ class ProfileHandler:
             return outbound
             
         return None
-
