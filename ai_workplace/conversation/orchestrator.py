@@ -905,9 +905,14 @@ def process_message(
             _tool_name = _meta.get("tool")
             _response_mode = _meta.get("response_mode", "deterministic")
 
-            # ── DETERMINISTIC: zero LLM calls ─────────────────────────────────
+            # ── DETERMINISTIC: zero LLM calls ──────────────────────────────────
+            # Phase 2.2: EntityExtractor pulls month/year/dates from the message
+            # and passes them as kwargs so tools like get_latest_salary_slip can
+            # serve "salary slip for August" without an LLM.
             if _response_mode == "deterministic" and _tool_name and _tool_name != "clarification":
-                _raw_data = run_tool(_tool_name, context)
+                from ai_workplace.ai.entity_extractor import EntityExtractor
+                _entities = EntityExtractor.extract(_intent_key, clean_text)
+                _raw_data = run_tool(_tool_name, context, **_entities)
                 _formatted = ResponseFormatter.format_response(_intent_key, _raw_data)
                 log_ai_action(
                     trace_id=trace_id,
@@ -922,32 +927,53 @@ def process_message(
                 )
                 return OutboundMessage(body_text=_formatted)
 
-            # ── HYBRID: fetch tool data then let LLM synthesise (one call) ────
-            # NOTE: we do NOT set current_intent="hr_ai_agent" — this is one-shot.
-            # The next message from the user re-enters the full resolver.
+            # ── HYBRID: lightweight synthesis — tool data → LLM narration ──────
+            # Phase 4: uses hybrid_handler (1 LLM call, no tool-loop) instead
+            # of the full 5-step agentic loop.  Falls back to deterministic
+            # formatter if AI is disabled or the LLM call fails.
+            elif _response_mode == "hybrid" and _tool_name:
+                from ai_workplace.ai.hybrid_handler import handle_hybrid
+                return handle_hybrid(
+                    intent_key=_intent_key,
+                    tool_name=_tool_name,
+                    context=context,
+                    user_query=clean_text,
+                    conv=conv,
+                    trace_id=trace_id,
+                )
+
+            # If hybrid but no tool, fall through to LLM agent
             elif _response_mode == "hybrid" and is_ai_chat_enabled():
                 from ai_workplace.services.hr_agent import handle_hr_agent_message
                 return handle_hr_agent_message(conv, clean_text, context)
 
-            # ── CLARIFICATION: intent known, parameters missing ───────────────
+            # ── CLARIFICATION: intent known, parameters missing ─────────────────
+            # Phase 5: reads clarification_text + clarification_options from the
+            # intent catalog.  Renders interactive WhatsApp buttons when options
+            # are defined, falls back to plain text otherwise.
             elif _response_mode == "clarification":
+                from ai_workplace.whatsapp.interactive import build_button_message
                 _lang = context.get("preferred_language", "English")
-                if _lang == "Urdu":
-                    _clarify = (
-                        "آپ کیا جاننا چاہتے ہیں؟ براہ کرم ایک آپشن چنیں:\n\n"
-                        "1️⃣ رخصت بیلنس\n2️⃣ رخصت کی تاریخ\n3️⃣ رخصت کی درخواست\n4️⃣ رخصت پالیسی"
-                    )
-                elif _lang == "Roman Urdu":
-                    _clarify = (
-                        "Aap kya jaanna chahte hain? Ek option chunein:\n\n"
-                        "1️⃣ Leave Balance\n2️⃣ Leave History\n3️⃣ Apply Leave\n4️⃣ Leave Policy"
-                    )
-                else:
-                    _clarify = (
-                        "Sure! What would you like to know? Please choose one:\n\n"
-                        "1️⃣ Leave balance\n2️⃣ Leave history\n3️⃣ Apply leave\n4️⃣ Leave policy"
-                    )
-                return OutboundMessage(body_text=_clarify)
+
+                # Catalog-driven text (Phase 5)
+                _clarify_texts = _meta.get("clarification_text", {})
+                _clarify_body = (
+                    _clarify_texts.get(_lang)
+                    or _clarify_texts.get("English")
+                    or "What would you like to do?"
+                )
+
+                # Interactive buttons if defined in catalog
+                _clarify_opts = _meta.get("clarification_options", [])
+                if _clarify_opts:
+                    _buttons = [
+                        {"id": opt["id"], "title": opt["title"]}
+                        for opt in _clarify_opts[:3]  # WhatsApp max 3 buttons
+                    ]
+                    return build_button_message(_clarify_body, _buttons)
+
+                # Fallback: plain text with numbered list
+                return OutboundMessage(body_text=_clarify_body)
 
             # ── WORKFLOW: start a multi-step flow directly from natural language ──
             elif _response_mode == "workflow":

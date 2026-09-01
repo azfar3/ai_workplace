@@ -113,6 +113,17 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
         "llm_allowed": False,
         "response_mode": "clarification",
         "source_type": "NAVIGATION",
+        # Phase 5: catalog-driven clarification — multi-lingual + interactive buttons
+        "clarification_text": {
+            "English": "Sure! What would you like to know about your leave?",
+            "Urdu": "آپ اپنی رخصت کے بارے میں کیا جاننا چاہتے ہیں؟",
+            "Roman Urdu": "Aap apni leave ke baare mein kya jaanna chahte hain?",
+        },
+        "clarification_options": [
+            {"id": "svc_att_leave_balance",  "title": "📅 Leave Balance"},
+            {"id": "svc_att_leave_history",  "title": "📜 Leave History"},
+            {"id": "svc_leave_apply",        "title": "✏️ Apply Leave"},
+        ],
     },
 
     "carry_forward_leave": {

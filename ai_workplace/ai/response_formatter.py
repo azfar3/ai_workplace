@@ -87,6 +87,48 @@ class ResponseFormatter:
         return f"🧾 *Latest Tax Deductions*\n\nSlip Name: {data.get('salary_slip_name')}\nPeriod: {data.get('start_date')} to {data.get('end_date')}\nTotal Deductions: {data.get('total_deductions')}"
 
     @staticmethod
+    def format_leave_history(data: list) -> str:
+        if not data:
+            return "📜 I couldn't find any recent leave requests in your records."
+        res = "📜 *Recent Leave Requests*\n\n"
+        for item in data[:5]:
+            status_icon = "✅" if item.get("status") == "Approved" else ("⏳" if item.get("status") in ("Open", "Draft", "Applied") else "❌")
+            res += f"{status_icon} *{item.get('leave_type', 'Leave')}* ({item.get('total_leave_days', 0)} days)\n"
+            res += f"   Period: {item.get('from_date')} to {item.get('to_date')}\n"
+            res += f"   Status: {item.get('status')}\n\n"
+        return res.strip()
+
+    @staticmethod
+    def format_designation(data: dict) -> str:
+        if not data or not data.get("designation"):
+            return "👤 I couldn't find designation information for your profile."
+        return f"👔 Your official designation is *{data.get('designation')}*."
+
+    @staticmethod
+    def format_department(data: dict) -> str:
+        if not data or not data.get("department"):
+            return "🏢 I couldn't find department information for your profile."
+        return f"🏢 You belong to the *{data.get('department')}* department."
+
+    @staticmethod
+    def format_monthly_attendance(data: dict) -> str:
+        if not data:
+            return "📅 I couldn't find attendance records for the requested period."
+        res = "📅 *Monthly Attendance Summary*\n\n"
+        if isinstance(data, dict):
+            if "present" in data:
+                res += f"• Present: {data.get('present', 0)} days\n"
+            if "absent" in data:
+                res += f"• Absent: {data.get('absent', 0)} days\n"
+            if "leave" in data:
+                res += f"• On Leave: {data.get('leave', 0)} days\n"
+            if "late" in data:
+                res += f"• Late Check-ins: {data.get('late', 0)} days\n"
+            if "total_working_days" in data:
+                res += f"• Total Working Days: {data.get('total_working_days')}\n"
+        return res.strip()
+
+    @staticmethod
     def format_response(intent: str, data: Any) -> str:
         if intent == "leave_balance":
             return ResponseFormatter.format_leave_balance(data)
@@ -104,5 +146,14 @@ class ResponseFormatter:
             return ResponseFormatter.format_salary_slip(data)
         elif intent == "tax_deductions":
             return ResponseFormatter.format_tax_details(data)
+        elif intent == "leave_history":
+            return ResponseFormatter.format_leave_history(data)
+        elif intent == "my_designation":
+            return ResponseFormatter.format_designation(data)
+        elif intent == "my_department":
+            return ResponseFormatter.format_department(data)
+        elif intent == "monthly_attendance":
+            return ResponseFormatter.format_monthly_attendance(data)
         else:
             return str(data)
+

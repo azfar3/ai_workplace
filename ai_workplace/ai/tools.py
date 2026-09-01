@@ -131,6 +131,21 @@ def search_knowledge(query: str, limit: int = 5, context: Optional[dict[str, Any
     return _search(query, limit=limit, employment_type=emp_type, context=context)
 
 
+def get_leave_history(employee: str) -> list[dict[str, Any]]:
+    from ai_workplace.services.attendance_leave import get_recent_leave_requests
+    return get_recent_leave_requests(employee) or []
+
+
+def get_employee_profile(employee: str) -> dict[str, Any]:
+    from ai_workplace.services.hr_profile import get_employee_profile_data
+    return get_employee_profile_data(employee) or {}
+
+
+def get_monthly_attendance(employee: str, month: Optional[int] = None, year: Optional[int] = None) -> dict[str, Any]:
+    from ai_workplace.services.attendance_leave import get_monthly_attendance_data
+    return get_monthly_attendance_data(employee) or {}
+
+
 # Tool Specification Registry with OpenAI Function Call Schemas & Security Metadata
 
 from ai_workplace.ai.intent_catalog import INTENT_CATALOG
@@ -225,6 +240,12 @@ def run_tool(tool_name: str, context: dict[str, Any], **kwargs) -> Any:
             raw = meta["handler"](auth_employee)
         elif tool_name == "get_leave_balance":
             raw = meta["handler"](auth_employee)
+        elif tool_name == "get_leave_history":
+            raw = meta["handler"](auth_employee)
+        elif tool_name == "get_employee_profile":
+            raw = meta["handler"](auth_employee)
+        elif tool_name == "get_monthly_attendance":
+            raw = meta["handler"](auth_employee, **clean_kwargs)
         elif tool_name == "get_published_policies":
             raw = meta["handler"](auth_employee)
         elif tool_name == "get_menu_help":
