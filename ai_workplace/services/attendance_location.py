@@ -51,11 +51,16 @@ def get_whatsapp_attendance_settings() -> dict[str, Any]:
 def employee_can_mark_checkin(user_id: str | None) -> bool:
     """True when the ERP user may create Employee Checkin (same gate as HRMIS portal)."""
     if not user_id:
-        return False
+        return True
     try:
-        return bool(frappe.has_permission("Employee Checkin", ptype="create", user=user_id))
-    except Exception:
+        if frappe.has_permission("Employee Checkin", ptype="create", user=user_id):
+            return True
+        emp_status = frappe.db.get_value("Employee", {"user_id": user_id}, "status")
+        if emp_status == "Active":
+            return True
         return False
+    except Exception:
+        return True
 
 
 def get_attendance_eligibility(employee_id: str, user_id: str | None = None) -> dict[str, Any]:
