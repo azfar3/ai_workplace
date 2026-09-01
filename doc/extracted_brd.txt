@@ -1,0 +1,1438 @@
+MICROMERGER
+AI WORKPLACE
+WhatsApp-Enabled Employee Self-Service, Knowledge Assistant & Workflow Gateway
+Business Requirements Document (BRD) + Software Requirements Specification (SRS)Implementation-ready specification for ERPNext/Frappe, Meta WhatsApp Cloud API, AI/RAG and Playwright testing
+Field
+Value
+Document Version
+1.0
+Date
+26 August 2026
+Prepared For
+MicroMerger (Pvt.) Ltd.
+Primary Platform
+ERPNext / Frappe custom app
+Primary Channel
+Meta WhatsApp Business Platform - Cloud API
+Initial Interaction Model
+User-initiated (pull) only; no proactive WhatsApp notifications in MVP
+Languages
+English, Urdu and Roman Urdu
+Status
+Baseline for management approval, development, AI-assisted coding, QA and UAT
+Core design principle: ERPNext remains the system of record for identity, roles, projects, policies, permissions, leave, attendance, consultant deliverables, travel and workflows. WhatsApp is a controlled interface; AI never becomes the authority for business rules.
+Document Control
+Version
+Date
+Status
+Purpose
+0.1
+26 Aug 2026
+Draft
+Initial consolidated concept
+1.0
+26 Aug 2026
+Baseline
+Implementation-ready BRD/SRS
+Intended Audience
+Management and project sponsors
+ERPNext/Frappe development team
+HR and policy custodians
+Operations/travel team
+IT infrastructure/security
+QA/UAT and Playwright team
+AI-assisted development tools such as Cursor, Kimi or equivalent coding agents
+How to Use This Document
+Sections 1-10 form the BRD. Sections 11-29 form the SRS. Appendices provide Meta configuration guidance, reference messages, Playwright coverage and an implementation brief that can be supplied directly to a coding agent.
+Table of Contents
+1. Executive Summary
+2. Background and Business Problem
+3. Vision, Objectives and Success Measures
+4. Scope and Release Boundaries
+5. Stakeholders, Users and Governance
+6. Core Business Principles
+7. Business Capabilities and Feature Catalogue
+8. Business Process Flows
+9. Business Rules
+10. Phased Implementation Roadmap and Weekly Milestones
+11. Solution Architecture
+12. ERPNext/Frappe Application Architecture
+13. Identity, Authentication and Authorization
+14. WhatsApp Conversation and Menu Design
+15. AI, RAG and Knowledge Architecture
+16. Project-wise Policy Scoping and Retrieval
+17. HR Employee Self-Service Requirements
+18. Consultant Self-Service Requirements
+19. Travel Self-Service Requirements
+20. Manager and Approval Workflow Integration
+21. Notifications - Future Phase
+22. Data Model and DocType Specification
+23. API and Integration Specification
+24. Non-Functional, Security and Privacy Requirements
+25. Logging, Audit, Monitoring and Cost Control
+26. Testing Strategy and Acceptance Criteria
+27. Deployment, Operations and Support
+28. Risks, Assumptions and Dependencies
+29. Definition of Done
+Appendix A. Meta WhatsApp Cloud API Setup Guide
+Appendix B. Reference Message/Menu Designs
+Appendix C. Playwright Test Catalogue
+Appendix D. AI Coding Agent Implementation Brief
+Appendix E. Source References
+1. Executive Summary
+MicroMerger requires a practical employee self-service platform that removes avoidable dependency on HR, operations and administrative staff for routine questions, status checks and data entry. The proposed AI Workplace will use WhatsApp as the primary employee-facing interface because it is familiar to field staff, consultants and office employees, including users who do not regularly use the ERP portal.
+The solution will be developed as a native ERPNext/Frappe custom application. It will reuse existing MicroMerger ERP data, permissions, workflows and the existing policy module. It will not create a second HR or policy system. Incoming WhatsApp messages will be matched to the employee's or consultant's registered personal or official mobile number in ERP and then routed to deterministic ERP services or, only where needed, an AI/RAG service.
+The MVP is deliberately pull-based: the system responds when the user initiates a conversation. It will not proactively send reminders or notifications in the first release. This reduces message cost, avoids unnecessary interruptions and simplifies consent/template management. Proactive notifications are planned for a later phase.
+MVP outcome: A staff member messages the official number, is identified automatically, sees a role-specific menu, asks project-relevant policy questions, checks HR data, submits eligible transactions, uses consultant functions where applicable, and obtains/records travel information without opening ERPNext.
+2. Background and Business Problem
+MicroMerger manages a mixed workforce across multiple projects. Policies may be organization-wide, project-specific or employee-specific. The current ERP already models users, projects, reporting relationships and policy applicability, but adoption of the full web interface is uneven. Some field staff have limited computer literacy, some consultants do not routinely use the ERP portal, and many users prefer mobile messaging for quick operational actions.
+High volume of repetitive HR and policy questions.
+Users call/message individuals instead of using documented policies or ERP self-service.
+Consultant timesheets, deliverables and invoices may require manual follow-up or re-entry.
+Project-specific policies can be misapplied when staff receive a general answer.
+Travel information and complaints are fragmented across different people/channels.
+ERP features are under-used by staff who are less comfortable with conventional web interfaces.
+Manual follow-up reduces HR/operations time available for higher-value work.
+3. Vision, Objectives and Success Measures
+3.1 Vision
+Create an AI-enabled workplace where every eligible MicroMerger employee or consultant can use WhatsApp to access the right policy, the right ERP data and the right workflow, while ERPNext remains the authoritative backend.
+3.2 Business Objectives
+ID
+Objective
+BO-01
+Reduce routine HR queries and manual data entry through WhatsApp self-service.
+BO-02
+Provide project-specific, version-controlled policy answers traceable to approved documents.
+BO-03
+Increase ERP process adoption without requiring every user to navigate ERP screens.
+BO-04
+Reuse current ERP workflows, approvals and permissions rather than duplicate logic.
+BO-05
+Enable consultants to submit relevant records through guided mobile flows.
+BO-06
+Consolidate travel status, journey updates and complaints into ERP-linked records.
+BO-07
+Support English, Urdu and Roman Urdu for field accessibility.
+BO-08
+Keep AI/WhatsApp cost low through menu-first interaction, local retrieval and caching.
+BO-09
+Maintain complete audit trails for messages, AI answers and ERP transactions.
+3.3 Success Measures
+Measure
+Target / Acceptance Direction
+Self-service adoption
+At least 60% of supported routine queries handled without HR intervention after stabilization.
+Knowledge accuracy
+>=95% of UAT policy questions return correct applicable policy/section or safe 'not found'.
+Authorization
+0 cross-project/cross-employee data leakage in security and UAT tests.
+ERP integration
+100% of WhatsApp transactions link to the same ERP records/workflows used by the portal.
+Auditability
+100% of inbound/outbound messages and state-changing actions have traceable logs.
+Usability
+At least 80% of pilot users complete top five tasks without support after first use.
+Performance
+Deterministic menu/read responses normally <=5 sec; RAG target <=12 sec on provisioned hardware.
+Cost control
+No proactive WhatsApp messages in MVP; no AI call for straightforward menu/API operations.
+4. Scope and Release Boundaries
+4.1 In Scope - MVP
+Meta WhatsApp Business Platform Cloud API integration.
+Automatic identity match using sender number against ERP personal/official mobile.
+Dynamic role/person-type menu generated from ERP data and permissions.
+English, Urdu and Roman Urdu.
+Existing policy module integration, PDF extraction/indexing and AI-assisted policy Q&A.
+Project/employee/department/location eligibility filtering before retrieval.
+Employee profile, leave balance/status, attendance summary and eligible leave application.
+Consultant-specific options driven by engagement/deliverable setup.
+Travel status, approved trip details, journey start/update, location capture and complaint logging.
+Existing ERP workflows and email approval behaviour for transactions requiring approval.
+Admin screens for AI/WhatsApp settings, indexing, logs and health.
+WhatsApp Test Harness for development and Playwright.
+Security, audit logging, rate limits, error handling and monitoring.
+4.2 Out of Scope - Initial MVP
+Replacing ERPNext or rebuilding existing HR/Travel/Policy modules.
+Open access for unregistered phone numbers.
+Autonomous HR decision-making or policy approval by AI.
+Proactive WhatsApp reminders/notifications.
+Independent payroll/financial posting logic.
+Direct high-risk master-data changes such as bank, CNIC or compensation.
+Internet-grounded answers for internal policy questions.
+Voice-note transcription in first release.
+WhatsApp group automation.
+4.3 Future Roadmap
+ID
+Capability
+Description
+F1
+Opt-in proactive notifications
+Approval status, travel and deliverable reminders via approved templates.
+F2
+Manager self-service
+Authorized team attendance, pending workflow and staffing summaries.
+F3
+Project/task management
+View tasks, update progress, submit completion evidence.
+F4
+Voice accessibility
+Voice-note transcription and multilingual voice interaction.
+F5
+Finance self-service
+Eligible invoice/payment/reimbursement status.
+F6
+Advanced analytics
+Aggregated HR/project questions for authorized managers.
+5. Stakeholders, Users and Governance
+Stakeholder / Role
+Responsibility
+Executive Sponsor
+Approves scope, budget, risk tolerance and go-live.
+Product/Project Owner
+Prioritizes backlog and accepts milestones.
+HR
+Policy custodian; owns publication and HR validation.
+Project Managers
+Validate project applicability and UAT.
+Operations / Travel
+Own travel records and process rules.
+ERPNext Development
+Build app, services, DocTypes, UI and integrations.
+IT / Infrastructure
+Host app, secrets, AI/vector components and monitoring.
+QA / UAT
+Automate tests and validate outcomes.
+Employees / Field Staff
+Primary self-service users.
+Consultants
+Options depend on ERP engagement configuration.
+Managers
+Employees with additional permissions when applicable.
+5.1 Knowledge Governance
+HR remains the custodian and publishing authority for all MicroMerger policies, including project-specific policies. The AI Workplace must reuse the current policy module and its general/project/employee applicability rules. AI indexing is triggered by approved publication; it is not a new approval channel.
+Governance rule: Only approved/published policy versions are searchable in production. Draft, expired or superseded versions are excluded unless an administrator explicitly enables them in a non-production environment.
+6. Core Business Principles
+ID
+Principle
+Meaning
+P-01
+ERP is source of truth
+Role, person type, projects, reporting line, balances, policy eligibility and workflows come from ERP.
+P-02
+Menu first; AI second
+Use interactive menus/deterministic APIs when possible; AI handles free-text understanding and policy synthesis.
+P-03
+No duplicate logic
+Reuse existing portal/service functions; do not recalculate leave or recreate workflows.
+P-04
+Least privilege
+A user only receives what ERP business rules permit for that person.
+P-05
+Filter before retrieval
+Policy access filters run before vector search and before LLM context.
+P-06
+User-initiated MVP
+No proactive WhatsApp messaging.
+P-07
+Traceable AI
+Policy answers cite policy title/version and page/section where available.
+P-08
+Fail closed
+Unknown identity, ambiguous match or uncertain permission returns a safe response.
+P-09
+Human escalation
+Unsupported/uncertain cases route to HR/operations.
+P-10
+Low-cost by design
+Avoid LLM for deterministic tasks; local embeddings/model and caching preferred.
+7. Business Capabilities and Feature Catalogue
+ID
+Capability
+Summary
+CAP-01
+Identity & access
+Resolve sender to ERP context; reject unknown/duplicate numbers.
+CAP-02
+Dynamic menu
+Show services based on person type, project, engagement and permissions.
+CAP-03
+Knowledge assistant
+Scoped RAG over approved policies/SOPs.
+CAP-04
+My HR
+Profile, leave, attendance, requests and status.
+CAP-05
+Consultant services
+Timesheet/deliverable/invoice options only when configured.
+CAP-06
+Travel
+Trip status/details, journey updates, location and complaints.
+CAP-07
+Workflow bridge
+Create ERP transactions and rely on existing approvals/email.
+CAP-08
+Multilingual UX
+English, Urdu and Roman Urdu.
+CAP-09
+Admin/governance
+Settings, indexing queue, logs and health.
+CAP-10
+Testing harness
+Simulated webhook E2E flows for Playwright.
+CAP-11
+Audit/observability
+Messages, actions, sources, latency and cost metrics.
+CAP-12
+Future notifications
+Opt-in business-initiated templates after MVP.
+8. Business Process Flows
+8.1 Generic User-Initiated Conversation
+User messages the official WhatsApp number.
+Meta sends the inbound event to the ERPNext webhook.
+Webhook signature/payload are validated and message ID checked for replay.
+Sender is normalized to E.164 and matched to active ERP records.
+Unknown or ambiguous identity is denied without revealing employee data.
+System loads ERP context: employee/consultant type, projects, roles, reporting context and allowed services.
+Router classifies navigation, deterministic ERP action, knowledge/RAG question or unsupported request.
+Selected service executes under server-side authorization.
+Inbound/outbound messages, action, latency and errors are logged.
+8.2 Policy Question
+Resolve identity and authorized policy scope.
+Detect language and normalize query.
+Build metadata filter from existing policy applicability.
+Search only permitted chunks using hybrid retrieval.
+Return safe 'not confirmed in your applicable policies' when evidence is weak.
+Otherwise synthesize a concise answer in user's language with policy/version/page or section.
+Log retrieved policy/chunk IDs and scores.
+8.3 Leave Application
+User selects My HR > Leave > Apply Leave or asks naturally.
+System loads eligible leave types and entitlement from existing ERP logic.
+User chooses type/dates and provides reason.
+System shows a confirmation summary.
+On confirmation, app invokes existing ERP validation/workflow logic.
+Existing supervisor/workflow email approval remains unchanged.
+WhatsApp returns ERP reference and current status.
+8.4 Travel Journey Update
+User opens My Travel or says 'start travel'.
+System finds approved/current travel record in configurable date/time tolerance.
+If multiple records match, user selects one.
+User shares WhatsApp location; system stores coordinates, timestamp and Meta message ID.
+Progress updates append to the same travel log.
+Issue/complaint captures category, description, severity and optional evidence, linked to active trip/driver/vehicle when unique.
+9. Business Rules
+ID
+Business Rule
+BR-01
+Only active users matching approved personal/official ERP mobile numbers can use protected services.
+BR-02
+Phone number must map to one unique eligible identity; duplicates are denied and flagged.
+BR-03
+Unknown numbers receive no information about whether an employee exists.
+BR-04
+Employee vs consultant behaviour is determined from ERP, not user choice.
+BR-05
+A manager is also an employee; manager capability is permission/query dependent.
+BR-06
+Policy applicability is controlled by existing policy module; AI cannot broaden it.
+BR-07
+Only approved/published policy versions enter production index.
+BR-08
+Policy PDF/version change triggers re-index and cache invalidation.
+BR-09
+State-changing transactions require explicit confirmation.
+BR-10
+High-risk master-data changes are unavailable in MVP.
+BR-11
+Existing ERP workflow/approval/email rules remain authoritative.
+BR-12
+MVP sends no unsolicited/proactive WhatsApp messages.
+BR-13
+Every message is traceable by Meta message ID subject to retention policy.
+BR-14
+AI cannot execute arbitrary Frappe methods, CRUD or SQL.
+BR-15
+Low-confidence policy answers are not presented as definitive.
+BR-16
+Travel complaints link to active trip when a unique match exists.
+BR-17
+Preferred language may be persisted and changed by the user.
+10. Phased Implementation Roadmap and Weekly Milestones
+Recommended delivery: three release phases with one-week milestones. Each week ends with a demonstrable and testable increment. Suggested core team: Frappe lead, Frappe/full-stack developer, AI/integration developer, part-time QA/Playwright engineer, plus HR/operations owners for UAT.
+Phase
+Milestone
+Build Scope
+Exit Criteria
+Phase 1 - Foundation & Knowledge
+Week 1
+App skeleton, Meta sandbox, settings, signed webhook, message log, test harness.
+Inbound test message reaches ERP; signed webhook demonstrated.
+Week 2
+Identity resolver, E.164 normalization, dynamic menu, languages, authorization gateway, outbound reply.
+Known employee sees correct menu; unknown/duplicate safely denied.
+Week 3
+Reuse policy module; PDF extraction/indexing; Qdrant/BGE-M3; scoped RAG; citations.
+Pilot policies indexed; project isolation and golden Q&A pass.
+Phase 2 - HR & Consultant
+Week 4
+Profile, leave balances/history/status, attendance summary using existing portal logic.
+Read-only HR parity verified.
+Week 5
+Leave guided flow, confirmation, ERP workflow/email and status.
+WhatsApp leave follows same workflow as portal.
+Week 6
+Consultant detection; timesheet/deliverable/invoice status/submission based on engagement.
+Correct consultant menu and records with audit trail.
+Phase 3 - Travel & Go-Live
+Week 7
+Travel lookup/status/details, active trip, start journey and location.
+Today's travel and timestamped start/update work.
+Week 8
+Travel complaint/evidence, multilingual UX, rate limits, monitoring, caching/fallback.
+Complaint links correctly; admin monitoring operational.
+Week 9
+Full Playwright/API/security regression, production-number UAT, performance, runbook/training.
+UAT signed; critical/high defects = 0; controlled release ready.
+10.1 Post-MVP Phase 4
+After stabilization, introduce opt-in/configurable proactive notifications using Meta-approved templates: approval status, travel reminder, pending deliverable, attendance exception and engagement expiry. Add manager/team functions, task management and voice after the base authorization model is proven.
+11. Solution Architecture
+The solution is a native Frappe application installed on the existing ERPNext site. Business records and permissions stay in ERPNext. A vector-search/inference component may run as a local sidecar, but it is not a separate business backend.
+Layer
+Component
+Responsibility
+Channel
+Meta WhatsApp Cloud API
+Receive user messages and deliver replies.
+Ingress
+Frappe webhook controller
+Verification, signature, idempotency, payload parsing.
+Identity
+Identity Resolver
+Phone normalization and ERP User/Employee/Consultant context.
+Conversation
+Conversation Orchestrator
+Session state, menu, language, confirmations and routing.
+Authorization
+Access Policy Service
+Existing ERP permissions + service-specific checks.
+Business services
+HR/Consultant/Travel adapters
+Call existing ERP logic; no unrestricted generic CRUD.
+Knowledge
+Index + Retrieval Service
+Extract, chunk, embed, filter and retrieve policies.
+AI
+Intent/Answer Service
+Free-text routing and evidence-grounded synthesis.
+Persistence
+ERP DocTypes
+Logs, settings, state and authoritative business records.
+Vector
+Qdrant recommended
+Metadata-filtered semantic retrieval, self-hosted.
+Testing
+Test Harness + Playwright
+Simulate inbound messages and verify complete flows.
+11.1 Logical Data Flow
+WhatsApp User    |    vMeta Cloud API    |    | HTTPS signed webhook    vERPNext / AI Workplace Webhook    +--> Message Log + Idempotency    vIdentity Resolver --> ERP User / Employee / Consultant / Project Context    vConversation Router    +--> Menu/ERP command --> Authorized Business Service --> Existing ERP DocTypes/Workflows    +--> Policy question --> Scope Filter --> Vector/Keyword Retrieval --> Small LLM --> Cited Answer    +--> Unsupported/uncertain --> Safe Response / Escalation    vWhatsApp Reply Service --> Meta --> User
+11.2 Architecture Decisions
+ID
+Decision
+Rationale
+AD-01
+Native Frappe app
+Close reuse of DocTypes, scheduler, permissions and workflows.
+AD-02
+Qdrant vector sidecar
+Avoid dependency on MariaDB vector features; metadata filtering and persistence.
+AD-03
+Small local multilingual LLM
+Qwen3-4B quantized is a starting candidate; provider must be replaceable.
+AD-04
+BGE-M3 embeddings
+Multilingual/long-document retrieval suitable for policy corpus.
+AD-05
+No fine-tuning for MVP
+RAG + deterministic tools first; fine-tune only after measured need.
+AD-06
+No unrestricted agent tools
+LLM chooses only allow-listed intents.
+AD-07
+Async indexing
+Extraction/embedding in background jobs, not webhook thread.
+12. ERPNext/Frappe Application Architecture
+12.1 App Name and Package
+Recommended package: `ai_workplace`; business display name: MicroMerger AI Workplace. Keep WhatsApp-specific code in a channel adapter so another channel can be added later without changing business services.
+apps/ai_workplace/  ai_workplace/    hooks.py    api/whatsapp_webhook.py    api/test_harness.py    whatsapp/{payload_parser,signature,sender,interactive}.py    identity/{resolver,phone,context}.py    conversation/{router,session,menu,confirmations}.py    services/{hr,consultant,travel,workflow,policy_access}.py    knowledge/{extractor,chunker,indexer,retrieval,citations}.py    ai/{provider,qwen_local,hosted_provider,prompts,intent}.py    security/{access,rate_limit,audit}.py    doctype/
+12.2 Reuse Before Build
+Reuse Employee, User, Project, Leave Application, Leave Allocation, Attendance and workflow functions.
+Reuse employee portal functions that already encapsulate permissions/business rules.
+Reuse existing policy module and its general/project/employee applicability fields.
+Reuse consultant/engagement/deliverable/timesheet/invoice logic where available.
+Reuse travel records, driver/vehicle/vendor data and approval workflow.
+Create new services only when existing safe logic is not available.
+13. Identity, Authentication and Authorization
+13.1 Phone-Based Identity
+Every inbound message is resolved from the WhatsApp sender ID/phone number. Both personal and official mobile fields may be accepted. Normalize to E.164 before comparison.
+ID
+Rule
+IR-01
+Strip spaces/punctuation; normalize local Pakistan mobile format to E.164 and support international values.
+IR-02
+Match only active/eligible ERP employment/engagement records.
+IR-03
+If personal and official numbers point to the same person, it is a valid identity.
+IR-04
+If a number points to multiple different people, fail closed and create data-quality alert.
+IR-05
+No match -> generic registration/support response; no protected menu.
+IR-06
+Resolve identity on every inbound protected request; conversation state is not the sole security control.
+13.2 Authorization Model
+The conversation layer must not expose generic ERP CRUD to AI. Each feature has a dedicated business service that receives a UserContext and verifies the specific operation. Where portal logic already performs authorization, reuse it.
+UserContext {  wa_id,  normalized_phone,  erp_user,  employee_id?,  consultant_id?,  person_type,  active_projects[],  roles[],  reporting_context,  allowed_services[],  preferred_language}
+Avoid `ignore_permissions=True` for protected business data. It may be used only for technical logs where appropriate. For high-risk features such as salary documents or master-data changes, keep them out of MVP or require future step-up authentication.
+14. WhatsApp Conversation and Menu Design
+14.1 Interaction Strategy
+Use menu-first plus free text at any point. Menu navigation avoids unnecessary AI calls and is easier for less technical staff. Free text preserves convenience.
+User Context
+Example Main Menu
+Employee
+1. My HR2. Policies & Help3. My Travel4. My Tasks (future)5. Help / Change Language
+Consultant
+1. My Engagement2. Timesheet / Deliverables3. Invoice / Status (if enabled)4. Policies & Help5. My Travel6. Help / Language
+Employee + Manager
+Employee menu plus authorized team functions when feature is enabled.
+Unknown Number
+No protected menu; registration/support message only.
+Use reply buttons for confirmations/short choices and list messages for larger menus. Current Meta Cloud API documentation allows up to three reply buttons and up to ten list rows across sections; the implementation should validate current limits at deployment.
+14.2 Language
+Detect first-message language and offer English / Urdu / Roman Urdu.
+Persist preferred language on WhatsApp Identity and allow change anytime.
+ERP labels remain internal English; channel layer provides localized labels.
+Keep official policy/leave/status names in English in brackets when useful.
+Roman Urdu intent should tolerate spelling variation.
+14.3 Conversation State
+Use a short-lived state machine for multi-step actions: intent, selected record, expected input, draft payload and expiry. 'Cancel' or a new main-menu command resets the flow. State-changing actions require final confirmation.
+15. AI, RAG and Knowledge Architecture
+AI is constrained. Policy answers must be grounded in authorized content. ERP actions use AI only to map free text into a fixed intent; deterministic server code executes the action.
+15.1 Recommended Low-Cost Stack
+Component
+Recommendation
+Implementation Note
+Embeddings
+BAAI BGE-M3
+Self-hosted multilingual embeddings; run when documents change and on query.
+Vector store
+Qdrant Community
+Self-hosted sidecar with metadata filters and persistence.
+LLM initial
+Qwen3-4B quantized
+Small multilingual open model; includes Urdu in supported-language metadata.
+LLM alternative
+Gemma 3 4B
+Lightweight multilingual alternative.
+Runtime
+llama.cpp / Ollama / vLLM
+Select after hardware benchmark; isolate from Frappe workers.
+Fallback
+Low-cost hosted provider
+Optional, controlled and privacy-reviewed.
+Cost strategy: Most interactions use zero LLM calls. Menu navigation, balances, statuses and transaction creation are deterministic. Embeddings are created once per published document version; answers may be cached by authorized scope.
+15.2 Ingestion Pipeline
+Trigger on approved policy publish/replace/version change.
+Fetch PDF from existing policy record.
+Extract embedded text; use OCR only if extraction fails/image-only.
+Clean repeated headers/footers while preserving page/section mapping.
+Chunk by heading/paragraph, target ~600-900 tokens and modest overlap.
+Attach metadata: policy ID/title/version/effective date/scope/page/section/status.
+Generate BGE-M3 embeddings and upsert into vector index.
+Store checksum/index version in ERP; invalidate old chunks/caches.
+15.3 Retrieval and Answer Pipeline
+1. Resolve UserContext2. Build authorized policy filter from ERP3. Detect/normalize language4. Hybrid retrieve semantic + lexical5. Optional re-rank6. Reject if evidence score is below threshold7. Send only authorized top chunks to LLM8. Generate concise answer in user's language9. Attach policy title/version/page or section10. Log sources, scores and answer
+15.4 Guardrails
+ID
+Guardrail
+AI-01
+Model may select only intents defined in a strict schema/enum.
+AI-02
+No SQL, shell, arbitrary Python or arbitrary Frappe methods.
+AI-03
+Policy answers use supplied evidence only.
+AI-04
+Current approved version wins over superseded content.
+AI-05
+No evidence -> safe no-answer; do not invent internal rules from model memory.
+AI-06
+Never disclose prompts, secrets or unauthorized retrieved content.
+AI-07
+Ignore prompt-injection instructions inside user text or PDFs.
+AI-08
+Keep answers short; offer 'More detail' for longer explanation.
+16. Project-wise Policy Scoping and Retrieval
+The existing policy module already distinguishes general policies from policies applicable to projects or specific employees. Reuse this access model; AI indexing fields are technical extensions only.
+Policy Scope
+Retrieval Behaviour
+General
+Available to all eligible active users unless excluded by existing rule.
+Project-specific
+Available only when user's current ERP context meets project applicability.
+Employee-specific
+Available only to explicitly mapped eligible employees.
+Department / Designation / Location
+Use existing fields; add only if business approves a genuine gap.
+Multiple scopes
+Follow existing policy module semantics; do not reinterpret in AI code.
+Expired / Superseded
+Excluded from normal retrieval.
+16.1 Suggested Technical Fields on Existing Policy
+Field
+Type
+Purpose
+AI Indexing Enabled
+Check
+Default on for approved policies.
+AI Index Status
+Select
+Not Indexed / Queued / Processing / Indexed / Failed / Stale.
+Last Indexed On
+Datetime
+Audit.
+Index Version / Checksum
+Data
+Detect changed PDF/version.
+Extracted Page Count
+Int
+QA indicator.
+Index Error
+Small Text
+Admin troubleshooting.
+Knowledge Category
+Link/Select
+Optional grouping.
+If equivalent fields already exist, reuse them. Do not duplicate scope metadata.
+17. HR Employee Self-Service Requirements
+ID
+Feature
+Requirement
+HR-01
+Profile
+Show only fields already approved for employee self-view.
+HR-02
+Leave balance
+Return allocated/used/pending/available via existing ERP logic.
+HR-03
+Leave history
+Show recent applications/status with period/pagination.
+HR-04
+Apply leave
+Guided type, dates, reason and allowed attachment.
+HR-05
+Validation
+Use existing balance/date/holiday/overlap/eligibility rules.
+HR-06
+Confirmation
+Require explicit confirmation before insert/submit.
+HR-07
+Attendance summary
+Current month/selected period, same visibility as portal.
+HR-08
+Attendance detail
+Day-level detail only when permitted.
+HR-09
+Request status
+Show current status for submitted HR transaction.
+HR-10
+No recalculation
+No independent leave balance in AI Workplace.
+HR-11
+Friendly errors
+Translate ERP validation errors without changing meaning.
+HR-12
+Workflow
+Existing supervisor/approver workflow and email execute normally.
+18. Consultant Self-Service Requirements
+Consultant functions are driven by the person's active engagement and configuration. The user never self-selects 'consultant'.
+ID
+Feature
+Requirement
+CON-01
+Engagement summary
+Show reference, period, project and submission type when authorized.
+CON-02
+Dynamic options
+Deliverable-based -> deliverables; timesheet-based -> timesheet; invoice only if enabled.
+CON-03
+Timesheet
+Capture fields required by existing ERP process and evidence.
+CON-04
+Deliverable
+Show due items; accept comments/files against correct record.
+CON-05
+Invoice
+Eligible metadata/file submission or status according to current process.
+CON-06
+Validation
+Reuse engagement dates/caps/state/approval rules.
+CON-07
+Status
+Show submitted/pending/approved/rejected with ERP reference.
+CON-08
+Workflow
+Approvals continue through existing ERP/email workflow.
+CON-09
+Revision
+No silent overwrite; preserve existing version/audit rules.
+19. Travel Self-Service Requirements
+ID
+Feature
+Requirement
+TR-01
+My travel
+Find user's travel records by ERP identity and date/status.
+TR-02
+Today's travel
+Return itinerary, route, driver/vehicle/vendor fields approved for traveller view.
+TR-03
+Approval status
+Show current ERP travel status.
+TR-04
+Active trip
+Determine active/near-active trip using configurable window.
+TR-05
+Start travel
+Confirm start and store shared location, timestamp and Meta message ID.
+TR-06
+Journey update
+Append immutable status/location log.
+TR-07
+Travel issue
+Capture vehicle, driver, delay, safety, route or other issue.
+TR-08
+Complaint link
+Link to active trip, driver, vehicle and vendor when available.
+TR-09
+Evidence
+Allow image/document/location evidence supported by Meta/ERP.
+TR-10
+Safety escalation
+Critical categories display configured emergency/internal instructions.
+TR-11
+No active trip
+Ask for date/reference rather than linking incorrectly.
+TR-12
+Post-trip
+Feedback can be future feature unless current travel module already supports it.
+20. Manager and Approval Workflow Integration
+A manager remains an employee. Reporting relationships come from ERP. When a WhatsApp transaction requires approval, the existing workflow determines the approver and sends the existing email/notification. MVP does not need to deliver approval requests to managers through WhatsApp.
+ID
+Requirement
+MGR-01
+Create/submit requests using the same workflow state as the portal.
+MGR-02
+Do not hard-code supervisor email or approval chains.
+MGR-03
+Status queries return current ERP workflow state.
+MGR-04
+Future team views use ERP permission/reporting rules, never AI inference.
+21. Notifications - Future Phase
+MVP must not initiate WhatsApp messages without a current user interaction. Future notification engine is opt-in/configurable and uses Meta-approved templates where required.
+ID
+Future Requirement
+NTF-01
+Global proactive-notification switch default OFF.
+NTF-02
+Per-template/business-event/project configuration.
+NTF-03
+User opt-in/consent where required.
+NTF-04
+Rate caps and quiet hours.
+NTF-05
+Template status validation before use.
+NTF-06
+Fallback to existing email when WhatsApp disabled/fails.
+NTF-07
+Cost dashboard by event/template/project.
+22. Data Model and DocType Specification
+22.1 New Technical DocTypes
+DocType
+Type
+Key Purpose
+AI Workplace Settings
+Single
+Meta IDs/token refs, model/vector settings, thresholds, feature flags.
+WhatsApp Identity
+Master
+Phone, wa_id, ERP user, employee/consultant link, status, preferred language.
+WhatsApp Conversation
+Transaction
+Current state, intent, active record, draft payload, expiry.
+WhatsApp Message Log
+Transaction
+Direction, Meta ID, sender/recipient, type, sanitized payload, status, latency.
+AI Action Log
+Transaction
+Intent, service, sources/records, result, user, trace ID.
+Knowledge Index Job
+Transaction
+Policy, checksum, status, pages/chunks, errors.
+Knowledge Chunk Metadata
+Optional
+Policy/chunk/page/section/version/scope/vector point ID.
+AI Response Cache
+Optional
+Question hash, scope signature, answer, sources, expiry.
+AI Security Event
+Transaction
+Unknown/duplicate identity, signature failure, rate-limit, injection.
+22.2 Settings - Key Fields
+Field
+Type
+Purpose
+enabled
+Check
+Global switch
+meta_phone_number_id
+Data
+Sender Phone Number ID
+meta_waba_id
+Data
+WABA ID
+meta_app_id
+Data
+Meta App ID
+meta_access_token
+Password
+Encrypted system-user token
+webhook_verify_token
+Password
+Random verification token
+meta_app_secret
+Password
+Signature validation
+graph_api_version
+Data
+Configurable current Graph API version
+default_language
+Select
+English/Urdu/Roman Urdu
+vector_provider
+Select
+Qdrant/other
+vector_base_url
+Data
+Private endpoint
+embedding_model
+Data
+e.g. BAAI/bge-m3
+llm_provider
+Select
+Local/hosted fallback
+llm_model
+Data
+e.g. Qwen3-4B
+rag_top_k
+Int
+Tune, e.g. 6-10
+rag_min_score
+Float
+Evidence threshold
+conversation_ttl_minutes
+Int
+State expiry
+max_messages_per_minute
+Int
+Per-number rate limit
+message_retention_days
+Int
+Policy-driven retention
+proactive_notifications_enabled
+Check
+MVP default 0
+23. API and Integration Specification
+23.1 Meta Webhook Endpoints
+Method
+Endpoint / Service
+Requirement
+GET
+/api/method/ai_workplace.api.whatsapp_webhook.verify
+Meta verification; compare verify token and return hub.challenge.
+POST
+/api/method/ai_workplace.api.whatsapp_webhook.receive
+Validate x-hub-signature-256; idempotent event processing.
+POST
+Internal sender service
+Not guest-exposed; posts replies to Graph API phone-number messages endpoint.
+POST
+/api/method/ai_workplace.api.test_harness.simulate
+System Manager/Developer only; run simulated inbound event through same pipeline.
+23.2 Webhook Security
+GET verification returns challenge only when verification token matches.
+POST validates `x-hub-signature-256` using Meta App Secret before processing.
+Persist/enqueue quickly; heavier AI work can run in background.
+Use Meta message ID for idempotency.
+Store tokens in Password fields/secret manager; never log them.
+23.3 Business Service Contracts
+Service
+Purpose
+get_user_context(phone)
+Resolve identity and allowed services.
+get_my_profile(ctx)
+Return safe profile DTO.
+get_leave_balance(ctx)
+Return existing ERP balances.
+create_leave_request(ctx,payload)
+Validate/submit through existing workflow.
+get_attendance_summary(ctx,period)
+Authorized attendance DTO.
+get_consultant_services(ctx)
+Engagement-driven options.
+submit_consultant_record(ctx,payload)
+Create permitted timesheet/deliverable/invoice-related record.
+get_my_travel(ctx,date)
+Authorized travel data.
+record_travel_event(ctx,trip,event)
+Append start/progress/location.
+create_travel_issue(ctx,trip,payload)
+Create linked issue/complaint.
+search_policy(ctx,question)
+Retrieve evidence only from authorized policy scope.
+23.4 Example Intent Schema
+{  "intent": "APPLY_LEAVE",  "confidence": 0.97,  "language": "roman_urdu",  "entities": {    "leave_type": "Casual Leave",    "from_date": "2026-08-28",    "to_date": "2026-08-28"  },  "requires_confirmation": true}
+Validate the model output against a strict schema. Unknown intents are rejected or routed to Help.
+24. Non-Functional, Security and Privacy Requirements
+ID
+Area
+Requirement
+NFR-01
+Availability
+Target 99.5% excluding planned maintenance/external Meta outages.
+NFR-02
+Performance
+P95 deterministic <=5 sec; RAG target <=12 sec after warm-up subject to hardware.
+NFR-03
+Scalability
+Support thousands of staff with queued/background processing.
+NFR-04
+Idempotency
+Webhook replay cannot duplicate business transaction.
+NFR-05
+Localization
+Standard user-facing text translatable; language persisted.
+NFR-06
+Accessibility
+Simple numbered/menu flows and short messages.
+NFR-07
+Maintainability
+Modular adapters/services; no business logic embedded in prompts.
+NFR-08
+Configurability
+Feature flags, thresholds, models, rate limits and retention configurable.
+NFR-09
+Audit
+Every state-changing action linked to user/phone/message/ERP record.
+NFR-10
+Backup
+ERP records backed up; vector index backed up/rebuildable.
+NFR-11
+Recovery
+Vector index can be rebuilt from approved policies.
+24.1 Security Requirements
+ID
+Requirement
+SEC-01
+TLS only.
+SEC-02
+Validate Meta webhook signature before action.
+SEC-03
+Resolve unique phone identity on every protected request.
+SEC-04
+Never expose unrestricted DocType CRUD to AI.
+SEC-05
+Allow-listed intents + server-side authorization.
+SEC-06
+Policy access filters before retrieval and LLM context.
+SEC-07
+Mask secrets and unnecessary PII in logs.
+SEC-08
+Rate-limit by wa_id/phone.
+SEC-09
+Validate uploaded file type/size and use ERP file security.
+SEC-10
+Sanitize filenames/text rendered in admin UI.
+SEC-11
+Treat PDF text as untrusted; document injection cannot alter system rules.
+SEC-12
+Admin-only settings/reindex permissions.
+SEC-13
+Log security events.
+SEC-14
+No stack traces/secrets returned to WhatsApp user.
+24.2 Data Minimization and Privacy
+Return only fields necessary for selected use case.
+Sanitize webhook payload logs; protect/retain raw data only where justified.
+Prefer local inference for internal content; hosted LLM use requires explicit privacy approval/minimization.
+Store source IDs/scores rather than unnecessary copies of full policy text.
+Define message-log retention with HR/legal and implement purge/archive jobs.
+25. Logging, Audit, Monitoring and Cost Control
+Dashboard Area
+Metrics
+Operational
+Inbound/outbound count, success, queue, latency, Meta errors.
+Identity
+Unknown/duplicate/inactive/resolution failures.
+AI/RAG
+Intent confidence, retrieval scores, source policy IDs, no-answer rate, latency.
+Business actions
+ERP references, workflow status, validation failure.
+Security
+Invalid signature, rate limit, unauthorized attempt, injection indicators.
+Cost
+AI calls, hosted tokens/cost, cache hit rate, future template count.
+Knowledge
+Indexed/failed/stale policies, chunks, extraction errors.
+25.1 Cost Controls
+No LLM for menu clicks.
+No LLM after a deterministic intent is already known.
+Cache policy Q&A by question + authorized scope + policy-version signature.
+Local embeddings and small local LLM where possible.
+Short answers and small retrieved context.
+No business-initiated WhatsApp in MVP.
+Hosted-provider budget/circuit-breaker and graceful fallback.
+26. Testing Strategy and Acceptance Criteria
+26.1 Test Layers
+Layer
+Coverage
+Unit
+Phone normalization, scope resolution, menu, state machine, validators, chunking/signature.
+Service/API
+HR/consultant/travel services, permissions, webhook idempotency, payload parsing.
+RAG evaluation
+Golden question set per project/policy including no-answer cases.
+Playwright E2E
+Admin UI + Test Harness from inbound event to ERP record and reply.
+Meta sandbox
+Real test-number text, list/button, media/location flows.
+Security
+Unknown/duplicate identity, scope isolation, injection, IDOR, forged webhook, rate limits.
+Performance
+Concurrent messages, queue saturation, indexing and RAG latency.
+UAT
+Field employee, HO employee, consultant, manager, HR admin and traveller.
+26.2 WhatsApp Test Harness
+Admin/developer page selects seeded test identity or test phone.
+Compose text, button/list, location and media-like normalized payloads.
+Pass the event through the same orchestration pipeline after webhook parsing.
+Display outbound payload, trace and linked ERP records.
+Provide forged-signature/replay tests at endpoint layer.
+Never expose Test Harness to Guest in production.
+26.3 Core Acceptance Criteria
+ID
+Acceptance Criterion
+AC-01
+Known employee receives correct dynamic menu.
+AC-02
+Unknown number receives no protected information.
+AC-03
+Duplicate phone mapping is blocked/logged.
+AC-04
+Project policy cannot be retrieved outside authorized scope.
+AC-05
+Policy answer cites current approved source.
+AC-06
+Low confidence produces safe no-answer.
+AC-07
+Leave balance matches portal.
+AC-08
+WhatsApp leave uses same workflow/approval routing.
+AC-09
+Consultant sees only configured engagement services.
+AC-10
+Travel query returns correct traveller's trip.
+AC-11
+Start/location event links to correct travel record.
+AC-12
+Travel complaint links correctly when active trip is unique.
+AC-13
+Forged webhook signature is rejected.
+AC-14
+Webhook replay cannot duplicate transaction.
+AC-15
+Core flows work in English, Urdu and Roman Urdu.
+AC-16
+MVP sends zero proactive WhatsApp notifications.
+AC-17
+Critical/high security defects = 0 at go-live.
+27. Deployment, Operations and Support
+Environment
+Expectation
+Development
+Meta test number/Test Harness; synthetic test users; verbose logs.
+Staging/UAT
+Production-like ERP copy with controlled/masked data; representative policies.
+Production
+Official WhatsApp number/WABA; encrypted secrets; monitoring; restricted admin.
+27.1 Infrastructure
+Existing ERPNext/Frappe stack remains primary host.
+Qdrant as internal container with persistent volume and backup.
+Small LLM inference process isolated from Frappe web workers, preferably dedicated VM/container.
+If hardware is insufficient, use approved hosted LLM fallback while keeping embeddings/vector local.
+Frappe/Redis queues for indexing and slow processing.
+27.2 Operations Runbook
+Rotate Meta token/app secret and verify health.
+Pause WhatsApp processing without shutting ERP.
+Re-index one/all policies.
+Inspect failed messages and retry safe replies.
+Resolve duplicate identity/unknown number issues.
+Switch/disable AI provider while deterministic menu/ERP services remain available.
+Restore/rebuild vector index.
+28. Risks, Assumptions and Dependencies
+ID
+Risk
+Level
+Impact
+Mitigation
+R-01
+Incorrect phone data
+High
+Misidentification
+Normalization, cleanup, unique match, fail closed.
+R-02
+Scanned/poor PDFs
+Medium
+Extraction failure
+OCR fallback + extraction QA.
+R-03
+Incomplete policy scope
+High
+Wrong policy retrieval
+Do not index ambiguous scope; project UAT.
+R-04
+Local LLM quality/latency
+Medium
+Slow/weak multilingual output
+Benchmark models; short prompts; approved fallback.
+R-05
+Duplicated ERP logic
+High
+Portal/WhatsApp inconsistency
+Mandatory reuse + parity tests.
+R-06
+Meta API change
+Medium
+Integration/pricing change
+Configurable version; isolate adapter; monitor Meta.
+R-07
+Future message cost
+Medium
+Higher spend
+MVP pull-only; rate caps/cost dashboard.
+R-08
+Prompt injection
+High
+Policy/security bypass attempt
+Constrained tools, evidence-only RAG, security tests.
+R-09
+PII in logs
+High
+Privacy exposure
+Masking, permissions, retention.
+R-10
+WhatsApp UI automation limits
+Medium
+E2E gap
+Internal Test Harness + Meta sandbox/UAT.
+28.1 Assumptions
+Existing employee portal contains reusable employee-specific permission/business logic.
+Existing policy module contains sufficient general/project/employee applicability data.
+Consultant and travel records are available in existing/extendable ERP DocTypes.
+Production WhatsApp number/WABA will be owned and controlled by MicroMerger.
+HR will correct duplicate/missing phone data before broad rollout.
+29. Definition of Done
+Area
+Done When
+Business
+Release scope implemented and UAT accepted.
+Functional
+All release acceptance criteria pass.
+Security
+No critical/high open defects; isolation tests pass.
+Testing
+Unit/API/Playwright suites reproducible; Meta sandbox checklist complete.
+Knowledge
+Approved policies indexed; golden Q&A target met.
+Operations
+Monitoring, token rotation, re-indexing and incident runbook documented.
+Documentation
+Developer setup, admin guide and user quick guide available.
+Training
+HR/admin and IT/support orientation completed.
+Go-live
+Production WABA/number, secrets, webhook and rollback verified.
+Appendix A. Meta WhatsApp Cloud API Setup Guide
+Meta can change its UI, Graph API versions, review requirements and pricing. Validate the final production setup against Meta's current official documentation at implementation time. Use version-agnostic configuration wherever possible.
+A1. Business assets Confirm/create a Meta Business Portfolio controlled by MicroMerger and create/link a WhatsApp Business Account (WABA).
+A2. Developer app Create the Meta developer/business app and add the WhatsApp product.
+A3. Sandbox Use WhatsApp > Getting Started for a test phone number, temporary token and Phone Number ID; send a test message.
+A4. Production number Add/verify official number, approved display name, register it and configure the required six-digit two-step verification PIN.
+A5. System-user token Create a Meta Business system user and production token. Do not use temporary developer token in production.
+A6. Permissions Configure the minimum WhatsApp permissions required; Meta's official collection documents `whatsapp_business_management` and `whatsapp_business_messaging`.
+A7. ERP settings Store WABA ID, Phone Number ID, App ID, encrypted token, App Secret and Graph API version in AI Workplace Settings.
+A8. Webhook Expose HTTPS callback and configure a strong verification token; GET verification returns `hub.challenge` only on match.
+A9. Authenticity Validate POST `x-hub-signature-256` using App Secret.
+A10. WABA subscription Subscribe the app to the WABA (`/{WABA-ID}/subscribed_apps`) so account message events reach the callback.
+A11. Interactive messages Use list messages for menus and reply buttons for confirmations within current Meta limits.
+A12. Production checks Confirm business verification/app review, display name, token durability, webhook health, policies and current pricing before go-live.
+A.1 Meta Configuration Checklist
+Item
+Completed / Evidence
+Business Portfolio controlled by MicroMerger
+WABA ID recorded
+Official phone ownership verified
+Display name approved
+Phone Number ID recorded
+Two-step PIN secured
+System-user token generated/encrypted
+Required permissions verified
+Webhook HTTPS reachable
+Verify token test passes
+POST signature test passes
+App subscribed to WABA
+Inbound text test passes
+Interactive list/button test passes
+Location/media payload test passes
+Token rotation runbook documented
+A.2 Meta Send Endpoint
+POST https://graph.facebook.com/{GRAPH_API_VERSION}/{PHONE_NUMBER_ID}/messagesAuthorization: Bearer {SYSTEM_USER_ACCESS_TOKEN}Content-Type: application/json
+Graph API version is a setting, not a hard-coded sample version.
+Appendix B. Reference Message/Menu Designs
+B.1 Known User Welcome
+Assalam-o-Alaikum.Welcome to MicroMerger AI Workplace.Please choose:1) My HR2) Policies & Help3) My Travel4) Help / LanguageYou can also type your question in English, Urdu or Roman Urdu.
+B.2 Unknown Number
+This WhatsApp number is not registered for MicroMerger self-service.For security, employee information cannot be provided on this number.Please contact HR to update your registered personal/official mobile number.
+B.3 Policy Answer Pattern
+[Short answer in user's selected language]Source: [Policy Title], Version [x], Section [x] / Page [x]Reply "More detail" for a longer explanation.
+B.4 Leave Confirmation Pattern
+Please confirm your leave request:Type: Casual LeaveFrom: 28 Aug 2026To: 28 Aug 2026Reason: Personal work[Submit]   [Change]   [Cancel]
+B.5 Travel Pattern
+Your approved travel for today:Route: [origin] -> [destination]Departure: [time]Driver: [permitted fields]Vehicle: [permitted fields]Status: [ERP status][Start Travel] [Report Issue] [Back]
+Appendix C. Playwright Test Catalogue
+Test ID
+Area
+Scenario
+Priority
+PW-001
+Identity
+Known personal mobile -> correct employee
+P0
+PW-002
+Identity
+Known official mobile -> same employee
+P0
+PW-003
+Identity
+Unknown number blocked
+P0
+PW-004
+Identity
+Duplicate mapping blocked/logged
+P0
+PW-005
+Menu
+Employee menu
+P0
+PW-006
+Menu
+Consultant engagement-driven menu
+P0
+PW-007
+Language
+English flow
+P1
+PW-008
+Language
+Urdu flow
+P1
+PW-009
+Language
+Roman Urdu intent
+P1
+PW-010
+Policy
+General policy answer + citation
+P0
+PW-011
+Policy
+Authorized project policy
+P0
+PW-012
+Policy
+Unauthorized project policy blocked
+P0
+PW-013
+Policy
+Superseded excluded
+P0
+PW-014
+Policy
+Low confidence -> safe no-answer
+P0
+PW-015
+Policy
+User prompt injection blocked
+P0
+PW-016
+Policy
+PDF prompt injection cannot invoke tool
+P0
+PW-017
+Index
+Publish queues index
+P1
+PW-018
+Index
+Updated PDF invalidates cache/chunks
+P1
+PW-019
+HR
+Profile parity with portal
+P0
+PW-020
+HR
+Leave balance parity
+P0
+PW-021
+HR
+Leave history restricted
+P0
+PW-022
+HR
+Valid leave create after confirmation
+P0
+PW-023
+HR
+Insufficient balance rejected
+P0
+PW-024
+HR
+Overlap rejected
+P1
+PW-025
+HR
+Workflow/email same as portal
+P0
+PW-026
+HR
+Cancel before confirm creates nothing
+P0
+PW-027
+Attendance
+Monthly summary parity
+P0
+PW-028
+Consultant
+Deliverable-based options
+P0
+PW-029
+Consultant
+Timesheet-based options
+P0
+PW-030
+Consultant
+Outside engagement rejected
+P0
+PW-031
+Consultant
+Attachment links correctly
+P1
+PW-032
+Travel
+Today's approved trip
+P0
+PW-033
+Travel
+Other user's trip blocked
+P0
+PW-034
+Travel
+Start + location log
+P0
+PW-035
+Travel
+Multiple trips require selection
+P1
+PW-036
+Travel
+Complaint links active trip
+P0
+PW-037
+Travel
+No active trip asks reference
+P1
+PW-038
+Webhook
+Invalid verify token
+P0
+PW-039
+Webhook
+Invalid signature rejected
+P0
+PW-040
+Webhook
+Duplicate message id idempotent
+P0
+PW-041
+Security
+ID tampering cannot access other user
+P0
+PW-042
+Security
+Unknown AI intent cannot call method
+P0
+PW-043
+Security
+Secrets masked
+P0
+PW-044
+Rate limit
+Burst throttled
+P1
+PW-045
+Recovery
+Local LLM unavailable graceful fallback
+P1
+PW-046
+Recovery
+Meta outbound failure does not duplicate transaction
+P1
+PW-047
+MVP
+No scheduler-driven WhatsApp notification
+P0
+PW-048
+Admin
+Draft policy does not index
+P0
+PW-049
+Admin
+Only authorized admin changes settings
+P0
+PW-050
+RAG
+Golden multilingual dataset meets accuracy target
+P0
+C.1 Golden RAG Dataset
+HR should provide at least 10-20 representative questions per major policy/project, including Roman Urdu variants, ambiguous questions and questions whose correct answer is 'not covered'. Store expected policy ID/version and key answer points; run evaluation after any index/model/prompt change.
+Appendix D. AI Coding Agent Implementation Brief
+Supply this BRD/SRS and repository access to Cursor, Kimi or another coding agent. The agent must inspect and reuse existing portal/policy/consultant/travel code before adding new logic.
+IMPLEMENTATION INSTRUCTION FOR CODING AGENTBuild a native Frappe/ERPNext app named `ai_workplace` implementing this BRD/SRS.NON-NEGOTIABLE1. ERPNext is source of truth; no parallel HR/policy/consultant/travel system.2. Inspect and reuse existing portal functions, permissions, workflows and DocTypes.3. Reuse existing policy module and applicability logic; add only missing AI index metadata.4. Resolve WhatsApp identity from registered personal/official mobile, normalize to E.164,   and fail closed on unknown or duplicate identity.5. Never expose unrestricted CRUD, SQL, Python, shell or arbitrary Frappe methods to AI.6. Apply authorization and policy scope filters BEFORE retrieval/LLM context.7. MVP is user-initiated only; proactive notifications remain disabled feature flag.8. Every state-changing action requires confirmation and existing ERP validation/workflow.9. Support English, Urdu and Roman Urdu.10. Build admin-only WhatsApp Test Harness and Playwright E2E tests.TECHNICAL BASELINE- Frappe/ERPNext native Python app- Meta WhatsApp Cloud API- Qdrant vector store- BAAI/bge-m3 embeddings- Pluggable local LLM; baseline candidate Qwen3-4B quantized- Background jobs for indexing/slow tasks- Strict schema validation for intents/DTOs- Structured logs with trace_id + Meta message_id- No secrets in code/logsDELIVERYImplement Weeks 1-9 in order. For each milestone:inspect existing code -> technical change plan -> implement -> tests -> run tests ->migration/setup instructions -> fix critical failures before next milestone.Use requirement IDs in tests/comments where useful.
+Appendix E. Source References
+External technical references consulted for this baseline. Internal MicroMerger ERP rules and approved policies remain authoritative.
+• Meta official WhatsApp Business Platform Postman collection: https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api
+• Meta interactive messages developer guide: https://developers.facebook.com/docs/whatsapp/guides/interactive-messages/
+• Frappe Framework REST API: https://docs.frappe.io/framework/user/en/api/rest
+• Frappe REST integration/API v1-v2 overview: https://docs.frappe.io/framework/user/en/guides/integration/rest_api
+• BGE-M3 multilingual embedding model card: https://huggingface.co/BAAI/bge-m3
+• Qwen3-4B model card: https://huggingface.co/Qwen/Qwen3-4B
+• Gemma 3 official overview: https://deepmind.google/models/gemma/gemma-3/
+Implementation note: Meta's UI, Graph API versions, app-review rules and pricing change over time. Re-check current Meta documentation immediately before production cutover.
+— End of BRD/SRS —

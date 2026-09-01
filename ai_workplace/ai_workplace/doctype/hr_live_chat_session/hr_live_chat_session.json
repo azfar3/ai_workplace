@@ -1,0 +1,221 @@
+{
+ "actions": [],
+ "autoname": "format:HRCHAT-{YYYY}-{MM}-{DD}-{#####}",
+ "creation": "2026-08-28 17:42:31.991609",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "whatsapp_identity",
+  "whatsapp_conversation",
+  "wa_id",
+  "employee",
+  "erp_user",
+  "display_name",
+  "guest_email",
+  "initial_query",
+  "person_type",
+  "col_br_1",
+  "status",
+  "assigned_to",
+  "col_br_1b",
+  "contact_hr_selected",
+  "ready_for_hr",
+  "section_timing",
+  "opened_at",
+  "last_user_message_at",
+  "last_hr_reply_at",
+  "session_window_expires_at",
+  "col_br_2",
+  "off_hours_notice_sent",
+  "closed_at",
+  "closed_by"
+ ],
+ "fields": [
+  {
+   "fieldname": "whatsapp_identity",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "WhatsApp Identity",
+   "reqd": 1
+  },
+  {
+   "fieldname": "whatsapp_conversation",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "WhatsApp Conversation",
+   "options": "WhatsApp Conversation"
+  },
+  {
+   "fieldname": "wa_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "WA ID"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "erp_user",
+   "fieldtype": "Link",
+   "label": "ERP User",
+   "options": "User"
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Display Name"
+  },
+  {
+   "fieldname": "guest_email",
+   "fieldtype": "Data",
+   "label": "Guest Email"
+  },
+  {
+   "fieldname": "initial_query",
+   "fieldtype": "Small Text",
+   "label": "Initial Query"
+  },
+  {
+   "fieldname": "person_type",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Person Type",
+   "options": "\nEmployee\nConsultant\nGuest\nFormer Employee"
+  },
+  {
+   "fieldname": "col_br_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Queued",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nPending Intake\nQueued\nAssigned\nActive\nClosed\nExpired"
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Assigned To",
+   "options": "User"
+  },
+  {
+   "fieldname": "col_br_1b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "User explicitly chose Contact HR from WhatsApp menu",
+   "fieldname": "contact_hr_selected",
+   "fieldtype": "Check",
+   "label": "Contact HR Selected"
+  },
+  {
+   "default": "0",
+   "description": "Visible in HR inbox \u2014 set after Contact HR (staff) or guest completes intake",
+   "fieldname": "ready_for_hr",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Ready For HR"
+  },
+  {
+   "fieldname": "section_timing",
+   "fieldtype": "Section Break",
+   "label": "Timing"
+  },
+  {
+   "fieldname": "opened_at",
+   "fieldtype": "Datetime",
+   "label": "Opened At"
+  },
+  {
+   "fieldname": "last_user_message_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last User Message At"
+  },
+  {
+   "fieldname": "last_hr_reply_at",
+   "fieldtype": "Datetime",
+   "label": "Last HR Reply At"
+  },
+  {
+   "description": "Meta 24-hour reply window deadline (last user message + 24h)",
+   "fieldname": "session_window_expires_at",
+   "fieldtype": "Datetime",
+   "label": "Session Window Expires At"
+  },
+  {
+   "fieldname": "col_br_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "off_hours_notice_sent",
+   "fieldtype": "Check",
+   "label": "Off Hours Notice Sent"
+  },
+  {
+   "fieldname": "closed_at",
+   "fieldtype": "Datetime",
+   "label": "Closed At"
+  },
+  {
+   "fieldname": "closed_by",
+   "fieldtype": "Link",
+   "label": "Closed By",
+   "options": "User"
+  }
+ ],
+ "icon": "fa fa-headphones",
+ "links": [],
+ "modified": "2026-08-28 18:19:17.533712",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "HR Live Chat Session",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Workplace Agent",
+   "write": 1
+  },
+  {
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "write": 1
+  }
+ ],
+ "search_fields": "wa_id,whatsapp_identity,employee,assigned_to,display_name,guest_email",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

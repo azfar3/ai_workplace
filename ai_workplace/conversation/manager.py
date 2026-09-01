@@ -126,25 +126,38 @@ def update_conversation(
     draft_payload: Optional[str] = None,
     preferred_language: Optional[str] = None,
     last_message_id: Optional[str] = None,
+    active_hr_chat_session: Optional[str] = None,
+    clear_active_hr_chat_session: bool = False,
+    clear_active_fields: bool = False,
 ) -> "frappe.Document":
     """Update conversation state, fields, and activity timestamp."""
     now = frappe.utils.now_datetime()
     ttl_minutes = get_default_ttl_minutes()
 
+    if clear_active_fields:
+        conversation.current_intent = None
+        conversation.active_service = None
+        conversation.active_record = None
+        conversation.draft_payload = None
+
     if state:
         conversation.current_state = state
     if current_intent is not None:
-        conversation.current_intent = current_intent
+        conversation.current_intent = current_intent or None
     if active_service is not None:
-        conversation.active_service = active_service
+        conversation.active_service = active_service or None
     if active_record is not None:
-        conversation.active_record = active_record
+        conversation.active_record = active_record or None
     if draft_payload is not None:
-        conversation.draft_payload = draft_payload
+        conversation.draft_payload = draft_payload or None
     if preferred_language is not None:
         conversation.preferred_language = preferred_language
     if last_message_id:
         conversation.last_message_id = last_message_id
+    if active_hr_chat_session is not None:
+        conversation.active_hr_chat_session = active_hr_chat_session or None
+    if clear_active_hr_chat_session:
+        conversation.active_hr_chat_session = None
 
     conversation.last_activity_at = now
     conversation.expires_at = now + timedelta(minutes=ttl_minutes)
@@ -152,6 +165,29 @@ def update_conversation(
     conversation.save(ignore_permissions=True)
     frappe.db.commit()
     return conversation
+
+
+def conversation_priority_expects_media(conversation: Any) -> bool:
+    """
+    True when an active multi-step flow should receive inbound media instead of
+    HR live chat (e.g. CNIC scan upload during profile completion).
+    """
+    if (conversation.current_state or "") != ConversationState.PROCESSING:
+        return False
+    intent = (conversation.current_intent or "").strip()
+    if intent.startswith("prof_") or intent == "deliverable_add":
+        return True
+    if intent in ("att_checkin", "att_checkout", "att_exception"):
+        return True
+    return False
+
+
+def conversation_priority_expects_location(conversation: Any) -> bool:
+    """True when a pending attendance flow should receive inbound location."""
+    if (conversation.current_state or "") != ConversationState.PROCESSING:
+        return False
+    intent = (conversation.current_intent or "").strip()
+    return intent in ("att_checkin", "att_checkout", "att_exception")
 
 
 def expire_conversation(

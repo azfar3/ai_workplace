@@ -1,130 +1,228 @@
 {
  "actions": [],
- "creation": "2026-08-27 13:07:05.079517",
+ "allow_rename": 0,
+ "autoname": "AI Workplace Settings",
+ "creation": "2026-08-27 13:34:05.314345",
  "doctype": "DocType",
- "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "enabled",
-  "section_meta",
-  "meta_phone_number_id",
-  "meta_waba_id",
-  "meta_app_id",
-  "meta_access_token",
-  "meta_app_secret",
   "webhook_verify_token",
-  "graph_api_version",
-  "section_preferences",
-  "default_language",
-  "conversation_ttl_minutes",
-  "col_br_1",
-  "proactive_notifications_enabled",
-  "max_messages_per_minute",
-  "message_retention_days"
+  "meta_app_secret",
+  "whatsapp_phone_number_id",
+  "whatsapp_system_user_access_token",
+  "ai_chat_enabled",
+  "async_whatsapp_enabled",
+  "default_ai_provider",
+  "system_prompt_template",
+  "section_office_hours",
+  "office_hours_enabled",
+  "office_start_time",
+  "office_end_time",
+  "office_days",
+  "office_timezone",
+  "closed_office_hours_message",
+  "section_hr_live_chat",
+  "hr_live_chat_enabled",
+  "hr_live_chat_welcome_message",
+  "auto_close_inactive_hours",
+  "section_hr_chat_agents",
+  "hr_chat_agents",
+  "section_whatsapp_attendance",
+  "whatsapp_attendance_enabled",
+  "whatsapp_attendance_pending_ttl_minutes",
+  "whatsapp_attendance_privacy_notice",
+  "section_hybrid_rag",
+  "embedding_provider",
+  "embedding_model",
+  "embedding_dimensions",
+  "rag_keyword_weight",
+  "rag_semantic_weight"
  ],
  "fields": [
   {
-   "default": "1",
-   "fieldname": "enabled",
-   "fieldtype": "Check",
-   "in_list_view": 1,
-   "label": "Enabled"
-  },
-  {
-   "fieldname": "section_meta",
-   "fieldtype": "Section Break",
-   "label": "Meta / WhatsApp Cloud API"
-  },
-  {
-   "description": "The Phone Number ID from your Meta App Dashboard (not the phone number itself)",
-   "fieldname": "meta_phone_number_id",
-   "fieldtype": "Data",
-   "label": "Meta Phone Number ID"
-  },
-  {
-   "fieldname": "meta_waba_id",
-   "fieldtype": "Data",
-   "label": "WhatsApp Business Account ID (WABA ID)"
-  },
-  {
-   "fieldname": "meta_app_id",
-   "fieldtype": "Data",
-   "label": "Meta App ID"
-  },
-  {
-   "description": "Permanent or temporary access token from Meta. Stored encrypted.",
-   "fieldname": "meta_access_token",
+   "fieldname": "webhook_verify_token",
    "fieldtype": "Password",
-   "label": "Meta Access Token"
+   "label": "Webhook Verify Token"
   },
   {
-   "description": "Used to validate incoming webhook signatures (X-Hub-Signature-256). Stored encrypted.",
    "fieldname": "meta_app_secret",
    "fieldtype": "Password",
    "label": "Meta App Secret"
   },
   {
-   "description": "A secret token you define and configure in Meta App Dashboard for webhook verification.",
-   "fieldname": "webhook_verify_token",
+   "fieldname": "whatsapp_phone_number_id",
    "fieldtype": "Data",
-   "label": "Webhook Verify Token"
+   "label": "WhatsApp Phone Number ID"
   },
   {
-   "default": "v18.0",
-   "description": "e.g. v18.0",
-   "fieldname": "graph_api_version",
-   "fieldtype": "Data",
-   "label": "Graph API Version"
+   "fieldname": "whatsapp_system_user_access_token",
+   "fieldtype": "Password",
+   "label": "WhatsApp System User Access Token"
   },
   {
-   "fieldname": "section_preferences",
+   "default": "1",
+   "fieldname": "ai_chat_enabled",
+   "fieldtype": "Check",
+   "label": "AI Chat Enabled"
+  },
+  {
+   "default": "1",
+   "fieldname": "async_whatsapp_enabled",
+   "fieldtype": "Check",
+   "label": "Async WhatsApp Webhook Processing Enabled"
+  },
+  {
+   "fieldname": "default_ai_provider",
+   "fieldtype": "Link",
+   "label": "Default AI Provider",
+   "options": "AI Workplace Provider"
+  },
+  {
+   "fieldname": "system_prompt_template",
+   "fieldtype": "Code",
+   "label": "System Prompt Template",
+   "options": "Markdown"
+  },
+  {
+   "fieldname": "section_office_hours",
    "fieldtype": "Section Break",
-   "label": "Application Preferences"
+   "label": "Office Hours & Schedule"
   },
   {
-   "default": "en",
-   "description": "ISO 639-1 language code, e.g. en, ur",
-   "fieldname": "default_language",
+   "default": "1",
+   "fieldname": "office_hours_enabled",
+   "fieldtype": "Check",
+   "label": "Enforce Office Hours"
+  },
+  {
+   "default": "09:00:00",
+   "fieldname": "office_start_time",
+   "fieldtype": "Time",
+   "label": "Office Start Time"
+  },
+  {
+   "default": "18:00:00",
+   "fieldname": "office_end_time",
+   "fieldtype": "Time",
+   "label": "Office End Time"
+  },
+  {
+   "default": "Monday, Tuesday, Wednesday, Thursday, Friday",
+   "fieldname": "office_days",
    "fieldtype": "Data",
-   "label": "Default Language"
+   "label": "Working Days (Comma separated)"
   },
   {
-   "default": "30",
-   "description": "Conversation session TTL in minutes before expiring.",
-   "fieldname": "conversation_ttl_minutes",
+   "default": "Asia/Karachi",
+   "fieldname": "office_timezone",
+   "fieldtype": "Data",
+   "label": "Time Zone"
+  },
+  {
+   "default": "Thank you for contacting HR. Our team is available Monday to Friday from 9 AM to 6 PM PKT. We will get back to you during working hours.",
+   "fieldname": "closed_office_hours_message",
+   "fieldtype": "Small Text",
+   "label": "After-Hours Auto Reply"
+  },
+  {
+   "fieldname": "section_hr_live_chat",
+   "fieldtype": "Section Break",
+   "label": "HR Live Chat Settings"
+  },
+  {
+   "default": "1",
+   "fieldname": "hr_live_chat_enabled",
+   "fieldtype": "Check",
+   "label": "Enable HR Live Chat"
+  },
+  {
+   "default": "Connecting you with an HR agent. Please wait a moment...",
+   "fieldname": "hr_live_chat_welcome_message",
+   "fieldtype": "Small Text",
+   "label": "Live Chat Welcome Message"
+  },
+  {
+   "default": "24",
+   "fieldname": "auto_close_inactive_hours",
    "fieldtype": "Int",
-   "label": "Conversation TTL (Minutes)"
+   "label": "Auto-Close Inactive Chat Window (Hours)"
   },
   {
-   "fieldname": "col_br_1",
-   "fieldtype": "Column Break"
+   "fieldname": "section_hr_chat_agents",
+   "fieldtype": "Section Break",
+   "label": "HR Chat Agents",
+   "depends_on": "eval:doc.hr_live_chat_enabled"
+  },
+  {
+   "fieldname": "hr_chat_agents",
+   "fieldtype": "Table",
+   "label": "Users With Chat Window Access",
+   "options": "AI Workplace HR Chat Agent",
+   "description": "ERPNext users who can open the WhatsApp HR Inbox and reply to employees."
+  },
+  {
+   "fieldname": "section_whatsapp_attendance",
+   "fieldtype": "Section Break",
+   "label": "WhatsApp Location Attendance"
   },
   {
    "default": "0",
-   "description": "Phase 1: must remain disabled. Reserved for future phases.",
-   "fieldname": "proactive_notifications_enabled",
+   "fieldname": "whatsapp_attendance_enabled",
    "fieldtype": "Check",
-   "label": "Proactive Notifications Enabled"
+   "label": "WhatsApp Location Attendance Enabled"
   },
   {
-   "default": "30",
-   "description": "Rate limiting foundation. Full enforcement added in a future phase.",
-   "fieldname": "max_messages_per_minute",
+   "default": "10",
+   "fieldname": "whatsapp_attendance_pending_ttl_minutes",
    "fieldtype": "Int",
-   "label": "Max Messages Per Minute"
+   "label": "Pending Location Request TTL (Minutes)"
   },
   {
-   "default": "30",
-   "description": "How many days WhatsApp Message Log records are retained.",
-   "fieldname": "message_retention_days",
+   "default": "Your location will only be used to verify this attendance event.",
+   "fieldname": "whatsapp_attendance_privacy_notice",
+   "fieldtype": "Small Text",
+   "label": "Location Privacy Notice"
+  },
+  {
+   "fieldname": "section_hybrid_rag",
+   "fieldtype": "Section Break",
+   "label": "Hybrid RAG & Embeddings"
+  },
+  {
+   "default": "OpenAI",
+   "fieldname": "embedding_provider",
+   "fieldtype": "Data",
+   "label": "Embedding Provider"
+  },
+  {
+   "default": "text-embedding-3-small",
+   "fieldname": "embedding_model",
+   "fieldtype": "Data",
+   "label": "Embedding Model"
+  },
+  {
+   "default": "1536",
+   "fieldname": "embedding_dimensions",
    "fieldtype": "Int",
-   "label": "Message Retention (Days)"
+   "label": "Embedding Dimensions"
+  },
+  {
+   "default": "0.4",
+   "fieldname": "rag_keyword_weight",
+   "fieldtype": "Float",
+   "label": "RAG Keyword Weight"
+  },
+  {
+   "default": "0.6",
+   "fieldname": "rag_semantic_weight",
+   "fieldtype": "Float",
+   "label": "RAG Semantic Weight"
   }
  ],
  "icon": "fa fa-cog",
  "issingle": 1,
  "links": [],
- "modified": "2026-08-27 13:34:05.314345",
+ "modified": "2026-09-01 11:00:00.000000",
  "modified_by": "Administrator",
  "module": "Ai Workplace",
  "name": "AI Workplace Settings",
@@ -135,6 +233,12 @@
    "read": 1,
    "role": "System Manager",
    "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "HR Workplace Agent",
+   "write": 0
   }
  ],
  "sort_field": "modified",

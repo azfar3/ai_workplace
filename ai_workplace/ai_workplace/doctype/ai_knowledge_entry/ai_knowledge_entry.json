@@ -1,0 +1,181 @@
+{
+ "actions": [],
+ "creation": "2026-08-31 16:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "category",
+  "applicable_employment_type",
+  "file_attachment",
+  "status",
+  "data_classification",
+  "question",
+  "answer",
+  "section_meta",
+  "source_type",
+  "source_reference",
+  "version",
+  "effective_from",
+  "effective_to",
+  "keywords",
+  "language",
+  "section_approval",
+  "approved_by",
+  "approved_on",
+  "created_from_gap"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "default": "Policy",
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "Policy\nLeave\nAttendance\nPayroll\nBenefits\nGeneral"
+  },
+  {
+   "default": "All",
+   "description": "Specify if this policy entry applies to a specific employment type or All employees.",
+   "fieldname": "applicable_employment_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Applicable Employment Type",
+   "options": "All\nFull-time\nContract\nProbationary\nIntern\nPart-time\nThird-Party"
+  },
+  {
+   "fieldname": "file_attachment",
+   "fieldtype": "Attach",
+   "label": "Attach Policy Document (PDF, DOCX, TXT)"
+  },
+  {
+   "default": "DRAFT",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "DRAFT\nPENDING_REVIEW\nAPPROVED\nPUBLISHED\nARCHIVED\nREJECTED"
+  },
+  {
+   "default": "ORGANIZATIONAL",
+   "description": "Only ORGANIZATIONAL data is allowed in the public AI knowledge base.",
+   "fieldname": "data_classification",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Data Classification",
+   "options": "ORGANIZATIONAL\nEMPLOYEE_SPECIFIC\nSENSITIVE\nSYSTEM_INTERNAL",
+   "read_only": 1
+  },
+  {
+   "fieldname": "question",
+   "fieldtype": "Small Text",
+   "label": "Sample Question / Topic"
+  },
+  {
+   "fieldname": "answer",
+   "fieldtype": "Text",
+   "label": "Official Approved Answer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_meta",
+   "fieldtype": "Section Break",
+   "label": "Source & Metadata"
+  },
+  {
+   "default": "MANUAL",
+   "fieldname": "source_type",
+   "fieldtype": "Select",
+   "label": "Source Type",
+   "options": "MANUAL\nHR_RESOLUTION\nPOLICY_DOC\nSYSTEM"
+  },
+  {
+   "fieldname": "source_reference",
+   "fieldtype": "Data",
+   "label": "Source Reference"
+  },
+  {
+   "default": "1",
+   "fieldname": "version",
+   "fieldtype": "Int",
+   "label": "Version Number"
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From"
+  },
+  {
+   "fieldname": "effective_to",
+   "fieldtype": "Date",
+   "label": "Effective To"
+  },
+  {
+   "fieldname": "keywords",
+   "fieldtype": "Small Text",
+   "label": "Keywords / Synonyms"
+  },
+  {
+   "default": "en",
+   "fieldname": "language",
+   "fieldtype": "Data",
+   "label": "Language Code"
+  },
+  {
+   "fieldname": "section_approval",
+   "fieldtype": "Section Break",
+   "label": "Audit & Approval"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User"
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On"
+  },
+  {
+   "fieldname": "created_from_gap",
+   "fieldtype": "Link",
+   "label": "Created From Gap",
+   "options": "AI Knowledge Gap Log"
+  }
+ ],
+ "icon": "fa fa-book",
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-31 16:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "AI Knowledge Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "HR Workplace Agent",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

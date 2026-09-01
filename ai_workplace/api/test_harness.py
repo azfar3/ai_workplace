@@ -46,7 +46,7 @@ from frappe import _
 from ai_workplace.whatsapp.payload_parser import parse_webhook_payload
 from ai_workplace.identity.resolver import resolve_identity
 from ai_workplace.services.welcome import build_welcome_message
-from ai_workplace.whatsapp.sender import send_text_message
+from ai_workplace.whatsapp.sender import send_message
 from ai_workplace.conversation.orchestrator import process_message
 from ai_workplace.api.whatsapp_webhook import (
     _is_duplicate,
@@ -141,7 +141,7 @@ def simulate(
     _update_log_identity(inbound_log, identity)
 
     # ── Orchestrate conversation & generate reply ────────────────────────────
-    response_text = process_message(
+    outbound = process_message(
         message_text=parsed.get("text", ""),
         identity=identity,
         message_id=message_id,
@@ -158,11 +158,13 @@ def simulate(
             "dry_run": True,
         }
     else:
-        send_result = send_text_message(
+        send_result = send_message(
             phone_number=identity.normalized_phone,
-            message=response_text,
+            outbound=outbound,
         )
         send_result["dry_run"] = False
+
+    response_text = outbound.log_text() if hasattr(outbound, "log_text") else str(outbound)
 
     # ── Finalize inbound log ──────────────────────────────────────────────────
     _finalize_log(inbound_log, status="Received")

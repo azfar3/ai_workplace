@@ -1,0 +1,30 @@
+{
+ "content": null,
+ "creation": "2026-08-28 17:19:13.952513",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2026-08-28 17:19:13.952513",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "whatsapp-hr-inbox",
+ "owner": "Administrator",
+ "page_name": "whatsapp-hr-inbox",
+ "roles": [
+  {
+   "role": "HR Workplace Agent"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "script": null,
+ "show_in_portal": 0,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "WhatsApp HR Inbox"
+}

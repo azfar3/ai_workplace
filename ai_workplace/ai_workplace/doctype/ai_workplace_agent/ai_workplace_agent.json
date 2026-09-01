@@ -1,0 +1,131 @@
+{
+ "autoname": "field:agent_slug",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "agent_slug",
+  "agent_name",
+  "agent_type",
+  "column_break_1",
+  "is_active",
+  "allow_external_access",
+  "default_model",
+  "section_prompt",
+  "system_prompt",
+  "section_share",
+  "api_key",
+  "allowed_applications",
+  "rate_limit_per_minute",
+  "section_meta",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "agent_slug",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Agent Slug",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "agent_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Agent Name",
+   "reqd": 1
+  },
+  {
+   "default": "HR Agent",
+   "fieldname": "agent_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Agent Type",
+   "options": "HR Agent\nIT Support Agent\nPayroll & Expense Agent\nManager Assistant Agent\nOnboarding Agent\nCustom"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Active"
+  },
+  {
+   "default": "0",
+   "description": "Allow other applications to call this agent via API key.",
+   "fieldname": "allow_external_access",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Allow External Access"
+  },
+  {
+   "fieldname": "default_model",
+   "fieldtype": "Link",
+   "label": "Default Model",
+   "options": "AI Workplace Model"
+  },
+  {
+   "fieldname": "section_prompt",
+   "fieldtype": "Section Break",
+   "label": "Prompt"
+  },
+  {
+   "fieldname": "system_prompt",
+   "fieldtype": "Long Text",
+   "label": "System Prompt"
+  },
+  {
+   "fieldname": "section_share",
+   "fieldtype": "Section Break",
+   "label": "External Application Sharing"
+  },
+  {
+   "description": "API key for external apps (Portal, mobile, ai_analytics). Regenerate from AI Workplace Admin.",
+   "fieldname": "api_key",
+   "fieldtype": "Password",
+   "label": "API Key",
+   "read_only": 1
+  },
+  {
+   "description": "Comma-separated app names allowed to call this agent, e.g. hrms_portal, ai_analytics, mobile_app",
+   "fieldname": "allowed_applications",
+   "fieldtype": "Small Text",
+   "label": "Allowed Applications"
+  },
+  {
+   "default": "60",
+   "fieldname": "rate_limit_per_minute",
+   "fieldtype": "Int",
+   "label": "Rate Limit (per minute)"
+  },
+  {
+   "fieldname": "section_meta",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "module": "Ai Workplace",
+ "name": "AI Workplace Agent",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "agent_name",
+ "sort_order": "ASC",
+ "track_changes": 1
+}

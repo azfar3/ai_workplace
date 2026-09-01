@@ -1,0 +1,17 @@
+{
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "istable": 1,
+ "field_order": ["target_doctype", "target_field", "child_row_name", "proposed_value", "proposed_json", "attachment"],
+ "fields": [
+  {"fieldname": "target_doctype", "fieldtype": "Data", "label": "Target DocType", "in_list_view": 1},
+  {"fieldname": "target_field", "fieldtype": "Data", "label": "Target Field", "in_list_view": 1},
+  {"fieldname": "child_row_name", "fieldtype": "Data", "label": "Child Row Name"},
+  {"fieldname": "proposed_value", "fieldtype": "Data", "label": "Proposed Value"},
+  {"fieldname": "proposed_json", "fieldtype": "Long Text", "label": "Proposed JSON"},
+  {"fieldname": "attachment", "fieldtype": "Attach", "label": "Attachment"}
+ ],
+ "module": "Ai Workplace",
+ "name": "Profile Change Item",
+ "permissions": []
+}

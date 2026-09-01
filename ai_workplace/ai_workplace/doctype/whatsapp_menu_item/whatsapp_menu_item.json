@@ -1,0 +1,150 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:menu_key",
+ "creation": "2026-08-28 15:58:15.257908",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+  "field_order": [
+  "menu_key",
+  "title",
+  "title_urdu",
+  "title_roman_urdu",
+  "column_break_1",
+  "user_category",
+  "parent_menu_item",
+  "sequence",
+  "is_active",
+  "is_flow_action",
+  "flow_group",
+  "security_level",
+  "section_details",
+  "description"
+ ],
+ "fields": [
+  {
+   "description": "Unique key identifier (e.g. hr, attendance_leave, guest_careers)",
+   "fieldname": "menu_key",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Menu Key",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Title (English)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "title_urdu",
+   "fieldtype": "Data",
+   "label": "Title (Urdu)"
+  },
+  {
+   "fieldname": "title_roman_urdu",
+   "fieldtype": "Data",
+   "label": "Title (Roman Urdu)"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Active Employee",
+   "fieldname": "user_category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "User Category",
+   "options": "Active Employee\nFormer Employee\nGuest\nAll"
+  },
+  {
+   "description": "Leave blank for top-level menu; set for submenus.",
+   "fieldname": "parent_menu_item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Parent Menu Item",
+   "options": "WhatsApp Menu Item"
+  },
+  {
+   "default": "1",
+   "fieldname": "sequence",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sequence / Order"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Is Active"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.is_flow_action",
+   "description": "Hidden from standard menus; used for dynamic button flows (e.g. period pickers).",
+   "fieldname": "is_flow_action",
+   "fieldtype": "Check",
+   "label": "Is Flow Action"
+  },
+  {
+   "depends_on": "eval:doc.is_flow_action",
+   "description": "Group key for flow buttons, e.g. salary_slip_period or att_monthly_summary",
+   "fieldname": "flow_group",
+   "fieldtype": "Data",
+   "label": "Flow Group"
+  },
+  {
+   "default": "None",
+   "description": "Secure menus require Support PIN verification on WhatsApp before the service runs.",
+   "fieldname": "security_level",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Security Level",
+   "options": "None\nPIN Required\nPIN + Approval"
+  },
+  {
+   "fieldname": "section_details",
+   "fieldtype": "Section Break",
+   "label": "Details & Description"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description / Submenu Header Note"
+  }
+ ],
+ "icon": "fa fa-list",
+ "links": [],
+ "modified": "2026-08-28 19:53:30.960827",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "WhatsApp Menu Item",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "search_fields": "menu_key,title,user_category",
+ "sort_field": "sequence",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

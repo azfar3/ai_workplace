@@ -1,0 +1,10 @@
+{
+ "content": null,
+ "doctype": "Page",
+ "module": "Ai Workplace",
+ "name": "ai-workplace-admin",
+ "page_name": "ai-workplace-admin",
+ "roles": [{"role": "System Manager"}],
+ "standard": "Yes",
+ "title": "AI Workplace Admin"
+}

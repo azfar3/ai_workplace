@@ -1,0 +1,27 @@
+{
+ "autoname": "format:EPCR-{YYYY}-{#####}",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["employee", "employee_name", "request_type", "status", "workflow_state", "requested_via", "items", "hr_reviewer", "reviewed_on", "hr_remarks", "rejection_reason", "submitted_on", "applied_on"],
+ "fields": [
+  {"fieldname": "employee", "fieldtype": "Link", "label": "Employee", "options": "Employee", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "employee_name", "fieldtype": "Data", "label": "Employee Name", "read_only": 1},
+  {"fieldname": "request_type", "fieldtype": "Select", "label": "Request Type", "options": "Education\nWork History\nNext of Kin\nBank Change\nCNIC Change\nContact Change\nProfile Photo\nDocument Upload\nOther", "in_list_view": 1},
+  {"default": "Submitted", "fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Draft\nSubmitted\nPending HR Review\nApproved\nApplied\nRejected\nNeeds More Info", "in_list_view": 1},
+  {"fieldname": "workflow_state", "fieldtype": "Data", "label": "Workflow State"},
+  {"default": "WhatsApp", "fieldname": "requested_via", "fieldtype": "Select", "label": "Requested Via", "options": "WhatsApp\nPortal\nDesk"},
+  {"fieldname": "items", "fieldtype": "Table", "label": "Change Items", "options": "Profile Change Item"},
+  {"fieldname": "hr_reviewer", "fieldtype": "Link", "label": "HR Reviewer", "options": "User"},
+  {"fieldname": "reviewed_on", "fieldtype": "Datetime", "label": "Reviewed On"},
+  {"fieldname": "hr_remarks", "fieldtype": "Small Text", "label": "HR Remarks"},
+  {"fieldname": "rejection_reason", "fieldtype": "Small Text", "label": "Rejection Reason"},
+  {"fieldname": "submitted_on", "fieldtype": "Datetime", "label": "Submitted On"},
+  {"fieldname": "applied_on", "fieldtype": "Datetime", "label": "Applied On"}
+ ],
+ "module": "Ai Workplace",
+ "name": "Employee Profile Change Request",
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1},
+  {"role": "HR Manager", "read": 1, "write": 1, "create": 1}
+ ]
+}

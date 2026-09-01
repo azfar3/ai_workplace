@@ -1,0 +1,170 @@
+{
+ "actions": [],
+ "creation": "2026-08-31 16:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "query",
+  "normalized_query",
+  "status",
+  "frequency",
+  "first_seen",
+  "last_seen",
+  "section_context",
+  "employee",
+  "user",
+  "whatsapp_identity",
+  "conversation",
+  "section_details",
+  "detected_intent",
+  "intent_confidence",
+  "failure_reason",
+  "ai_response",
+  "section_resolution",
+  "assigned_to",
+  "resolution",
+  "review_notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "query",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "User Query",
+   "reqd": 1
+  },
+  {
+   "fieldname": "normalized_query",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Normalized Query"
+  },
+  {
+   "default": "NEW",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "NEW\nUNDER_REVIEW\nRESOLVED\nAPPROVED\nREJECTED\nDUPLICATE"
+  },
+  {
+   "default": "1",
+   "fieldname": "frequency",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Frequency Count"
+  },
+  {
+   "fieldname": "first_seen",
+   "fieldtype": "Datetime",
+   "label": "First Seen"
+  },
+  {
+   "fieldname": "last_seen",
+   "fieldtype": "Datetime",
+   "label": "Last Seen"
+  },
+  {
+   "fieldname": "section_context",
+   "fieldtype": "Section Break",
+   "label": "Context & Identity"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User"
+  },
+  {
+   "fieldname": "whatsapp_identity",
+   "fieldtype": "Data",
+   "label": "WhatsApp Identity"
+  },
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "label": "Conversation",
+   "options": "WhatsApp Conversation"
+  },
+  {
+   "fieldname": "section_details",
+   "fieldtype": "Section Break",
+   "label": "AI Execution Details"
+  },
+  {
+   "fieldname": "detected_intent",
+   "fieldtype": "Data",
+   "label": "Detected Intent"
+  },
+  {
+   "fieldname": "intent_confidence",
+   "fieldtype": "Float",
+   "label": "Intent Confidence"
+  },
+  {
+   "fieldname": "failure_reason",
+   "fieldtype": "Select",
+   "label": "Failure Reason",
+   "options": "NO_INTENT\nLOW_INTENT_CONFIDENCE\nNO_TOOL_SELECTED\nTOOL_FAILURE\nNO_KNOWLEDGE\nLOW_KNOWLEDGE_RELEVANCE\nINSUFFICIENT_EVIDENCE\nLLM_FAILURE\nUSER_NEGATIVE_FEEDBACK\nHUMAN_HANDOFF"
+  },
+  {
+   "fieldname": "ai_response",
+   "fieldtype": "Text",
+   "label": "AI Response"
+  },
+  {
+   "fieldname": "section_resolution",
+   "fieldtype": "Section Break",
+   "label": "HR Resolution & Review"
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned HR Reviewer",
+   "options": "User"
+  },
+  {
+   "fieldname": "resolution",
+   "fieldtype": "Text",
+   "label": "Resolution / Answer"
+  },
+  {
+   "fieldname": "review_notes",
+   "fieldtype": "Text",
+   "label": "Review Notes"
+  }
+ ],
+ "icon": "fa fa-exclamation-triangle",
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-31 16:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "AI Knowledge Gap Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "HR Workplace Agent",
+   "write": 1
+  }
+ ],
+ "sort_field": "last_seen",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

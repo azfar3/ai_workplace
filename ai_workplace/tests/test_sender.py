@@ -128,3 +128,29 @@ class TestWhatsAppSender(unittest.TestCase):
             send_text_message("+923001234567", "Hi", settings=settings)
 
         self.assertEqual(captured["to"], "923001234567")
+
+    def test_send_interactive_list(self):
+        from ai_workplace.whatsapp.sender import send_interactive_message
+        settings = _mock_settings()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"messages": [{"id": "wamid.interactive1"}]}
+        mock_response.raise_for_status.return_value = None
+        captured = {}
+
+        def mock_post(url, json=None, headers=None, timeout=None):
+            captured["type"] = json["type"]
+            captured["interactive_type"] = json["interactive"]["type"]
+            return mock_response
+
+        interactive = {
+            "type": "list",
+            "body": {"text": "Choose"},
+            "action": {"button": "Services", "sections": [{"title": "S", "rows": []}]},
+        }
+
+        with patch("requests.post", side_effect=mock_post):
+            result = send_interactive_message("+923001234567", "Choose", interactive, settings=settings)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(captured["type"], "interactive")
+        self.assertEqual(captured["interactive_type"], "list")

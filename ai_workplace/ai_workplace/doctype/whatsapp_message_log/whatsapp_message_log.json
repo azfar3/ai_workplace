@@ -27,6 +27,11 @@
   "employee",
   "col_br_4",
   "identity_status",
+  "section_hr_chat",
+  "hr_live_chat_session",
+  "sender_type",
+  "delivery_status",
+  "media_file",
   "section_error",
   "error"
  ],
@@ -147,6 +152,40 @@
    "options": "\nmatched\nguest\nambiguous\ninactive"
   },
   {
+   "fieldname": "section_hr_chat",
+   "fieldtype": "Section Break",
+   "label": "HR Live Chat"
+  },
+  {
+   "fieldname": "hr_live_chat_session",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "HR Live Chat Session",
+   "options": "HR Live Chat Session"
+  },
+  {
+   "fieldname": "sender_type",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Sender Type",
+   "options": "\nEmployee\nHR Agent\nSystem"
+  },
+  {
+   "fieldname": "delivery_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Delivery Status",
+   "description": "WhatsApp delivery lifecycle for outbound messages (sent → delivered → read).",
+   "options": "\nSent\nDelivered\nRead\nFailed"
+  },
+  {
+   "fieldname": "media_file",
+   "fieldtype": "Attach",
+   "label": "Media File",
+   "description": "Attached image or document sent/received via WhatsApp."
+  },
+  {
    "fieldname": "section_error",
    "fieldtype": "Section Break",
    "label": "Error"
@@ -180,6 +219,18 @@
    "role": "System Manager",
    "share": 0,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 1,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "HR Workplace Agent",
+   "share": 0,
+   "write": 0
   }
  ],
  "search_fields": "meta_message_id,whatsapp_id,trace_id",

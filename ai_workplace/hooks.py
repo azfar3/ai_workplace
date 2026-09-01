@@ -10,7 +10,7 @@ app_license = "mit"
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/ai_workplace/css/ai_workplace.css"
+app_include_css = "/assets/ai_workplace/css/whatsapp_hr_inbox.css"
 # app_include_js = "/assets/ai_workplace/js/ai_workplace.js"
 
 # include js, css files in header of web template
@@ -68,7 +68,14 @@ app_license = "mit"
 # ------------
 
 # before_install = "ai_workplace.install.before_install"
-# after_install = "ai_workplace.install.after_install"
+after_install = "ai_workplace.install.after_install"
+after_migrate = "ai_workplace.install.after_migrate"
+
+scheduler_events = {
+	"daily": [
+		"ai_workplace.ai.indexer.reindex_stale_sources",
+	],
+}
 
 # Uninstallation
 # ------------
@@ -122,21 +129,23 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"System Notifications": {
+		"on_update": "ai_workplace.ai.indexer.reindex_policies_on_notification_update",
+	},
+	"Employee Profile Change Request": {
+		"on_update": "ai_workplace.services.profile_notifications.handle_epcr_update",
+	},
+}
 
-# Scheduled Tasks
-# ---------------
-
-# scheduler_events = {
-# 	"all": [
-# 		"ai_workplace.tasks.all"
-# 	],
+scheduler_events = {
+	"daily": [
+		"ai_workplace.ai.indexer.reindex_stale_sources",
+	],
+	"hourly": [
+		"ai_workplace.tasks.cleanup_temporary_media",
+	],
+}
 # 	"daily": [
 # 		"ai_workplace.tasks.daily"
 # 	],

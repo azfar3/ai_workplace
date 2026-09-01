@@ -1,0 +1,17 @@
+{
+ "autoname": "field:playbook_name",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["playbook_name", "is_active", "day_from", "day_to", "checklist_json", "system_prompt"],
+ "fields": [
+  {"fieldname": "playbook_name", "fieldtype": "Data", "label": "Playbook Name", "reqd": 1, "unique": 1, "in_list_view": 1},
+  {"default": "1", "fieldname": "is_active", "fieldtype": "Check", "label": "Is Active"},
+  {"default": "0", "fieldname": "day_from", "fieldtype": "Int", "label": "Day From (joining)"},
+  {"default": "30", "fieldname": "day_to", "fieldtype": "Int", "label": "Day To (joining)"},
+  {"fieldname": "checklist_json", "fieldtype": "Long Text", "label": "Checklist JSON"},
+  {"fieldname": "system_prompt", "fieldtype": "Long Text", "label": "System Prompt"}
+ ],
+ "module": "Ai Workplace",
+ "name": "AI Onboarding Playbook",
+ "permissions": [{"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1}]
+}

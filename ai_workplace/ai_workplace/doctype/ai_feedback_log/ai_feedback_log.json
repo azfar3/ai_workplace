@@ -1,0 +1,131 @@
+{
+ "actions": [],
+ "creation": "2026-08-31 16:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "feedback_type",
+  "feedback_reason",
+  "query",
+  "response",
+  "section_context",
+  "employee",
+  "user",
+  "whatsapp_identity",
+  "conversation",
+  "section_ai_meta",
+  "intent",
+  "confidence",
+  "knowledge_sources",
+  "tool_sources"
+ ],
+ "fields": [
+  {
+   "fieldname": "feedback_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Feedback Type",
+   "options": "HELPFUL\nNOT_HELPFUL\nHUMAN_HANDOFF",
+   "reqd": 1
+  },
+  {
+   "fieldname": "feedback_reason",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Feedback Reason",
+   "options": "WRONG_INFORMATION\nINCOMPLETE\nDID_NOT_UNDERSTAND\nIRRELEVANT\nOTHER"
+  },
+  {
+   "fieldname": "query",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "User Query",
+   "reqd": 1
+  },
+  {
+   "fieldname": "response",
+   "fieldtype": "Text",
+   "label": "AI Response"
+  },
+  {
+   "fieldname": "section_context",
+   "fieldtype": "Section Break",
+   "label": "User Context"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User"
+  },
+  {
+   "fieldname": "whatsapp_identity",
+   "fieldtype": "Data",
+   "label": "WhatsApp Identity"
+  },
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "label": "Conversation",
+   "options": "WhatsApp Conversation"
+  },
+  {
+   "fieldname": "section_ai_meta",
+   "fieldtype": "Section Break",
+   "label": "AI Metadata"
+  },
+  {
+   "fieldname": "intent",
+   "fieldtype": "Data",
+   "label": "Intent"
+  },
+  {
+   "fieldname": "confidence",
+   "fieldtype": "Float",
+   "label": "Confidence Score"
+  },
+  {
+   "fieldname": "knowledge_sources",
+   "fieldtype": "Small Text",
+   "label": "Knowledge Sources Used"
+  },
+  {
+   "fieldname": "tool_sources",
+   "fieldtype": "Small Text",
+   "label": "Tool Sources Used"
+  }
+ ],
+ "icon": "fa fa-thumbs-up",
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-31 16:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "AI Feedback Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "HR Workplace Agent",
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

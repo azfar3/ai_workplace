@@ -1,0 +1,196 @@
+.ai-workplace-admin {
+	padding: 1rem;
+}
+
+.ai-workplace-admin .awa-page-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	margin-bottom: 1rem;
+}
+
+.ai-workplace-admin .awa-page-header h4 {
+	margin: 0 0 0.25rem;
+	font-weight: 600;
+}
+
+.ai-workplace-admin .awa-badge {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 999px;
+	margin-left: 8px;
+	vertical-align: middle;
+}
+
+.ai-workplace-admin .awa-badge-danger {
+	background: #fce4e4;
+	color: #c62828;
+}
+
+.ai-workplace-admin .awa-badge-pink {
+	background: #fce4ec;
+	color: #ad1457;
+}
+
+.ai-workplace-admin .awa-summary-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px;
+	margin-bottom: 1.25rem;
+}
+
+.ai-workplace-admin .awa-summary-card {
+	border: 1px solid var(--border-color, #d1d8dd);
+	border-radius: 8px;
+	padding: 12px 14px;
+	background: var(--card-bg, #fff);
+}
+
+.ai-workplace-admin .awa-summary-card .label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--text-muted, #6c757d);
+	margin-bottom: 4px;
+}
+
+.ai-workplace-admin .awa-summary-card .value {
+	font-size: 18px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.ai-workplace-admin .awa-summary-card .sub {
+	font-size: 12px;
+	color: var(--text-muted, #6c757d);
+	margin-top: 4px;
+	word-break: break-all;
+}
+
+.ai-workplace-admin .awa-panel {
+	border: 1px solid var(--border-color, #d1d8dd);
+	border-radius: 8px;
+	background: var(--card-bg, #fff);
+	margin-bottom: 1rem;
+}
+
+.ai-workplace-admin .awa-panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--border-color, #d1d8dd);
+}
+
+.ai-workplace-admin .awa-panel-header h5 {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.ai-workplace-admin .awa-table-wrap {
+	overflow-x: auto;
+}
+
+.ai-workplace-admin table.awa-table {
+	width: 100%;
+	margin: 0;
+	font-size: 13px;
+}
+
+.ai-workplace-admin table.awa-table th {
+	background: var(--control-bg, #f7f7f7);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.ai-workplace-admin table.awa-table td,
+.ai-workplace-admin table.awa-table th {
+	padding: 8px 12px;
+	vertical-align: middle;
+}
+
+.ai-workplace-admin .awa-cap-badge {
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 2px 6px;
+	border-radius: 4px;
+	background: #eef2ff;
+	color: #3949ab;
+	margin: 1px 2px;
+}
+
+.ai-workplace-admin .awa-status-ok {
+	color: #2e7d32;
+}
+
+.ai-workplace-admin .awa-status-warn {
+	color: #ef6c00;
+}
+
+.ai-workplace-admin .awa-agent-card {
+	border: 1px solid var(--border-color, #d1d8dd);
+	border-radius: 8px;
+	padding: 14px;
+	margin-bottom: 12px;
+	background: var(--card-bg, #fff);
+}
+
+.ai-workplace-admin .awa-agent-card .title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.ai-workplace-admin .awa-agent-card h5 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.ai-workplace-admin .awa-meta {
+	font-size: 12px;
+	color: var(--text-muted, #6c757d);
+	margin-bottom: 10px;
+}
+
+.ai-workplace-admin .awa-code-block {
+	background: #1e1e1e;
+	color: #d4d4d4;
+	border-radius: 6px;
+	padding: 10px 12px;
+	font-size: 11px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	white-space: pre-wrap;
+	word-break: break-all;
+	margin-top: 8px;
+}
+
+.ai-workplace-admin .awa-form-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+.ai-workplace-admin .awa-form-row label {
+	font-size: 12px;
+	font-weight: 600;
+	margin: 0;
+	min-width: 140px;
+}
+
+.ai-workplace-admin .awa-form-row input[type="text"],
+.ai-workplace-admin .awa-form-row input[type="number"] {
+	max-width: 280px;
+}
+
+.ai-workplace-admin .awa-tabs .nav-link {
+	cursor: pointer;
+}

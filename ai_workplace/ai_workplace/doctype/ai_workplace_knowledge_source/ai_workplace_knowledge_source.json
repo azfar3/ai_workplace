@@ -1,0 +1,76 @@
+{
+ "autoname": "field:source_name",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "source_name",
+  "source_type",
+  "file_attachment",
+  "content",
+  "description",
+  "is_active",
+  "last_indexed",
+  "version_hash"
+ ],
+ "fields": [
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Data",
+   "label": "Source Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "source_type",
+   "fieldtype": "Select",
+   "label": "Source Type",
+   "options": "Policy\nSOP\nPortalHelp\nMenuCatalog\nOnboarding\nProfileGuide",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "file_attachment",
+   "fieldtype": "Attach",
+   "label": "Attach Document (PDF, DOCX, TXT)"
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Long Text",
+   "label": "Content"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "last_indexed",
+   "fieldtype": "Datetime",
+   "label": "Last Indexed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "version_hash",
+   "fieldtype": "Data",
+   "label": "Version Hash",
+   "read_only": 1
+  }
+ ],
+ "module": "Ai Workplace",
+ "name": "AI Workplace Knowledge Source",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  }
+ ]
+}

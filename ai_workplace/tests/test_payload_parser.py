@@ -78,31 +78,47 @@ class TestPayloadParser(unittest.TestCase):
 
     # ── Unsupported message types ─────────────────────────────────────────────
 
-    def test_parse_image_message_returns_unsupported(self):
+    def test_parse_image_message(self):
+        payload = _make_payload(message_type="image")
+        payload["entry"][0]["changes"][0]["value"]["messages"][0]["image"] = {
+            "id": "media-123",
+            "mime_type": "image/jpeg",
+            "caption": "Team photo",
+        }
+        result = parse_webhook_payload(payload)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["message_type"], "image")
+        self.assertEqual(result["media_id"], "media-123")
+        self.assertEqual(result["text"], "Team photo")
+
+    def test_parse_image_message_legacy_unsupported_type(self):
         payload = _make_payload(message_type="image")
         with patch("frappe.logger", return_value=_mock_logger()):
             result = parse_webhook_payload(payload)
-        self.assertIsNotNone(result)
-        self.assertEqual(result["message_type"], "unsupported")
+        self.assertEqual(result["message_type"], "image")
         self.assertEqual(result["raw_type"], "image")
 
-    def test_parse_audio_message_returns_unsupported(self):
+    def test_parse_audio_message(self):
         payload = _make_payload(message_type="audio")
-        with patch("frappe.logger", return_value=_mock_logger()):
-            result = parse_webhook_payload(payload)
-        self.assertEqual(result["message_type"], "unsupported")
+        result = parse_webhook_payload(payload)
+        self.assertEqual(result["message_type"], "audio")
 
-    def test_parse_video_message_returns_unsupported(self):
+    def test_parse_video_message(self):
         payload = _make_payload(message_type="video")
-        with patch("frappe.logger", return_value=_mock_logger()):
-            result = parse_webhook_payload(payload)
-        self.assertEqual(result["message_type"], "unsupported")
+        result = parse_webhook_payload(payload)
+        self.assertEqual(result["message_type"], "video")
 
-    def test_parse_document_message_returns_unsupported(self):
+    def test_parse_document_message(self):
         payload = _make_payload(message_type="document")
-        with patch("frappe.logger", return_value=_mock_logger()):
-            result = parse_webhook_payload(payload)
-        self.assertEqual(result["message_type"], "unsupported")
+        payload["entry"][0]["changes"][0]["value"]["messages"][0]["document"] = {
+            "id": "doc-123",
+            "filename": "report.pdf",
+            "mime_type": "application/pdf",
+        }
+        result = parse_webhook_payload(payload)
+        self.assertEqual(result["message_type"], "document")
+        self.assertEqual(result["media_id"], "doc-123")
+        self.assertEqual(result["media_filename"], "report.pdf")
 
     # ── Status updates ────────────────────────────────────────────────────────
 
@@ -135,6 +151,8 @@ class TestPayloadParser(unittest.TestCase):
         result = parse_webhook_payload(payload)
         self.assertIsNotNone(result)
         self.assertEqual(result["message_type"], "status")
+        self.assertEqual(result["message_id"], "wamid.abc")
+        self.assertEqual(result["delivery_status"], "delivered")
 
     # ── Empty / heartbeat payload ─────────────────────────────────────────────
 
@@ -160,6 +178,64 @@ class TestPayloadParser(unittest.TestCase):
         }
         result = parse_webhook_payload(payload)
         self.assertIsNone(result)
+
+    # ── Interactive replies ───────────────────────────────────────────────────
+
+    def test_parse_button_reply(self):
+        payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "eid",
+                "changes": [{
+                    "value": {
+                        "metadata": {"phone_number_id": "pid"},
+                        "contacts": [{"wa_id": "923001234567"}],
+                        "messages": [{
+                            "from": "923001234567",
+                            "id": "wamid.btn1",
+                            "timestamp": "1700000000",
+                            "type": "interactive",
+                            "interactive": {
+                                "type": "button_reply",
+                                "button_reply": {"id": "lang_en", "title": "English"},
+                            },
+                        }],
+                    },
+                    "field": "messages",
+                }],
+            }],
+        }
+        result = parse_webhook_payload(payload)
+        self.assertEqual(result["message_type"], "interactive")
+        self.assertEqual(result["text"], "lang_en")
+
+    def test_parse_list_reply(self):
+        payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "eid",
+                "changes": [{
+                    "value": {
+                        "metadata": {"phone_number_id": "pid"},
+                        "contacts": [{"wa_id": "923001234567"}],
+                        "messages": [{
+                            "from": "923001234567",
+                            "id": "wamid.list1",
+                            "timestamp": "1700000000",
+                            "type": "interactive",
+                            "interactive": {
+                                "type": "list_reply",
+                                "list_reply": {"id": "svc_hr", "title": "My HR"},
+                            },
+                        }],
+                    },
+                    "field": "messages",
+                }],
+            }],
+        }
+        result = parse_webhook_payload(payload)
+        self.assertEqual(result["message_type"], "interactive")
+        self.assertEqual(result["text"], "svc_hr")
 
     # ── Parse errors ──────────────────────────────────────────────────────────
 

@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "creation": "2026-08-31 16:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "pattern",
+  "normalized_pattern",
+  "intent",
+  "tools",
+  "language",
+  "confidence",
+  "usage_count",
+  "success_count",
+  "failure_count",
+  "approved"
+ ],
+ "fields": [
+  {
+   "fieldname": "pattern",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Pattern Text",
+   "reqd": 1
+  },
+  {
+   "fieldname": "normalized_pattern",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Normalized Pattern"
+  },
+  {
+   "fieldname": "intent",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Mapped Intent",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tools",
+   "fieldtype": "Data",
+   "label": "Mapped Tools (JSON Array)"
+  },
+  {
+   "default": "en",
+   "fieldname": "language",
+   "fieldtype": "Data",
+   "label": "Language"
+  },
+  {
+   "default": "0.95",
+   "fieldname": "confidence",
+   "fieldtype": "Float",
+   "label": "Confidence"
+  },
+  {
+   "default": "1",
+   "fieldname": "usage_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Usage Count"
+  },
+  {
+   "default": "1",
+   "fieldname": "success_count",
+   "fieldtype": "Int",
+   "label": "Success Count"
+  },
+  {
+   "default": "0",
+   "fieldname": "failure_count",
+   "fieldtype": "Int",
+   "label": "Failure Count"
+  },
+  {
+   "default": "1",
+   "fieldname": "approved",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Approved Pattern"
+  }
+ ],
+ "icon": "fa fa-sitemap",
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-31 16:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "AI Intent Pattern",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "HR Workplace Agent",
+   "write": 1
+  }
+ ],
+ "sort_field": "usage_count",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

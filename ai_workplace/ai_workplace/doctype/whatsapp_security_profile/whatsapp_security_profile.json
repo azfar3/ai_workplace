@@ -1,0 +1,161 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:employee",
+ "creation": "2026-08-31 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "user",
+  "section_pin",
+  "pin_is_set",
+  "pin_status",
+  "pin_hash",
+  "section_lockout",
+  "failed_attempts",
+  "locked_until",
+  "security_version",
+  "section_audit",
+  "pin_created_on",
+  "pin_changed_on",
+  "last_successful_verification",
+  "last_failed_verification",
+  "disabled_reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User"
+  },
+  {
+   "fieldname": "section_pin",
+   "fieldtype": "Section Break",
+   "label": "Support PIN"
+  },
+  {
+   "default": "0",
+   "fieldname": "pin_is_set",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "PIN Is Set"
+  },
+  {
+   "default": "Not Set",
+   "fieldname": "pin_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "PIN Status",
+   "options": "Not Set\nActive\nLocked\nDisabled"
+  },
+  {
+   "fieldname": "pin_hash",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "PIN Hash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_lockout",
+   "fieldtype": "Section Break",
+   "label": "Lockout"
+  },
+  {
+   "default": "0",
+   "fieldname": "failed_attempts",
+   "fieldtype": "Int",
+   "label": "Failed Attempts"
+  },
+  {
+   "fieldname": "locked_until",
+   "fieldtype": "Datetime",
+   "label": "Locked Until"
+  },
+  {
+   "default": "1",
+   "fieldname": "security_version",
+   "fieldtype": "Int",
+   "label": "Security Version"
+  },
+  {
+   "fieldname": "section_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "pin_created_on",
+   "fieldtype": "Datetime",
+   "label": "PIN Created On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pin_changed_on",
+   "fieldtype": "Datetime",
+   "label": "PIN Changed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_successful_verification",
+   "fieldtype": "Datetime",
+   "label": "Last Successful Verification",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_failed_verification",
+   "fieldtype": "Datetime",
+   "label": "Last Failed Verification",
+   "read_only": 1
+  },
+  {
+   "fieldname": "disabled_reason",
+   "fieldtype": "Small Text",
+   "label": "Disabled Reason"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-08-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "WhatsApp Security Profile",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "read": 1,
+   "role": "Employee",
+   "write": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

@@ -3,4 +3,10 @@
 # Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
 
 [post_model_sync]
-# Patches added in this section will be executed after doctypes are migrated
+ai_workplace.patches.v1.setup_hr_live_chat
+ai_workplace.patches.v1.seed_hr_working_days
+ai_workplace.patches.v1.set_default_office_timezone
+ai_workplace.patches.v1.set_default_hr_contact_details
+ai_workplace.patches.v1.backfill_delivery_status
+ai_workplace.patches.v1.whatsapp_attendance_custom_fields
+ai_workplace.scripts.seed_whatsapp_attendance
