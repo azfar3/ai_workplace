@@ -24,6 +24,8 @@
   "section_hr_live_chat",
   "hr_live_chat_enabled",
   "hr_live_chat_welcome_message",
+  "hr_contact_phone",
+  "hr_contact_email",
   "auto_close_inactive_hours",
   "section_hr_chat_agents",
   "hr_chat_agents",
@@ -140,6 +142,18 @@
    "fieldname": "hr_live_chat_welcome_message",
    "fieldtype": "Small Text",
    "label": "Live Chat Welcome Message"
+  },
+  {
+   "fieldname": "hr_contact_phone",
+   "fieldtype": "Data",
+   "label": "HR Contact Phone",
+   "default": "051 8444 777"
+  },
+  {
+   "fieldname": "hr_contact_email",
+   "fieldtype": "Data",
+   "label": "HR Contact Email",
+   "default": "hr@MicroMerger.com"
   },
   {
    "default": "24",

@@ -75,22 +75,22 @@ def _legacy_day_schedule(settings: Any, weekday_abbr: str) -> Optional[dict[str,
     """Fallback for older settings that used comma-separated day abbreviations."""
     allowed_days = [
         d.strip()
-        for d in (settings.get("hr_office_days") or "Mon,Tue,Wed,Thu,Fri").split(",")
+        for d in (settings.get("office_days") or "Mon,Tue,Wed,Thu,Fri").split(",")
         if d.strip()
     ]
     if allowed_days and weekday_abbr not in allowed_days:
         return {"is_working_day": False, "start_time": None, "end_time": None}
     return {
         "is_working_day": True,
-        "start_time": settings.get("hr_office_start_time"),
-        "end_time": settings.get("hr_office_end_time"),
+        "start_time": settings.get("office_start_time"),
+        "end_time": settings.get("office_end_time"),
     }
 
 
 def get_office_timezone() -> ZoneInfo:
     """Return configured office timezone (default Asia/Karachi / PKT)."""
     settings = _get_settings()
-    tz_name = settings.get("hr_office_timezone") or _DEFAULT_TIMEZONE
+    tz_name = settings.get("office_timezone") or _DEFAULT_TIMEZONE
     try:
         return ZoneInfo(tz_name)
     except Exception:
@@ -320,7 +320,7 @@ def build_closed_hours_message(
 ) -> str:
     """Message when HR support is CLOSED (off-hours, holiday, or non-working day)."""
     settings = _get_settings()
-    configured = (settings.get("hr_off_hours_message") or "").strip()
+    configured = (settings.get("closed_office_hours_message") or "").strip()
     if configured:
         return configured
 
