@@ -6,7 +6,7 @@ from typing import Any
 import frappe
 from ai_workplace.ai.router import complete, is_ai_chat_enabled
 from ai_workplace.ai.tools import run_tool
-from ai_workplace.ai.agent import IntentAgent
+
 from ai_workplace.context.schema import AIRequestContext
 from ai_workplace.conversation.manager import update_conversation
 from ai_workplace.conversation.state import ConversationState
@@ -72,63 +72,91 @@ def handle_hr_agent_message(conv: Any, text: str, context: dict[str, Any]) -> Ou
     # 1. Build Safe AI Request Context
     ai_context = AIRequestContext.from_erp_context(context)
     
-    # 2. Determine Intent & Tool via IntentAgent
-    agent = IntentAgent()
-    trace_id = getattr(conv, "trace_id", "") or ""
-    intent_resp = agent.execute(clean, ai_context, trace_id=trace_id)
+    # 2. Extract allowed tools based on context
+    allowed_tools = []
+    from ai_workplace.ai.intent_catalog import INTENT_CATALOG
+    for intent in (ai_context.allowed_intents or []):
+        if intent in INTENT_CATALOG:
+            t = INTENT_CATALOG[intent].get("tool")
+            if t and t != "clarification":
+                allowed_tools.append(t)
     
-    # 3. Log Intent Decision
-    from ai_workplace.conversation.orchestrator import log_ai_action
-    log_ai_action(
-        trace_id=trace_id,
-        conversation_name=conv.name,
-        whatsapp_identity=conv.whatsapp_identity,
-        intent=intent_resp.intent,
-        action="agent_intent_classification",
-        result=intent_resp.json(),
-        status="Success"
-    )
+    from ai_workplace.ai.tools import get_openai_tools_schema
+    tools_schema = get_openai_tools_schema(allowed_tools)
 
-    if not intent_resp.requires_tool:
-        # Agent provided a direct conversational response
-        return _build_feedback_message(intent_resp.direct_response or "I didn't understand that.", context)
-
-    # 4. Execute the Single Tool Identified by IntentAgent
-    tool_name = intent_resp.tool_name
-    if not tool_name:
-        return _build_feedback_message("I understood your request but no tool was provided to resolve it.", context)
-
-    tool_args = intent_resp.tool_arguments or {}
-    
-    # RAG search uses 'query' argument, IntentAgent might supply it or we fallback to user text
-    if tool_name == "search_knowledge" and "query" not in tool_args:
-        tool_args["query"] = clean
-        
-    raw_result = run_tool(tool_name, context, **tool_args)
-    
-    # 5. Synthesize Final Response using a generic completion prompt
-    synthesis_prompt = f"""
-You are an HR Assistant. 
-The user asked: "{clean}"
-The backend system returned this data for the intent '{intent_resp.intent}':
-{raw_result}
-
-Provide a concise, helpful summary in {ai_context.language}. 
-If the data contains an error or empty result, politely inform the user.
+    # 3. Setup ReAct Loop Prompts
+    system_prompt = f"""You are a highly capable AI HR Assistant.
+Your goal is to answer the user's questions or execute HR processes by reasoning and calling the appropriate tools.
+- ONLY answer questions using data from your tools. Do not invent HR facts.
+- The user is: {ai_context.employee_name or 'Guest'}.
+- Always reply in {ai_context.language}.
 """
-    synthesis_result = complete(
-        messages=[{"role": "system", "content": synthesis_prompt}],
-        channel="WhatsApp",
-        employee=context.get("employee")
-    )
-    
-    final_text = synthesis_result.get("text") or "I encountered an issue processing the data."
-    
-    # Redact sensitive text (like PII) using the evidence gateway
-    from ai_workplace.ai.evidence import redact_sensitive_text
-    final_text = redact_sensitive_text(final_text)
-    
-    return _build_feedback_message(final_text, context)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": clean}
+    ]
+
+    # 4. Agentic Planner Loop (Max 5 Steps)
+    MAX_STEPS = 5
+    for step in range(MAX_STEPS):
+        res = complete(
+            messages=messages, 
+            tools=tools_schema if tools_schema else None, 
+            channel="WhatsApp", 
+            employee=context.get("employee")
+        )
+        
+        if not res.get("success"):
+            return _build_feedback_message("I am experiencing technical difficulties.", context)
+        
+        # Append assistant message
+        msg_obj = res.get("raw_message", {})
+        if msg_obj:
+            messages.append(msg_obj)
+        else:
+            messages.append({"role": "assistant", "content": res.get("text") or ""})
+            
+        tool_calls = res.get("tool_calls", [])
+        if not tool_calls:
+            # Planner has finished reasoning and provided a direct response
+            final_text = res.get("text") or "I couldn't find an answer."
+            
+            # 5. Redact sensitive text (like PII) using the evidence gateway
+            from ai_workplace.ai.evidence import redact_sensitive_text
+            final_text = redact_sensitive_text(final_text)
+            
+            # Log final response
+            trace_id = getattr(conv, "trace_id", "") or ""
+            from ai_workplace.conversation.orchestrator import log_ai_action
+            log_ai_action(
+                trace_id=trace_id,
+                conversation_name=conv.name,
+                whatsapp_identity=conv.whatsapp_identity,
+                intent="planner_synthesis",
+                action="agent_planner_loop",
+                result={"steps": step + 1, "final_text": final_text},
+                status="Success"
+            )
+            return _build_feedback_message(final_text, context)
+            
+        # Execute tools observed by the planner
+        import json
+        for tc in tool_calls:
+            t_name = tc.get("function", {}).get("name")
+            try:
+                t_args = json.loads(tc.get("function", {}).get("arguments", "{}"))
+            except Exception:
+                t_args = {}
+                
+            raw_res = run_tool(t_name, context, **t_args)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.get("id"),
+                "name": t_name,
+                "content": json.dumps(raw_res) if isinstance(raw_res, dict) else str(raw_res)
+            })
+
+    return _build_feedback_message("I had to stop because the task took too many steps. Please try asking more specifically.", context)
 
 def _build_feedback_message(text: str, context: dict) -> OutboundMessage:
     return build_button_message(
