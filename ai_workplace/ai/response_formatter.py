@@ -10,54 +10,57 @@ class ResponseFormatter:
         if not data:
             return "📅 I couldn't find an active leave allocation for your employee record for the current leave period.\n\nThis may mean your leave allocation has not yet been created.\n\nIf you believe this is incorrect, I can help you contact HR."
             
+        items = []
+        if isinstance(data, dict):
+            items = data.get("leave_balances", [])
+            if not items and "leave_type" in data:
+                items = [data]
+        elif isinstance(data, list):
+            items = data
+
+        if not items:
+            return "📅 You currently have no active leave allocations recorded for this leave period."
+
         res = "📅 *Your Leave Balance Summary*\n\n"
-        if isinstance(data, list):
-            for item in data:
+        for item in items:
+            if isinstance(item, dict):
                 ltype = item.get("leave_type", "Leave")
-                rem = item.get("remaining", "0")
-                alloc = item.get("allocated", "0")
-                taken = item.get("taken", "0")
+                rem = item.get("remaining_leaves", item.get("remaining", "0"))
+                alloc = item.get("total_allocated", item.get("allocated", "0"))
+                taken = item.get("leaves_taken", item.get("taken", "0"))
                 res += f"• *{ltype}*: {rem} days remaining (Allocated: {alloc}, Used: {taken})\n"
-        elif isinstance(data, dict):
-            for leave_type, val in data.items():
-                if isinstance(val, dict):
-                    rem = val.get("remaining", val.get("unused_leaves", 0))
-                    res += f"• *{leave_type}*: {rem} days remaining\n"
-                else:
-                    res += f"• *{leave_type}*: {val} days\n"
         return res.strip()
         
     @staticmethod
     def format_attendance_summary(data: dict) -> str:
-        if not data:
+        if not data or not isinstance(data, dict):
             return "🕒 I couldn't find any attendance records for today."
             
         res = "🕒 *Attendance Summary*\n\n"
-        if isinstance(data, dict):
-            if "status" in data:
-                res += f"Today's Status: {data.get('status')}\n"
-            if "in_time" in data:
-                res += f"Today's Check-in: {data.get('in_time')}\n"
-            if "out_time" in data:
-                res += f"Today's Check-out: {data.get('out_time')}\n"
-            if "working_hours" in data and data.get("working_hours") != "0.00":
-                res += f"Working Hours: {data.get('working_hours')} hrs\n"
-                
-            if "month" in data and isinstance(data["month"], dict):
-                res += f"\nPresent this month: {data['month'].get('present', 0)}\n"
-                res += f"Absent this month: {data['month'].get('absent', 0)}\n"
+        status = data.get("status_today", data.get("status"))
+        if status and status != "error":
+            res += f"Today's Status: *{status}*\n"
+            
+        in_time = data.get("in_time")
+        out_time = data.get("out_time")
+        res += f"Today's Check-in: {in_time if in_time else 'Not checked in'}\n"
+        res += f"Today's Check-out: {out_time if out_time else 'Not checked out'}\n"
+        
+        hours = data.get("working_hours")
+        if hours and str(hours) != "0.00":
+            res += f"Working Hours: {hours} hrs\n"
             
         return res.strip()
         
     @staticmethod
     def format_profile_gaps(data: dict) -> str:
-        if not data:
+        if not data or not isinstance(data, dict):
             return "👤 Your profile completeness could not be determined."
             
         score = data.get("completeness_score", data.get("score", 100))
         res = f"👤 *Profile Completeness: {score}%*\n\n"
         
-        gaps = data.get("all_gaps", data.get("critical_gaps", data.get("missing_fields", [])))
+        gaps = data.get("missing_fields", data.get("all_gaps", data.get("critical_gaps", [])))
         if gaps:
             res += "The following profile updates are recommended:\n"
             for gap in gaps:
@@ -87,7 +90,6 @@ class ResponseFormatter:
 
     @staticmethod
     def format_office_timings(data: dict) -> str:
-        # Default placeholder since office timings might not be explicitly queried yet
         return "🏢 *Office Timings*\n\nMonday to Friday: 9:00 AM - 5:00 PM\nSaturday & Sunday: Closed\n\nFor most accurate office hours, please check MicroMerger's employee handbook or reach out to the HR team directly."
 
     @staticmethod
@@ -120,13 +122,13 @@ class ResponseFormatter:
 
     @staticmethod
     def format_designation(data: dict) -> str:
-        if not data or not data.get("designation"):
+        if not data or not isinstance(data, dict) or not data.get("designation"):
             return "👤 I couldn't find designation information for your profile."
         return f"👔 Your official designation is *{data.get('designation')}*."
 
     @staticmethod
     def format_department(data: dict) -> str:
-        if not data or not data.get("department"):
+        if not data or not isinstance(data, dict) or not data.get("department"):
             return "🏢 I couldn't find department information for your profile."
         return f"🏢 You belong to the *{data.get('department')}* department."
 
@@ -149,7 +151,11 @@ class ResponseFormatter:
         return res.strip()
 
     @staticmethod
-    def format_response(intent: str, data: Any) -> str:
+    def format_response(intent: str, raw_data: Any) -> str:
+        data = raw_data
+        if isinstance(data, dict) and "data" in data and "tool" in data:
+            data = data["data"]
+
         if intent == "leave_balance":
             return ResponseFormatter.format_leave_balance(data)
         elif intent == "today_attendance":
@@ -178,4 +184,3 @@ class ResponseFormatter:
             return "📋 *MicroMerger Staff Services*\n\nPlease select an option from the menu below or tap *View Services*."
         else:
             return str(data)
-

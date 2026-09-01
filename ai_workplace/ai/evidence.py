@@ -62,45 +62,64 @@ def sanitize_tool_evidence(tool_name: str, raw_result: Any, context: dict[str, A
 
 def _minimize_leave_balance(data: Any) -> dict[str, Any]:
     """Minimizes leave allocation dict to leave types and remaining days only."""
-    if not isinstance(data, dict):
+    if not data:
         return {"leave_balances": []}
     
     minimized = []
-    for leave_type, stats in data.items():
-        if isinstance(stats, dict):
-            minimized.append({
-                "leave_type": leave_type,
-                "remaining_leaves": stats.get("remaining_leaves", 0.0),
-                "total_allocated": stats.get("total_leaves", 0.0),
-                "leaves_taken": stats.get("leaves_taken", 0.0),
-            })
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict):
+                minimized.append({
+                    "leave_type": item.get("leave_type", "Leave"),
+                    "remaining_leaves": item.get("remaining", item.get("remaining_leaves", 0.0)),
+                    "total_allocated": item.get("allocated", item.get("total_leaves", 0.0)),
+                    "leaves_taken": item.get("taken", item.get("leaves_taken", 0.0)),
+                })
+    elif isinstance(data, dict):
+        for leave_type, stats in data.items():
+            if isinstance(stats, dict):
+                minimized.append({
+                    "leave_type": leave_type,
+                    "remaining_leaves": stats.get("remaining_leaves", stats.get("remaining", 0.0)),
+                    "total_allocated": stats.get("total_leaves", stats.get("allocated", 0.0)),
+                    "leaves_taken": stats.get("leaves_taken", stats.get("taken", 0.0)),
+                })
     return {"leave_balances": minimized}
 
 
 def _minimize_attendance_summary(data: Any) -> dict[str, Any]:
     """Minimizes attendance snapshot to present/absent/late counts."""
     if not isinstance(data, dict):
-        return {"attendance": {}}
+        return {"status_today": "Not Checked In", "in_time": None, "out_time": None}
     
     return {
-        "status_today": data.get("status_today", "Not Checked In"),
+        "status_today": data.get("status_today", data.get("status", "Not Checked In")),
         "in_time": data.get("in_time"),
         "out_time": data.get("out_time"),
-        "days_present_this_month": data.get("days_present", 0),
-        "days_absent_this_month": data.get("days_absent", 0),
-        "late_entries": data.get("late_entries", 0),
+        "working_hours": data.get("working_hours", "0.00"),
+        "days_present_this_month": data.get("days_present", data.get("present", 0)),
+        "days_absent_this_month": data.get("days_absent", data.get("absent", 0)),
+        "late_entries": data.get("late_entries", data.get("late", 0)),
     }
 
 
 def _minimize_profile_gaps(data: Any) -> dict[str, Any]:
     """Returns completeness score, employment type, designation, department, and list of missing field labels."""
     if not isinstance(data, dict):
-        return {"missing_fields": []}
+        return {"completeness_score": 100, "missing_fields": [], "status": "Complete"}
     
+    gap_objs = data.get("all_gaps", data.get("critical_gaps", data.get("missing_fields", [])))
+    labels = []
+    for g in gap_objs:
+        if isinstance(g, dict):
+            labels.append(g.get("label", g.get("key", str(g))))
+        else:
+            labels.append(str(g))
+
     res = {
         "completeness_score": data.get("completeness_score", 100),
-        "missing_fields": data.get("missing_fields", []),
-        "status": data.get("status", "Complete"),
+        "missing_fields": labels,
+        "status": data.get("status", "Incomplete" if labels else "Complete"),
     }
     for field in ("employment_type", "designation", "department", "employee_name"):
         if data.get(field):
