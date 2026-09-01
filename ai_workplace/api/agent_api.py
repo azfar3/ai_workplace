@@ -65,8 +65,8 @@ def _check_rate_limit(agent_slug: str, limit: int) -> None:
     frappe.cache().set_value(cache_key, count + 1, expires_in_sec=60)
 
 
-@frappe.whitelist(allow_guest=True)
-def chat(agent_slug: str, message: str, employee: str = "", context_json: str = "") -> dict:
+@frappe.whitelist(allow_guest=False)
+def chat(agent_slug: str, message: str, context_json: str = "") -> dict:
     """
     External chat endpoint for shared agents.
 
@@ -82,12 +82,29 @@ def chat(agent_slug: str, message: str, employee: str = "", context_json: str = 
     if not clean:
         frappe.throw("message is required", frappe.ValidationError)
 
-    context = {"employee": employee or ""}
+    user = frappe.session.user
+    employee_id = frappe.db.get_value("Employee", {"user_id": user, "status": "Active"}, "name")
+    
+    identity_dict = {
+        "status": "matched" if employee_id else "guest",
+        "user": user,
+        "employee": employee_id,
+        "full_name": frappe.db.get_value("User", user, "full_name") or user,
+        "whatsapp_identity": None,
+        "normalized_phone": None
+    }
+    from ai_workplace.context.resolver import get_user_context
+    erp_context = get_user_context(identity_dict)
+
+    # Allow caller to override only non-sensitive metadata
+    safe_keys = {"language", "channel", "timezone"}
     if context_json:
         import json
-
         try:
-            context.update(json.loads(context_json))
+            supplied_ctx = json.loads(context_json)
+            for k in safe_keys:
+                if k in supplied_ctx:
+                    erp_context[k] = supplied_ctx[k]
         except Exception:
             pass
 
@@ -96,9 +113,10 @@ def chat(agent_slug: str, message: str, employee: str = "", context_json: str = 
     if agent.get("default_model"):
         model_slug = frappe.db.get_value("AI Workplace Model", agent.default_model, "model_slug") or ""
 
+    employee = erp_context.get("employee", "")
     tool_context = ""
     if employee:
-        tool_context = f"\nProfile: {run_tool('get_profile_gaps', context)}"
+        tool_context = f"\nProfile: {run_tool('get_profile_gaps', erp_context)}"
 
     result = complete(
         f"User: {clean}\n{tool_context}",

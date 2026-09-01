@@ -50,8 +50,25 @@ def get_office_timings() -> dict[str, Any]:
         "saturday_sunday": "Closed"
     }
 
-def create_leave_application(employee: str, from_date: str, to_date: str, leave_type: str, reason: str) -> dict[str, Any]:
-    return {"status": "pending_confirmation", "message": "Draft created, awaiting user confirmation"}
+def create_leave_application(employee: str, from_date: str, to_date: str, leave_type: str, reason: str, context: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    from ai_workplace.services.leave_apply import _create_leave_application
+    draft = {
+        "employee": employee,
+        "from_date": from_date,
+        "to_date": to_date,
+        "leave_type": leave_type,
+        "description": reason,
+        "half_day": 0
+    }
+    
+    # We pass a minimal context if none is provided, although run_tool should pass context soon.
+    ctx = context or {"employee": employee}
+    
+    try:
+        doc_name = _create_leave_application(draft, ctx)
+        return {"status": "success", "message": f"Leave application {doc_name} submitted successfully."}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
 
 
 def get_profile_gaps(employee: str) -> dict[str, Any]:
@@ -179,14 +196,22 @@ def run_tool(tool_name: str, context: dict[str, Any], **kwargs) -> Any:
     """
     from ai_workplace.ai.evidence import sanitize_tool_evidence
 
+    # 0. Tool Policy Engine - Phase A
+    # Check if tool exists
     if tool_name not in TOOL_REGISTRY:
         return sanitize_tool_evidence(tool_name, {"error": f"Unknown tool: {tool_name}"}, context)
 
     meta = TOOL_REGISTRY[tool_name]
-    
-    # 1. Strict Employee Identity Overriding — LLM arguments MUST NOT control identity!
     auth_employee = context.get("employee") or ""
-    
+
+    # Check Required Permissions
+    if "Employee" in meta.get("required_permissions", []) and not auth_employee:
+        return sanitize_tool_evidence(tool_name, {"error": "Unauthorized: Employee context required to use this tool."}, context)
+
+    # Check Pin Required (Confirmation)
+    if meta.get("pin_required"):
+        return sanitize_tool_evidence(tool_name, {"status": "pending_confirmation", "message": f"Draft created for {tool_name}. Awaiting user confirmation."}, context)
+
     # Remove any identity arguments passed by LLM to prevent identity spoofing
     clean_kwargs = {k: v for k, v in kwargs.items() if k not in ("employee", "user", "erp_user")}
 
@@ -212,6 +237,8 @@ def run_tool(tool_name: str, context: dict[str, Any], **kwargs) -> Any:
                 limit=clean_kwargs.get("limit", 5),
                 context=context,
             )
+        elif tool_name == "create_leave_application":
+            raw = meta["handler"](employee=auth_employee, context=context, **clean_kwargs)
         else:
             raw = meta["handler"](**clean_kwargs)
     except Exception as exc:
