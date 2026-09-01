@@ -7,31 +7,31 @@ from ai_workplace.services.response_helpers import wrap_with_menu_again
 
 class ProfileHandler:
     def can_handle(self, intent: str, state: str) -> bool:
-        return intent in ("prof_my_requests", "update_profile", "my_profile")
+        clean = intent.replace("svc_", "")
+        return clean in ("prof_my_requests", "update_profile", "my_profile", "prof_view", "prof_update", "my_requests") or clean.startswith("prof_")
 
     def handle(self, conv: Any, intent: str, clean_text: str, context: Dict[str, Any], trace_id: str) -> Optional[OutboundMessage]:
         outbound = None
         action = intent
+        clean_intent = intent.replace("svc_", "")
         
-        if intent == "my_profile":
-            from ai_workplace.services.profile import build_profile_summary_response
+        if clean_intent in ("my_profile", "prof_view", "prof_summary"):
+            from ai_workplace.services.hr_profile import build_my_profile_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_profile_summary_response(context)
+            resp_text = build_my_profile_response(context)
             outbound = wrap_with_menu_again(resp_text, context)
             action = "view_profile_summary"
             
-        elif intent == "update_profile":
-            from ai_workplace.services.profile import build_update_profile_response
+        elif clean_intent in ("update_profile", "prof_update", "profile_gaps"):
+            from ai_workplace.services.profile_completion import build_profile_completion_hub
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_update_profile_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = build_profile_completion_hub(context)
             action = "view_update_profile"
             
-        elif intent == "prof_my_requests":
-            from ai_workplace.services.profile import build_profile_requests_response
+        elif clean_intent in ("prof_my_requests", "my_requests"):
+            from ai_workplace.services.profile_completion import build_my_requests_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_profile_requests_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = build_my_requests_response(context)
             action = "view_profile_requests"
 
         if outbound:
@@ -50,3 +50,4 @@ class ProfileHandler:
             return outbound
             
         return None
+

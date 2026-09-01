@@ -96,13 +96,9 @@ def get_attendance_summary(employee: str) -> dict[str, Any]:
 
 
 def get_leave_balance(employee: str) -> list[dict[str, Any]]:
-    try:
-        from hrms.hr.doctype.leave_application.leave_application import get_leave_details
-        from frappe.utils import today
+    from ai_workplace.services.attendance_leave import get_leave_balance_data
+    return get_leave_balance_data(employee)
 
-        return get_leave_details(employee, date=today()).get("leave_allocation", {})
-    except Exception:
-        return {}
 
 
 def get_published_policies(employee: str = "") -> list[dict[str, Any]]:

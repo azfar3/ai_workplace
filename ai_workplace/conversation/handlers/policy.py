@@ -7,31 +7,43 @@ from ai_workplace.services.response_helpers import wrap_with_menu_again
 
 class PolicyHandler:
     def can_handle(self, intent: str, state: str) -> bool:
-        return intent in ("pol_view_policies", "pol_ai_assistant", "doc_contract")
+        clean = intent.replace("svc_", "")
+        return clean in ("pol_view_policies", "pol_ai_assistant", "doc_contract", "pol_policy_hub", "policies_help") or clean.startswith("pol_")
 
     def handle(self, conv: Any, intent: str, clean_text: str, context: Dict[str, Any], trace_id: str) -> Optional[OutboundMessage]:
         outbound = None
         action = intent
+        clean_intent = intent.replace("svc_", "")
         
-        if intent == "pol_view_policies":
-            from ai_workplace.services.policy import build_published_policies_response
+        if clean_intent in ("pol_view_policies", "pol_policy_hub"):
+            from ai_workplace.services.policies import build_policies_list_message
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_published_policies_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = build_policies_list_message(context)
             action = "view_published_policies"
             
-        elif intent == "pol_ai_assistant":
-            # This is the AI Chat intent. The orchestrator transitions state.
-            from ai_workplace.services.hr_agent import build_agent_welcome_message
-            update_conversation(conv, state=ConversationState.PROCESSING, current_intent="hr_ai_agent", active_service=None)
-            outbound = build_agent_welcome_message(context)
+        elif clean_intent in ("pol_ai_assistant", "policies_help"):
+            from ai_workplace.whatsapp.interactive import build_show_menu_again_button
+            lang = context.get("preferred_language", "English")
+            if lang == "Urdu":
+                msg = "💬 *پالیسی اور HR اسسٹنٹ*\n\nآپ کسی بھی وقت اپنا سوال یہاں لکھیے (مثلاً: رخصت کی پالیسی کیا ہے؟، پروProbation کا دورانیہ کتنا ہے؟)۔"
+            elif lang == "Roman Urdu":
+                msg = "💬 *Policy & HR Assistant*\n\nAap kisi bhi waqt apna sawal yahan likhein (maslan: leave policy kya hai?, probation period kitna hai?)."
+            else:
+                msg = "💬 *Policy & HR Assistant*\n\nYou can ask any HR or policy question directly here (e.g. *'What is the leave policy?'*, *'How long is probation?'*)."
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            outbound = wrap_with_menu_again(msg, context)
             action = "start_hr_ai_agent"
             
-        elif intent == "doc_contract":
-            from ai_workplace.services.policy import build_contract_response
+        elif clean_intent in ("doc_contract", "contract"):
+            from ai_workplace.services.employee_letters import generate_experience_letter_pdf, build_letter_download_outbound, build_letter_download_error
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_contract_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            try:
+                pdf_bytes, filename = generate_experience_letter_pdf(context.get("employee", ""))
+                caption = "📄 Experience / Employment Document"
+                outbound = build_letter_download_outbound(context, pdf_bytes, filename, caption)
+            except Exception:
+                err = build_letter_download_error(context, "Experience Letter")
+                outbound = wrap_with_menu_again(err, context)
             action = "view_contract"
 
         if outbound:
@@ -50,3 +62,4 @@ class PolicyHandler:
             return outbound
             
         return None
+

@@ -7,42 +7,47 @@ from ai_workplace.services.response_helpers import wrap_with_menu_again
 
 class AttendanceHandler:
     def can_handle(self, intent: str, state: str) -> bool:
-        return intent.startswith("att_")
+        return intent.startswith("att_") or intent.startswith("svc_att_")
 
     def handle(self, conv: Any, intent: str, clean_text: str, context: Dict[str, Any], trace_id: str) -> Optional[OutboundMessage]:
         outbound = None
         action = intent
+        clean_intent = intent.replace("svc_", "")
         
-        if intent == "att_today":
-            from ai_workplace.services.attendance import build_today_attendance_response
+        if clean_intent in ("att_checkin", "att_checkout", "att_request_exception", "att_retry_location"):
+            from ai_workplace.services.attendance_location import handle_attendance_menu_action
+            return handle_attendance_menu_action(conv, context, clean_intent)
+            
+        elif clean_intent == "att_today":
+            from ai_workplace.services.attendance_leave import build_today_attendance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_today_attendance_response(context)
             outbound = wrap_with_menu_again(resp_text, context)
             action = "view_today_attendance"
             
-        elif intent == "att_monthly":
-            from ai_workplace.services.attendance import build_monthly_attendance_summary_response
+        elif clean_intent in ("att_monthly", "att_summary"):
+            from ai_workplace.services.attendance_leave import build_monthly_attendance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_monthly_attendance_summary_response(context)
+            resp_text = build_monthly_attendance_response(context)
             outbound = wrap_with_menu_again(resp_text, context)
             action = "view_monthly_attendance"
             
-        elif intent == "att_monthly_last7":
-            from ai_workplace.services.attendance import build_monthly_last7_attendance_response
+        elif clean_intent == "att_monthly_last7":
+            from ai_workplace.services.attendance_leave import build_last7_attendance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_monthly_last7_attendance_response(context)
+            resp_text = build_last7_attendance_response(context)
             outbound = wrap_with_menu_again(resp_text, context)
             action = "view_last_7_days_attendance"
             
-        elif intent == "att_monthly_download":
-            from ai_workplace.services.attendance import build_monthly_attendance_download_response
+        elif clean_intent == "att_monthly_download":
+            from ai_workplace.services.attendance_leave import build_monthly_download_caption
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_monthly_attendance_download_response(context)
+            resp_text = build_monthly_download_caption(context)
             outbound = wrap_with_menu_again(resp_text, context)
             action = "download_monthly_attendance"
             
-        elif intent == "att_missing":
-            from ai_workplace.services.attendance import build_missing_attendance_response
+        elif clean_intent == "att_missing":
+            from ai_workplace.services.attendance_leave import build_missing_attendance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_missing_attendance_response(context)
             outbound = wrap_with_menu_again(resp_text, context)
@@ -64,3 +69,4 @@ class AttendanceHandler:
             return outbound
             
         return None
+

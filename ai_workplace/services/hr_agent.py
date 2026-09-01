@@ -167,3 +167,13 @@ def _build_feedback_message(text: str, context: dict) -> OutboundMessage:
             {"id": "svc_main_menu", "title": "Main Menu"},
         ],
     )
+
+def _mask_sensitive(text: str) -> str:
+    import re
+    if not text:
+        return ""
+    # Mask 13-digit CNIC numbers
+    text = re.sub(r"\b\d{13}\b", "*****", text)
+    text = re.sub(r"\b\d{5}-\d{7}-\d{1}\b", "*****", text)
+    return text
+

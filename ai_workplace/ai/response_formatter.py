@@ -6,13 +6,25 @@ class ResponseFormatter:
     """
     
     @staticmethod
-    def format_leave_balance(data: dict) -> str:
+    def format_leave_balance(data: Any) -> str:
         if not data:
             return "📅 I couldn't find an active leave allocation for your employee record for the current leave period.\n\nThis may mean your leave allocation has not yet been created.\n\nIf you believe this is incorrect, I can help you contact HR."
             
-        res = "📅 *Your Leave Balance*\n\n"
-        for leave_type, val in data.items():
-            res += f"• {leave_type}: {val} days\n"
+        res = "📅 *Your Leave Balance Summary*\n\n"
+        if isinstance(data, list):
+            for item in data:
+                ltype = item.get("leave_type", "Leave")
+                rem = item.get("remaining", "0")
+                alloc = item.get("allocated", "0")
+                taken = item.get("taken", "0")
+                res += f"• *{ltype}*: {rem} days remaining (Allocated: {alloc}, Used: {taken})\n"
+        elif isinstance(data, dict):
+            for leave_type, val in data.items():
+                if isinstance(val, dict):
+                    rem = val.get("remaining", val.get("unused_leaves", 0))
+                    res += f"• *{leave_type}*: {rem} days remaining\n"
+                else:
+                    res += f"• *{leave_type}*: {val} days\n"
         return res.strip()
         
     @staticmethod
@@ -21,13 +33,19 @@ class ResponseFormatter:
             return "🕒 I couldn't find any attendance records for today."
             
         res = "🕒 *Attendance Summary*\n\n"
-        if "today" in data:
-            res += f"Today's Check-in: {data['today'].get('in_time', 'N/A')}\n"
-            res += f"Today's Check-out: {data['today'].get('out_time', 'N/A')}\n\n"
-            
-        if "month" in data:
-            res += f"Present this month: {data['month'].get('present', 0)}\n"
-            res += f"Absent this month: {data['month'].get('absent', 0)}\n"
+        if isinstance(data, dict):
+            if "status" in data:
+                res += f"Today's Status: {data.get('status')}\n"
+            if "in_time" in data:
+                res += f"Today's Check-in: {data.get('in_time')}\n"
+            if "out_time" in data:
+                res += f"Today's Check-out: {data.get('out_time')}\n"
+            if "working_hours" in data and data.get("working_hours") != "0.00":
+                res += f"Working Hours: {data.get('working_hours')} hrs\n"
+                
+            if "month" in data and isinstance(data["month"], dict):
+                res += f"\nPresent this month: {data['month'].get('present', 0)}\n"
+                res += f"Absent this month: {data['month'].get('absent', 0)}\n"
             
         return res.strip()
         
@@ -36,15 +54,17 @@ class ResponseFormatter:
         if not data:
             return "👤 Your profile completeness could not be determined."
             
-        res = f"👤 *Profile Completeness: {data.get('score', 0)}%*\n\n"
+        score = data.get("completeness_score", data.get("score", 100))
+        res = f"👤 *Profile Completeness: {score}%*\n\n"
         
-        gaps = data.get("missing_fields", [])
+        gaps = data.get("all_gaps", data.get("critical_gaps", data.get("missing_fields", [])))
         if gaps:
-            res += "The following fields are missing:\n"
+            res += "The following profile updates are recommended:\n"
             for gap in gaps:
-                res += f"• {gap}\n"
+                label = gap.get("label", str(gap)) if isinstance(gap, dict) else str(gap)
+                res += f"• {label}\n"
         else:
-            res += "Your profile is 100% complete!"
+            res += "Your profile is 100% complete! 🎉"
             
         return res.strip()
 

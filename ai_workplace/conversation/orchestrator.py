@@ -206,9 +206,8 @@ def _start_workflow_from_intent(
             state=ConversationState.PROCESSING,
             current_intent="att_exception",
         )
-        from ai_workplace.services.attendance_location import handle_attendance_flow_message
-        # Start the exception flow with a fresh trigger
-        return handle_attendance_flow_message(conv, "att_exception_start", context)
+        from ai_workplace.services.attendance_location import handle_attendance_menu_action
+        return handle_attendance_menu_action(conv, context, "att_request_exception")
 
     if workflow_intent == "trv_apply":
         from ai_workplace.services.travel import start_travel_authorization

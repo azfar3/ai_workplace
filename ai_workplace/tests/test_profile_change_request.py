@@ -102,7 +102,7 @@ class TestProfileNotifications(unittest.TestCase):
         doc.status = "Approved"
         doc.name = "EPCR-2026-00001"
         doc.request_type = "Education"
-        msg = _build_message(doc)
+        msg = _build_message(doc, "Approved", "", "")
         self.assertIn("Approved", msg)
         self.assertIn("EPCR-2026-00001", msg)
 
@@ -115,7 +115,7 @@ class TestProfileNotifications(unittest.TestCase):
         doc.request_type = "Work History"
         doc.rejection_reason = "Incomplete documents"
         doc.hr_remarks = ""
-        msg = _build_message(doc)
+        msg = _build_message(doc, "Rejected", "Incomplete documents", "")
         self.assertIn("Rejected", msg)
 
 

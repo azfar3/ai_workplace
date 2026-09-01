@@ -1,4 +1,3 @@
-from ai_workplace.conversation.router import ServiceRegistry
 from ai_workplace.conversation.handlers.travel import TravelHandler
 from ai_workplace.conversation.handlers.leave import LeaveHandler
 from ai_workplace.conversation.handlers.attendance import AttendanceHandler
@@ -9,6 +8,7 @@ from ai_workplace.conversation.handlers.general import GeneralHandler
 from ai_workplace.conversation.handlers.deliverables import DeliverablesHandler
 
 def register_all_handlers():
+    from ai_workplace.conversation.router import ServiceRegistry
     ServiceRegistry.register(TravelHandler())
     ServiceRegistry.register(LeaveHandler())
     ServiceRegistry.register(AttendanceHandler())
@@ -17,3 +17,4 @@ def register_all_handlers():
     ServiceRegistry.register(PolicyHandler())
     ServiceRegistry.register(GeneralHandler())
     ServiceRegistry.register(DeliverablesHandler())
+
