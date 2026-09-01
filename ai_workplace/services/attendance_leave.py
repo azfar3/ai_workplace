@@ -160,7 +160,7 @@ def get_missing_attendance_data(employee_id: Optional[str]) -> list[dict[str, An
 
 
 def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
-    """Fetch active leave allocations and remaining balances."""
+    """Fetch active leave allocations and remaining balances accurately."""
     balances: list[dict[str, Any]] = []
     try:
         if not employee_id or not getattr(frappe, "db", None) or not frappe.db.exists("Employee", employee_id):
@@ -170,19 +170,35 @@ def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
         allocations = frappe.db.get_all(
             "Leave Allocation",
             filters={"employee": employee_id, "to_date": [">=", curr_today], "docstatus": 1},
-            fields=["leave_type", "total_leaves_allocated", "unused_leaves"],
+            fields=["leave_type", "total_leaves_allocated", "from_date", "to_date"],
             order_by="leave_type asc",
         )
 
         for alloc in allocations:
+            leave_type = alloc.get("leave_type")
             allocated = flt(alloc.get("total_leaves_allocated", 0))
-            unused = flt(alloc.get("unused_leaves", 0))
-            taken = allocated - unused
+            
+            # Query approved Leave Application records for this allocation period
+            taken_records = frappe.db.get_all(
+                "Leave Application",
+                filters={
+                    "employee": employee_id,
+                    "leave_type": leave_type,
+                    "status": "Approved",
+                    "docstatus": 1,
+                    "from_date": [">=", alloc.get("from_date")],
+                    "to_date": ["<=", alloc.get("to_date")],
+                },
+                fields=["total_leave_days"]
+            )
+            taken = sum(flt(r.get("total_leave_days", 0)) for r in taken_records)
+            remaining = max(0.0, allocated - taken)
+
             balances.append({
-                "leave_type": alloc.get("leave_type") or "General Leave",
+                "leave_type": leave_type or "General Leave",
                 "allocated": f"{allocated:.1f}",
                 "taken": f"{taken:.1f}",
-                "remaining": f"{unused:.1f}",
+                "remaining": f"{remaining:.1f}",
             })
 
         return balances

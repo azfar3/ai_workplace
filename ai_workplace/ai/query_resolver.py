@@ -108,12 +108,21 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
         r"which (department|dept) (am i|do i|hoon|mein hoon)",
         r"(what is|mera) (my )?department",
     ],
+    "my_branch": [
+        r"(my |mera |meri )?branch",
+        r"which (branch|office branch|office location) (am i|i am|do i|hoon|mein hoon)",
+        r"what is my branch",
+    ],
     "profile_gaps": [
         r"(my |show )?(profile|profil) (gap|completion|incomplete|missing|status)",
         r"(what|which) (info|information|detail) (is |are )?(missing|incomplete|required|needed)",
         r"profile (complete|completion|status|kitna)",
     ],
     # ── Policy / Knowledge ─────────────────────────────────────────────────────
+    "search_knowledge": [
+        r"(employee |company |staff |hr )?(handbook|manual|guide|guideline|rulebook)",
+        r"what does (the |employee |company |hr )?(handbook|manual|policy) say",
+    ],
     "policy_list": [
         r"(show|list|view|all|get) (the |)?policies",
         r"(available|company|hr|all) policies",

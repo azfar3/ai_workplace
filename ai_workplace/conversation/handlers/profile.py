@@ -9,7 +9,7 @@ class ProfileHandler:
     def can_handle(self, intent: str, state: str) -> bool:
         clean = intent.replace("svc_", "")
         return (
-            clean in ("prof_my_requests", "update_profile", "my_profile", "prof_view", "prof_update", "my_requests", "profile_gaps")
+            clean in ("prof_my_requests", "update_profile", "my_profile", "prof_view", "prof_update", "my_requests", "profile_gaps", "my_designation", "my_department", "my_branch")
             or clean.startswith("prof_")
             or clean.startswith("gap_")
         )
@@ -25,6 +25,15 @@ class ProfileHandler:
             resp_text = build_my_profile_response(context)
             outbound = wrap_with_menu_again(resp_text, context)
             action = "view_profile_summary"
+            
+        elif clean_intent in ("my_designation", "my_department", "my_branch"):
+            from ai_workplace.ai.tools import run_tool
+            from ai_workplace.ai.response_formatter import ResponseFormatter
+            raw_data = run_tool("get_employee_profile", context)
+            resp_text = ResponseFormatter.format_response(clean_intent, raw_data)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            outbound = wrap_with_menu_again(resp_text, context)
+            action = clean_intent
             
         elif clean_intent in ("update_profile", "prof_update", "profile_gaps"):
             from ai_workplace.services.profile_completion import build_profile_completion_hub

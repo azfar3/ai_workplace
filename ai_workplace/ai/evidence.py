@@ -121,7 +121,7 @@ def _minimize_profile_gaps(data: Any) -> dict[str, Any]:
         "missing_fields": labels,
         "status": data.get("status", "Incomplete" if labels else "Complete"),
     }
-    for field in ("employment_type", "designation", "department", "employee_name"):
+    for field in ("employment_type", "designation", "department", "branch", "employee_name"):
         if data.get(field):
             res[field] = data[field]
     return res

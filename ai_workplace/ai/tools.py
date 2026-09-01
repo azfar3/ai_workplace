@@ -44,10 +44,89 @@ def get_tax_details(employee: str) -> dict[str, Any]:
         "total_deductions": s.total_deduction
     }
 
-def get_office_timings() -> dict[str, Any]:
+def get_office_timings(employee: Optional[str] = None) -> dict[str, Any]:
+    from frappe.utils import today, formatdate, format_time
+    
+    office_days = "Monday to Friday"
+    timings_str = ""
+    
+    try:
+        settings = frappe.get_single("AI Workplace Settings")
+        if getattr(settings, "office_hours_enabled", 0) and settings.office_start_time and settings.office_end_time:
+            s_time = format_time(settings.office_start_time, "hh:mm a") if settings.office_start_time else "9:00 AM"
+            e_time = format_time(settings.office_end_time, "hh:mm a") if settings.office_end_time else "5:00 PM"
+            timings_str = f"{s_time} - {e_time}"
+            if settings.office_days:
+                office_days = settings.office_days
+    except Exception:
+        pass
+
+    if not timings_str and employee:
+        curr_today = today()
+        try:
+            shift = frappe.db.get_value(
+                "Shift Assignment",
+                {"employee": employee, "docstatus": 1, "start_date": ["<=", curr_today]},
+                ["shift_type"],
+                as_dict=True,
+                order_by="start_date desc"
+            )
+            if shift and shift.get("shift_type"):
+                stype = frappe.db.get_value("Shift Type", shift["shift_type"], ["start_time", "end_time"], as_dict=True)
+                if stype and stype.get("start_time") and stype.get("end_time"):
+                    s_time = format_time(stype["start_time"], "hh:mm a")
+                    e_time = format_time(stype["end_time"], "hh:mm a")
+                    timings_str = f"{s_time} - {e_time}"
+        except Exception:
+            pass
+
+    if not timings_str:
+        timings_str = "9:00 AM - 5:00 PM"
+
+    curr_today = today()
+    emp_hl_name = frappe.db.get_value("Employee", employee, "holiday_list") if employee else None
+    
+    is_active = False
+    if emp_hl_name:
+        hl_dates = frappe.db.get_value("Holiday List", emp_hl_name, ["from_date", "to_date"], as_dict=True)
+        if hl_dates and str(hl_dates.from_date) <= curr_today <= str(hl_dates.to_date):
+            is_active = True
+
+    if not is_active:
+        active_hl = frappe.db.get_value("Holiday List", {"from_date": ["<=", curr_today], "to_date": [">=", curr_today]}, "name")
+        if active_hl:
+            emp_hl_name = active_hl
+
+    upcoming_holidays = []
+    weekly_off = "Saturday & Sunday"
+
+    if emp_hl_name:
+        try:
+            hl_doc = frappe.get_doc("Holiday List", emp_hl_name)
+            if hl_doc.weekly_off:
+                weekly_off = hl_doc.weekly_off
+
+            h_records = frappe.db.get_all(
+                "Holiday",
+                filters={"parent": emp_hl_name, "holiday_date": [">=", curr_today]},
+                fields=["holiday_date", "description"],
+                order_by="holiday_date asc",
+                limit=5
+            )
+            for h in h_records:
+                upcoming_holidays.append({
+                    "date": formatdate(h.get("holiday_date"), "dd MMM YYYY"),
+                    "description": h.get("description") or "Holiday"
+                })
+        except Exception:
+            pass
+
     return {
-        "monday_to_friday": "9:00 AM - 5:00 PM",
-        "saturday_sunday": "Closed"
+        "office_days": office_days,
+        "timings": timings_str,
+        "weekly_off": weekly_off,
+        "holiday_list": emp_hl_name or "Standard Holiday Calendar",
+        "upcoming_holidays": upcoming_holidays,
     }
 
 def create_leave_application(employee: str, from_date: str, to_date: str, leave_type: str, reason: str, context: Optional[dict[str, Any]] = None) -> dict[str, Any]:
@@ -90,9 +169,9 @@ def get_pending_profile_requests(employee: str) -> list[dict[str, Any]]:
 
 
 def get_attendance_summary(employee: str) -> dict[str, Any]:
-    from ai_workplace.services.attendance_guidance import get_attendance_snapshot
+    from ai_workplace.services.attendance_leave import get_today_attendance_data
 
-    return get_attendance_snapshot(employee)
+    return get_today_attendance_data(employee)
 
 
 def get_leave_balance(employee: str) -> list[dict[str, Any]]:

@@ -43,8 +43,10 @@ class ResponseFormatter:
             
         in_time = data.get("in_time")
         out_time = data.get("out_time")
-        res += f"Today's Check-in: {in_time if in_time else 'Not checked in'}\n"
-        res += f"Today's Check-out: {out_time if out_time else 'Not checked out'}\n"
+        in_str = in_time if (in_time and in_time != "N/A") else "Not checked in"
+        out_str = out_time if (out_time and out_time != "N/A") else "Not checked out"
+        res += f"Today's Check-in: {in_str}\n"
+        res += f"Today's Check-out: {out_str}\n"
         
         hours = data.get("working_hours")
         if hours and str(hours) != "0.00":
@@ -89,8 +91,32 @@ class ResponseFormatter:
         return f"📚 There are currently *{len(data)} published policies* available in the system."
 
     @staticmethod
+    def format_branch(data: dict) -> str:
+        if not data or not isinstance(data, dict) or not data.get("branch"):
+            return "🏢 Your branch information is not set in your HR profile."
+        return f"🏢 You are assigned to the *{data.get('branch')}* branch."
+
+    @staticmethod
     def format_office_timings(data: dict) -> str:
-        return "🏢 *Office Timings*\n\nMonday to Friday: 9:00 AM - 5:00 PM\nSaturday & Sunday: Closed\n\nFor most accurate office hours, please check MicroMerger's employee handbook or reach out to the HR team directly."
+        if not data or not isinstance(data, dict):
+            return "🏢 *Office Timings*\n\nMonday to Friday: 9:00 AM - 5:00 PM\nWeekly Off: Saturday & Sunday"
+        
+        days = data.get("office_days", "Monday to Friday")
+        timings = data.get("timings", "9:00 AM - 5:00 PM")
+        weekly_off = data.get("weekly_off", "Saturday & Sunday")
+        
+        res = f"🏢 *Office Schedule & Timings*\n\n"
+        res += f"• Working Days: {days}\n"
+        res += f"• Working Hours: {timings}\n"
+        res += f"• Weekly Off: {weekly_off}\n"
+        
+        holidays = data.get("upcoming_holidays", [])
+        if holidays:
+            res += f"\n🎉 *Upcoming Holidays ({data.get('holiday_list', 'Calendar')})*:\n"
+            for h in holidays[:5]:
+                res += f"  • {h.get('date')}: {h.get('description')}\n"
+                
+        return res.strip()
 
     @staticmethod
     def format_generic_error(reason: str = "I couldn't find an official answer to that question in the available HR information.") -> str:
@@ -178,6 +204,8 @@ class ResponseFormatter:
             return ResponseFormatter.format_designation(data)
         elif intent == "my_department":
             return ResponseFormatter.format_department(data)
+        elif intent == "my_branch":
+            return ResponseFormatter.format_branch(data)
         elif intent == "monthly_attendance":
             return ResponseFormatter.format_monthly_attendance(data)
         elif intent == "get_menu_help":

@@ -345,6 +345,26 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
         "source_type": "ERP",
     },
 
+    "my_branch": {
+        "category": "employee",
+        "intents": ["branch", "my_branch", "office_branch"],
+        "aliases": [
+            "what branch am i in",
+            "which branch i am in",
+            "which branch am i in",
+            "my branch",
+            "mera branch kya hai",
+            "what is my branch",
+        ],
+        "tool": "get_employee_profile",
+        "requires_authentication": True,
+        "read_only": True,
+        "requires_confirmation": False,
+        "llm_allowed": False,
+        "response_mode": "deterministic",
+        "source_type": "ERP",
+    },
+
     "profile_gaps": {
         "category": "employee",
         "intents": ["profile_gaps", "profile_completion", "missing_profile"],
