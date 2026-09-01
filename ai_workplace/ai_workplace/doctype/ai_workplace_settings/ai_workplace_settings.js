@@ -3,10 +3,14 @@
 
 frappe.ui.form.on("AI Workplace Settings", {
 	refresh(frm) {
-		if (!frm.doc.hr_office_timezone) {
-			frm.set_value("hr_office_timezone", "Asia/Karachi");
+		if (frm.fields_dict.office_timezone && !frm.doc.office_timezone) {
+			frm.set_value("office_timezone", "Asia/Karachi").catch(() => {});
 		}
-		if (frm.doc.hr_live_chat_enabled && !(frm.doc.hr_working_days || []).length) {
+		if (
+			frm.doc.hr_live_chat_enabled &&
+			frm.fields_dict.hr_working_days &&
+			!(frm.doc.hr_working_days || []).length
+		) {
 			frm.add_custom_button(__("Load Default Working Week"), () => {
 				load_default_working_days(frm);
 			});

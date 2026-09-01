@@ -90,7 +90,7 @@ def _legacy_day_schedule(settings: Any, weekday_abbr: str) -> Optional[dict[str,
 def get_office_timezone() -> ZoneInfo:
     """Return configured office timezone (default Asia/Karachi / PKT)."""
     settings = _get_settings()
-    tz_name = settings.get("office_timezone") or _DEFAULT_TIMEZONE
+    tz_name = settings.get("office_timezone") or settings.get("hr_office_timezone") or _DEFAULT_TIMEZONE
     try:
         return ZoneInfo(tz_name)
     except Exception:
@@ -320,7 +320,7 @@ def build_closed_hours_message(
 ) -> str:
     """Message when HR support is CLOSED (off-hours, holiday, or non-working day)."""
     settings = _get_settings()
-    configured = (settings.get("closed_office_hours_message") or "").strip()
+    configured = (settings.get("closed_office_hours_message") or settings.get("hr_off_hours_message") or "").strip()
     if configured:
         return configured
 

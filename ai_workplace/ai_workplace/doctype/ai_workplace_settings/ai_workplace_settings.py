@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import time_diff
+from frappe.utils import cint, time_diff
 
 HR_AGENT_ROLE = "HR Workplace Agent"
 DEFAULT_OFFICE_TIMEZONE = "Asia/Karachi"
@@ -28,17 +28,19 @@ class AIWorkplaceSettings(Document):
 
     def validate(self):
         """Enforce Phase 1 invariants and HR live chat settings."""
-        if self.proactive_notifications_enabled:
+        if cint(self.get("proactive_notifications_enabled")):
             frappe.throw(
                 "Proactive notifications must remain disabled in Phase 1. "
                 "This feature is reserved for a future phase.",
                 frappe.ValidationError,
             )
 
-        if self.graph_api_version and not self.graph_api_version.startswith("v"):
-            self.graph_api_version = f"v{self.graph_api_version}"
+        graph_ver = self.get("graph_api_version")
+        if graph_ver and not graph_ver.startswith("v"):
+            self.graph_api_version = f"v{graph_ver}"
 
-        if self.message_retention_days is not None and self.message_retention_days < 1:
+        retention = self.get("message_retention_days")
+        if retention is not None and cint(retention) < 1:
             frappe.throw("Message Retention Days must be at least 1")
 
         self._ensure_office_timezone()
@@ -50,16 +52,19 @@ class AIWorkplaceSettings(Document):
         self._sync_hr_chat_agent_roles()
 
     def _ensure_office_timezone(self):
-        if not (self.hr_office_timezone or "").strip():
-            self.hr_office_timezone = DEFAULT_OFFICE_TIMEZONE
+        tz = (self.get("office_timezone") or self.get("hr_office_timezone") or "").strip()
+        if not tz:
+            tz = DEFAULT_OFFICE_TIMEZONE
+        self.office_timezone = tz
+        self.hr_office_timezone = tz
 
     def _ensure_working_days(self):
         if self.get("hr_working_days"):
             return
 
-        legacy_days = (self.get("hr_office_days") or "").strip()
-        legacy_start = self.get("hr_office_start_time") or time_diff("09:00:00", "00:00:00")
-        legacy_end = self.get("hr_office_end_time") or time_diff("18:00:00", "00:00:00")
+        legacy_days = (self.get("office_days") or self.get("hr_office_days") or "").strip()
+        legacy_start = self.get("office_start_time") or self.get("hr_office_start_time") or time_diff("09:00:00", "00:00:00")
+        legacy_end = self.get("office_end_time") or self.get("hr_office_end_time") or time_diff("18:00:00", "00:00:00")
         legacy_abbr_to_name = {
             "Mon": "Monday",
             "Tue": "Tuesday",

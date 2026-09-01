@@ -21,6 +21,7 @@
   "office_days",
   "office_timezone",
   "closed_office_hours_message",
+  "hr_working_days",
   "section_hr_live_chat",
   "hr_live_chat_enabled",
   "hr_live_chat_welcome_message",
@@ -125,6 +126,12 @@
    "fieldname": "closed_office_hours_message",
    "fieldtype": "Small Text",
    "label": "After-Hours Auto Reply"
+  },
+  {
+   "fieldname": "hr_working_days",
+   "fieldtype": "Table",
+   "label": "Working Days & Hours",
+   "options": "AI Workplace HR Working Day"
   },
   {
    "fieldname": "section_hr_live_chat",

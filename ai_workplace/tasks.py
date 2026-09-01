@@ -1,10 +1,10 @@
 import frappe
-from frappe.utils import add_days, nowdatetime
+from frappe.utils import add_days, now_datetime
 
 @frappe.whitelist()
 def cleanup_temporary_media():
     """Remove abandoned WhatsApp Temporary Media and associated Files."""
-    expiry_date = add_days(nowdatetime(), -1)
+    expiry_date = add_days(now_datetime(), -1)
     abandoned = frappe.get_all(
         "WhatsApp Temporary Media",
         filters={"creation": ("<", expiry_date), "status": ("in", ["Pending", "Abandoned"])},

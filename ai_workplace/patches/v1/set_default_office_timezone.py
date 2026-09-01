@@ -11,13 +11,24 @@ def execute():
     if not frappe.db.exists("DocType", "AI Workplace Settings"):
         return
 
-    current = frappe.db.get_single_value("AI Workplace Settings", "hr_office_timezone")
+    current = (
+        frappe.db.get_single_value("AI Workplace Settings", "office_timezone")
+        or frappe.db.get_single_value("AI Workplace Settings", "hr_office_timezone")
+    )
     if (current or "").strip():
         return
 
     frappe.db.set_single_value(
         "AI Workplace Settings",
-        "hr_office_timezone",
+        "office_timezone",
         DEFAULT_OFFICE_TIMEZONE,
     )
+    try:
+        frappe.db.set_single_value(
+            "AI Workplace Settings",
+            "hr_office_timezone",
+            DEFAULT_OFFICE_TIMEZONE,
+        )
+    except Exception:
+        pass
     frappe.db.commit()
