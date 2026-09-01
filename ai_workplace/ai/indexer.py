@@ -159,6 +159,14 @@ def reindex_source(source_name: str) -> int:
         doc.embedding_model = emb_model
         doc.embedding_dimensions = len(json.loads(emb_json)) if emb_json else 128
         doc.embedding_json = emb_json
+        
+        # Enterprise Metadata Propagation
+        doc.target_employment_type = source.get("target_employment_type")
+        doc.target_department = source.get("target_department")
+        doc.target_location = source.get("target_location")
+        doc.policy_version = source.get("version")
+        doc.effective_date = source.get("effective_from")
+        
         doc.insert(ignore_permissions=True)
 
     source.last_indexed = frappe.utils.now_datetime()
@@ -188,8 +196,46 @@ def _extract_chunks_with_metadata(source: Any) -> list[dict[str, Any]]:
     if source_type == "Onboarding":
         return _index_onboarding_structured()
 
-    content = source.content or source.description or ""
+    # If there is a file attached, prioritize extracting from it.
+    file_content = ""
+    if getattr(source, "file_attachment", None):
+        file_content = _extract_text_from_file(source.file_attachment)
+
+    content = file_content or source.content or source.description or ""
     return _chunk_text_with_overlap(content, doc_name=source.name)
+
+def _extract_text_from_file(file_url: str) -> str:
+    """Phase C: Extract text from PDF, DOCX, and TXT attachments."""
+    if not file_url:
+        return ""
+    
+    file_doc = frappe.get_all("File", filters={"file_url": file_url}, fields=["name", "file_name", "file_url"], limit=1)
+    if not file_doc:
+        return ""
+    
+    file_path = frappe.get_site_path(file_url.lstrip("/"))
+    if not os.path.exists(file_path):
+        return ""
+
+    ext = os.path.splitext(file_path)[1].lower()
+    
+    try:
+        if ext == ".pdf":
+            import PyPDF2
+            with open(file_path, "rb") as f:
+                reader = PyPDF2.PdfReader(f)
+                return "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
+        elif ext == ".docx":
+            import docx
+            doc = docx.Document(file_path)
+            return "\n".join(para.text for para in doc.paragraphs if para.text.strip())
+        elif ext in (".txt", ".md", ".csv", ".json"):
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+    except Exception as exc:
+        frappe.logger("ai_workplace").error(f"Failed to parse document {file_url}: {exc}")
+    
+    return ""
 
 
 def _chunk_text_with_overlap(content: str, doc_name: str = "", chunk_size: int = 300, overlap: int = 50) -> list[dict[str, Any]]:
@@ -295,7 +341,7 @@ def _load_portal_guides_from_disk() -> str:
     return "\n\n".join(parts)
 
 
-def search_knowledge(query: str, limit: int = 5, employment_type: str = "") -> list[dict[str, Any]]:
+def search_knowledge(query: str, limit: int = 5, employment_type: str = "", context: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
     """
     Hybrid RAG Search — Merges keyword (BM25) and dense vector semantic scores.
     Formula: final_score = rag_keyword_weight * norm_kw_score + rag_semantic_weight * norm_sem_score
@@ -307,45 +353,85 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "") -> l
     words = [w.lower() for w in query.split() if len(w) > 2]
     query_vector = generate_embedding(query)
 
+    # Add new fields for enterprise metadata filtering
+    fields = [
+        "name", "chunk_text", "knowledge_source", "document_name", "section",
+        "content_hash", "embedding_json", "target_employment_type",
+        "target_department", "target_location", "policy_version", "effective_date"
+    ]
+
     chunks = frappe.get_all(
         "AI Workplace Knowledge Chunk",
         filters={"knowledge_source": ["in", _active_source_names()]},
-        fields=[
-            "name",
-            "chunk_text",
-            "knowledge_source",
-            "document_name",
-            "section",
-            "content_hash",
-            "embedding_json",
-        ],
-        limit=300,
+        fields=fields,
+        limit=500,  # Increased for reranking phase
     )
 
     if not chunks:
         return []
 
+    user_emp_type = (employment_type or "").strip()
+    user_dept = (context or {}).get("department", "") if context else ""
+    user_loc = (context or {}).get("location", "") if context else ""
+
+    # Phase C: Pre-filtering via metadata scopes
+    filtered_chunks = []
+    for chunk in chunks:
+        # Effective Date filtering (if set)
+        if chunk.effective_date and chunk.effective_date > frappe.utils.today():
+            continue
+            
+        # Hard Scoping (if fields are set on chunk, user MUST match)
+        if chunk.target_employment_type and user_emp_type and chunk.target_employment_type != user_emp_type:
+            continue
+        if chunk.target_department and user_dept and chunk.target_department != user_dept:
+            continue
+        if chunk.target_location and user_loc and chunk.target_location != user_loc:
+            continue
+            
+        filtered_chunks.append(chunk)
+
+    if not filtered_chunks:
+        return []
+
+    # Phase C: True BM25 Scoring
+    # Calculate corpus stats
+    N = len(filtered_chunks)
+    avgdl = sum(len((c.chunk_text or "").split()) for c in filtered_chunks) / float(N) if N else 1.0
+    k1 = 1.5
+    b = 0.75
+
+    # Document frequency for IDF
+    df = {}
+    for w in words:
+        df[w] = sum(1 for c in filtered_chunks if w in (c.chunk_text or "").lower())
+
+    idf = {}
+    for w in words:
+        n_qi = df[w]
+        idf[w] = math.log(1 + (N - n_qi + 0.5) / (n_qi + 0.5))
+
     kw_weight = float(_get_setting("rag_keyword_weight", 0.4))
     sem_weight = float(_get_setting("rag_semantic_weight", 0.6))
-    user_emp_type = (employment_type or "").strip().lower()
 
     raw_candidates = []
-    max_kw_score = 1.0
-
-    for chunk in chunks:
+    max_kw_score = 0.0001
+    
+    for chunk in filtered_chunks:
         text = chunk.chunk_text or ""
         text_lower = text.lower()
+        chunk_words = text_lower.split()
+        doc_len = len(chunk_words)
 
-        # Employment Type Scoping Check
-        if "[target employment type:" in text_lower:
-            m = re.search(r"\[target employment type:\s*([^\]]+)\]", text_lower)
-            if m:
-                target_type = m.group(1).strip()
-                if target_type != "all" and user_emp_type and target_type != user_emp_type:
-                    continue
+        # 1. Okapi BM25 Score
+        kw_score = 0.0
+        for w in words:
+            if w in text_lower:
+                freq = text_lower.count(w) # rough term freq
+                numerator = freq * (k1 + 1)
+                denominator = freq + k1 * (1 - b + b * (doc_len / avgdl))
+                kw_score += idf[w] * (numerator / denominator)
 
-        # 1. Keyword Score
-        kw_score = sum(1 for w in words if w in text_lower)
         if kw_score > max_kw_score:
             max_kw_score = kw_score
 
@@ -364,11 +450,13 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "") -> l
             "sem_score": float(sem_score),
         })
 
-    # Normalize & combine scores
+    # Phase C: Reranking (Reciprocal Rank Fusion / Weighted Normalized Score)
     scored = []
     for item in raw_candidates:
-        norm_kw = item["kw_score"] / max_kw_score if max_kw_score > 0 else 0.0
+        norm_kw = item["kw_score"] / max_kw_score
         norm_sem = item["sem_score"]
+        
+        # Boost semantic score slightly if exact keyword match is high
         final_score = (kw_weight * norm_kw) + (sem_weight * norm_sem)
 
         if final_score > 0.05 or item["kw_score"] > 0:
@@ -386,6 +474,7 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "") -> l
             "source_title": doc_title,
             "document": doc_title,
             "section": c.section or "General",
+            "version": c.policy_version or "1.0",
             "score": round(final_s, 4),
             "keyword_score": round(kw_s, 4),
             "semantic_score": round(sem_s, 4),

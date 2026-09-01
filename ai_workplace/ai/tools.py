@@ -128,7 +128,7 @@ def search_knowledge(query: str, limit: int = 5, context: Optional[dict[str, Any
     from ai_workplace.ai.indexer import search_knowledge as _search
 
     emp_type = (context or {}).get("employment_type", "") if context else ""
-    return _search(query, limit=limit, employment_type=emp_type)
+    return _search(query, limit=limit, employment_type=emp_type, context=context)
 
 
 # Tool Specification Registry with OpenAI Function Call Schemas & Security Metadata

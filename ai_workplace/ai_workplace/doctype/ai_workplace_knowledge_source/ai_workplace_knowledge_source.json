@@ -56,6 +56,40 @@
    "read_only": 1
   },
   {
+   "fieldname": "target_employment_type",
+   "fieldtype": "Link",
+   "label": "Target Employment Type",
+   "options": "Employment Type"
+  },
+  {
+   "fieldname": "target_department",
+   "fieldtype": "Link",
+   "label": "Target Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "target_location",
+   "fieldtype": "Link",
+   "label": "Target Location",
+   "options": "Location"
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From"
+  },
+  {
+   "fieldname": "effective_to",
+   "fieldtype": "Date",
+   "label": "Effective To"
+  },
+  {
+   "fieldname": "version",
+   "fieldtype": "Data",
+   "label": "Document Version",
+   "default": "1.0"
+  },
+  {
    "fieldname": "version_hash",
    "fieldtype": "Data",
    "label": "Version Hash",
