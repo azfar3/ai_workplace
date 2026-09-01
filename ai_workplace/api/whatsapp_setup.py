@@ -76,10 +76,12 @@ def handle_embedded_signup_code(code: str):
             frappe.logger("ai_workplace").warning(f"Could not fetch Phone Number ID automatically: {e}")
 
     # 4. Update AI Workplace Settings
+    settings.whatsapp_system_user_access_token = access_token
     settings.meta_access_token = access_token
     if waba_id:
         settings.meta_waba_id = waba_id
     if phone_number_id:
+        settings.whatsapp_phone_number_id = phone_number_id
         settings.meta_phone_number_id = phone_number_id
 
     settings.save(ignore_permissions=True)

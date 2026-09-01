@@ -80,7 +80,7 @@ def upload_media_bytes(
         return _error_result(f"Cannot load AI Workplace Settings: {exc}")
 
     access_token = _get_access_token(cfg)
-    phone_number_id = cfg.get("meta_phone_number_id") or ""
+    phone_number_id = cfg.get("whatsapp_phone_number_id") or cfg.get("meta_phone_number_id") or ""
     api_version = cfg.get("graph_api_version") or _DEFAULT_GRAPH_API_VERSION
 
     if not access_token:
@@ -264,11 +264,14 @@ def _post_message(
     except Exception as exc:
         return _error_result(f"Cannot load AI Workplace Settings: {exc}")
 
-    if not cfg.get("enabled"):
+    enabled = cfg.get("enabled")
+    if enabled is None:
+        enabled = True
+    if not enabled:
         return _error_result("AI Workplace is disabled in Settings")
 
     access_token = _get_access_token(cfg)
-    phone_number_id = cfg.get("meta_phone_number_id") or ""
+    phone_number_id = cfg.get("whatsapp_phone_number_id") or cfg.get("meta_phone_number_id") or ""
     api_version = cfg.get("graph_api_version") or _DEFAULT_GRAPH_API_VERSION
 
     if not access_token:
@@ -330,10 +333,14 @@ def _post_message(
 
 
 def _get_access_token(cfg: Any) -> str:
-    try:
-        return cfg.get_password("meta_access_token") or ""
-    except Exception:
-        return cfg.get("meta_access_token") or ""
+    for fieldname in ("whatsapp_system_user_access_token", "meta_access_token"):
+        try:
+            token = cfg.get_password(fieldname) or ""
+        except Exception:
+            token = cfg.get(fieldname) or ""
+        if token:
+            return token
+    return ""
 
 
 def _error_result(error_message: str) -> dict[str, Any]:

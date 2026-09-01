@@ -61,7 +61,10 @@ def send_text_message(
     except Exception as exc:
         return _error_result(f"Cannot load AI Workplace Settings: {exc}")
 
-    if not cfg.get("enabled"):
+    enabled = cfg.get("enabled")
+    if enabled is None:
+        enabled = True
+    if not enabled:
         return _error_result("AI Workplace is disabled in Settings")
 
     access_token = _get_access_token(cfg)

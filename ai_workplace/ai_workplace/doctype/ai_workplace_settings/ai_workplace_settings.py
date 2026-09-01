@@ -26,6 +26,12 @@ class AIWorkplaceSettings(Document):
     Stores Meta/WhatsApp Cloud API configuration and HR live chat settings.
     """
 
+    @property
+    def enabled(self) -> bool:
+        """Return True by default so cfg.get('enabled') evaluates to True when no explicit field is present."""
+        return True
+
+
     def validate(self):
         """Enforce Phase 1 invariants and HR live chat settings."""
         if cint(self.get("proactive_notifications_enabled")):

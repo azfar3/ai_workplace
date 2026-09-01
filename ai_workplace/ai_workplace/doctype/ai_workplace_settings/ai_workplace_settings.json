@@ -7,7 +7,9 @@
  "engine": "InnoDB",
  "field_order": [
   "webhook_verify_token",
+  "meta_app_id",
   "meta_app_secret",
+  "meta_waba_id",
   "whatsapp_phone_number_id",
   "whatsapp_system_user_access_token",
   "ai_chat_enabled",
@@ -48,9 +50,20 @@
    "label": "Webhook Verify Token"
   },
   {
+   "fieldname": "meta_app_id",
+   "fieldtype": "Data",
+   "label": "Meta App ID",
+   "default": "886662467657151"
+  },
+  {
    "fieldname": "meta_app_secret",
    "fieldtype": "Password",
    "label": "Meta App Secret"
+  },
+  {
+   "fieldname": "meta_waba_id",
+   "fieldtype": "Data",
+   "label": "Meta WABA ID"
   },
   {
    "fieldname": "whatsapp_phone_number_id",
