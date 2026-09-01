@@ -909,6 +909,9 @@ def process_message(
             # and passes them as kwargs so tools like get_latest_salary_slip can
             # serve "salary slip for August" without an LLM.
             if _response_mode == "deterministic" and _tool_name and _tool_name != "clarification":
+                if _intent_key in ("get_menu_help", "main_menu", "menu_help") or _tool_name == "get_menu_help":
+                    menu_out, _ = build_menu(context)
+                    return menu_out
                 from ai_workplace.ai.entity_extractor import EntityExtractor
                 _entities = EntityExtractor.extract(_intent_key, clean_text)
                 _raw_data = run_tool(_tool_name, context, **_entities)

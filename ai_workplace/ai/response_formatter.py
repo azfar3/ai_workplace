@@ -174,6 +174,8 @@ class ResponseFormatter:
             return ResponseFormatter.format_department(data)
         elif intent == "monthly_attendance":
             return ResponseFormatter.format_monthly_attendance(data)
+        elif intent == "get_menu_help":
+            return "📋 *MicroMerger Staff Services*\n\nPlease select an option from the menu below or tap *View Services*."
         else:
             return str(data)
 

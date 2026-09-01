@@ -3,23 +3,45 @@ from ai_workplace.conversation.handlers.base import ServiceHandler
 from ai_workplace.whatsapp.outbound import OutboundMessage
 from ai_workplace.conversation.manager import update_conversation, ConversationState
 from ai_workplace.conversation.orchestrator import log_ai_action
-from ai_workplace.services.response_helpers import wrap_with_menu_again
+from ai_workplace.services.response_helpers import wrap_with_menu_again, wrap_salary_slip_period_options
 
 class PayrollHandler:
     def can_handle(self, intent: str, state: str) -> bool:
-        return intent.startswith("pay_") or intent.startswith("svc_pay_") or intent in ("former_payslip", "pay_slip")
+        clean = intent.replace("svc_", "")
+        return (
+            clean.startswith("pay_")
+            or intent.startswith("svc_pay_")
+            or clean in ("former_payslip", "pay_slip", "pay_previous_slips", "pay_slip_1m", "pay_slip_3m", "pay_slip_6m")
+        )
 
     def handle(self, conv: Any, intent: str, clean_text: str, context: Dict[str, Any], trace_id: str) -> Optional[OutboundMessage]:
         outbound = None
         action = intent
         clean_intent = intent.replace("svc_", "")
+        text_lower = (clean_text or "").strip().lower()
         
-        if clean_intent in ("pay_download_slip", "former_payslip", "pay_slip"):
-            from ai_workplace.services.payroll import build_salary_slip_download_intro
+        # 1) Specific period selection (1, 3, or 6 months)
+        if clean_intent in ("pay_slip_1m", "pay_slip_3m", "pay_slip_6m") or (
+            getattr(conv, "active_service", None) == "pay_download_slip" and text_lower in ("1", "3", "6", "1m", "3m", "6m", "1 month", "3 months", "6 months")
+        ):
+            from ai_workplace.services.payroll import build_salary_slip_download_outbound
+            months = 1
+            if clean_intent == "pay_slip_3m" or text_lower in ("3", "3m", "3 months"):
+                months = 3
+            elif clean_intent == "pay_slip_6m" or text_lower in ("6", "6m", "6 months"):
+                months = 6
+
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            outbound = build_salary_slip_download_outbound(context, months=months)
+            action = f"download_payslip_{months}m"
+
+        # 2) Payslip intro / period options picker
+        elif clean_intent in ("pay_download_slip", "former_payslip", "pay_slip", "pay_previous_slips"):
+            from ai_workplace.services.payroll import build_salary_slip_download_intro
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="pay_download_slip")
             resp_text = build_salary_slip_download_intro(context)
-            outbound = wrap_with_menu_again(resp_text, context)
-            action = "download_payslip"
+            outbound = wrap_salary_slip_period_options(resp_text, context)
+            action = "download_payslip_intro"
             
         elif clean_intent in ("pay_tax_deduction", "tax_certificate"):
             from ai_workplace.services.tax_certificate import build_tax_certificate_download_outbound
@@ -56,4 +78,3 @@ class PayrollHandler:
             return outbound
             
         return None
-
