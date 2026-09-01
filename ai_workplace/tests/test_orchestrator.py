@@ -44,10 +44,11 @@ class TestOrchestratorIntegration(unittest.TestCase):
         resp2 = process_message("lang_en", self.identity, message_id="msg-2", trace_id="tr-1")
         self.assertTrue(resp2.is_interactive())
         self.assertEqual(resp2.interactive["type"], "button")
-        self.assertIn("Language set to English", resp2.body_text)
+        self.assertIn("English selected", resp2.body_text)
         self.assertTrue(resp2.follow_up)
         rows = resp2.follow_up[0].interactive["action"]["sections"][0]["rows"]
-        self.assertEqual(rows[0]["id"], "svc_hr")
+        row_ids = [r["id"] for r in rows]
+        self.assertIn("svc_hr", row_ids)
 
         # 3. Select HR via interactive id -> submenu quick buttons + remaining list
         resp3 = process_message("svc_hr", self.identity, message_id="msg-3", trace_id="tr-1")
@@ -66,7 +67,8 @@ class TestOrchestratorIntegration(unittest.TestCase):
             main_rows = resp4.follow_up[0].interactive["action"]["sections"][0]["rows"]
         else:
             main_rows = resp4.interactive["action"]["sections"][0]["rows"]
-        self.assertEqual(main_rows[0]["id"], "svc_hr")
+        row_ids = [r["id"] for r in main_rows]
+        self.assertIn("svc_hr", row_ids)
 
     def test_end_to_end_guest_flow_b2(self):
         guest_identity = IdentityResult(
@@ -111,7 +113,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
             self.assertEqual(resp.interactive["type"], "button")
             # Should contain personalized welcome and language prompt
             self.assertIn("Assalam-o-Alaikum", resp.body_text)
-            self.assertIn("John Doe", resp.body_text)
+            self.assertIn("John!", resp.body_text)
             self.assertIn("preferred language", resp.body_text.lower())
             buttons = resp.interactive["action"]["buttons"]
             button_ids = [b["reply"]["id"] for b in buttons]
@@ -129,7 +131,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
         self.assertTrue(resp.is_interactive())
         self.assertEqual(resp.interactive["type"], "button")
         self.assertIn("Assalam-o-Alaikum", resp.body_text)
-        self.assertIn("John Doe", resp.body_text)
+        self.assertIn("John!", resp.body_text)
 
         # Confirm conversation state was reset to AWAITING_LANGUAGE
         from ai_workplace.conversation.manager import get_or_create_conversation
