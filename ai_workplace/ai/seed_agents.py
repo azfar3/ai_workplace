@@ -8,7 +8,7 @@ import secrets
 
 import frappe
 
-from ai_workplace.ai.prompts.reactive_qa import REACTIVE_QA
+REACTIVE_QA = "You are an HR Assistant."
 
 DEFAULT_AGENTS = [
     {

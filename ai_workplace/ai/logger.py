@@ -37,6 +37,8 @@ def log_llm_usage(
         doc.input_cost = 0.0
         doc.output_cost = 0.0
         doc.total_cost = 0.0
+        
+        doc.trace_id = trace_id
 
         doc.flags.ignore_permissions = True
         doc.flags.ignore_links = True
