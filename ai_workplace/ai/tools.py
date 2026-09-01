@@ -121,16 +121,28 @@ from ai_workplace.ai.intent_catalog import INTENT_CATALOG
 TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {}
 for intent_name, meta in INTENT_CATALOG.items():
     tool_name = meta["tool"]
-    # Only register actual functions as tools (skip clarification/search which might have custom handling)
     if tool_name not in ["clarification"]:
+        
+        # Determine specific parameters based on tool_name
+        params = {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+        if tool_name == "search_knowledge":
+            params["properties"]["query"] = {"type": "string", "description": "The specific question or topic to search for in the knowledge base."}
+            params["required"].append("query")
+        elif tool_name == "create_leave_application":
+            params["properties"]["from_date"] = {"type": "string", "description": "Start date in YYYY-MM-DD format."}
+            params["properties"]["to_date"] = {"type": "string", "description": "End date in YYYY-MM-DD format."}
+            params["properties"]["leave_type"] = {"type": "string", "description": "Type of leave (e.g. Annual Leave, Sick Leave)."}
+            params["properties"]["reason"] = {"type": "string", "description": "Reason for leave."}
+            params["required"].extend(["from_date", "to_date", "leave_type"])
+
         TOOL_REGISTRY[tool_name] = {
             "name": tool_name,
             "description": f"Tool for {intent_name}",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": []
-            },
+            "parameters": params,
             "read_write": "read" if meta.get("read_only", True) else "write",
             "data_sensitivity": "internal",
             "required_permissions": ["Employee"] if meta.get("requires_employee") else [],
