@@ -165,6 +165,68 @@ def _download_bank_letter_outbound(conv, context, identity, trace_id, bank_name,
         return wrap_with_menu_again(err, context)
 
 
+def _start_workflow_from_intent(
+    conv: Any,
+    workflow_intent: str,
+    original_text: str,
+    context: dict[str, Any],
+    trace_id: str,
+) -> OutboundMessage:
+    """
+    Start a named multi-step workflow that was triggered by a natural-language
+    query resolved through the INTENT_CATALOG (response_mode="workflow").
+
+    This allows the QueryResolver to kick off leave applications, attendance
+    exceptions, etc. directly from free-text — without a submenu round-trip.
+    """
+    log_ai_action(
+        trace_id=trace_id,
+        conversation_name=conv.name,
+        whatsapp_identity=conv.whatsapp_identity,
+        erp_user=conv.erp_user or "",
+        employee=conv.employee or "",
+        intent=workflow_intent,
+        action="start_workflow_from_natural_language",
+        result=f"Triggered by: {original_text!r}",
+        status="Success",
+    )
+
+    if workflow_intent == "leave_apply":
+        from ai_workplace.services.leave_apply import start_leave_application
+        update_conversation(
+            conv,
+            state=ConversationState.PROCESSING,
+            current_intent="leave_apply",
+        )
+        return start_leave_application(conv, context)
+
+    if workflow_intent == "att_exception":
+        update_conversation(
+            conv,
+            state=ConversationState.PROCESSING,
+            current_intent="att_exception",
+        )
+        from ai_workplace.services.attendance_location import handle_attendance_flow_message
+        # Start the exception flow with a fresh trigger
+        return handle_attendance_flow_message(conv, "att_exception_start", context)
+
+    if workflow_intent == "trv_apply":
+        from ai_workplace.services.travel import start_travel_authorization
+        update_conversation(
+            conv,
+            state=ConversationState.PROCESSING,
+            current_intent="trv_apply",
+        )
+        return start_travel_authorization(conv, context)
+
+    # Fallback: unknown workflow — show menu with hint
+    frappe.logger("ai_workplace").warning(
+        f"_start_workflow_from_intent: unknown workflow_intent={workflow_intent!r}"
+    )
+    menu_out, _ = build_menu(context)
+    return menu_out
+
+
 def process_inbound_media(
     identity: Any,
     file_url: str,
@@ -599,8 +661,49 @@ def process_message(
         return handle_deliverable_submit_message(conv, clean_text, context)
 
     if current_state == ConversationState.PROCESSING and conv.current_intent == "hr_ai_agent":
-        from ai_workplace.services.hr_agent import handle_hr_agent_message
+        # Phase 1.3: Even in "AI mode", try deterministic resolution first.
+        # If the user's next message is a known HR operation, handle it directly
+        # and clear the AI state rather than sending everything to the LLM.
+        from ai_workplace.ai.query_resolver import QueryResolver
+        from ai_workplace.ai.response_formatter import ResponseFormatter
+        from ai_workplace.ai.tools import run_tool as _run_tool_p13
 
+        _p13_intent, _p13_meta, _p13_score = QueryResolver.resolve(clean_text)
+        if _p13_intent and _p13_intent != "unknown" and _p13_meta:
+            _p13_auth = _p13_meta.get("requires_authentication") or _p13_meta.get("requires_employee")
+            _p13_tool = _p13_meta.get("tool")
+            _p13_mode = _p13_meta.get("response_mode", "deterministic")
+            _p13_ok = not (_p13_auth and not context.get("employee"))
+
+            if _p13_ok and _p13_mode == "deterministic" and _p13_tool and _p13_tool != "clarification":
+                _p13_data = _run_tool_p13(_p13_tool, context)
+                _p13_fmt = ResponseFormatter.format_response(_p13_intent, _p13_data)
+                # Clear AI mode — this message was deterministically resolved
+                update_conversation(
+                    conv,
+                    state=ConversationState.AWAITING_SELECTION,
+                    current_intent=None,
+                )
+                log_ai_action(
+                    trace_id=trace_id,
+                    conversation_name=conv.name,
+                    whatsapp_identity=conv.whatsapp_identity,
+                    erp_user=conv.erp_user or "",
+                    employee=conv.employee or "",
+                    intent=_p13_intent,
+                    action=f"deterministic_in_ai_mode_{_p13_tool}",
+                    result=_p13_fmt,
+                    status="Success",
+                )
+                return OutboundMessage(body_text=_p13_fmt)
+
+            if _p13_ok and _p13_mode == "workflow":
+                _p13_wf = _p13_meta.get("workflow_intent")
+                if _p13_wf:
+                    return _start_workflow_from_intent(conv, _p13_wf, clean_text, context, trace_id)
+
+        # Not deterministically resolvable — hand off to LLM agent
+        from ai_workplace.services.hr_agent import handle_hr_agent_message
         return handle_hr_agent_message(conv, clean_text, context)
 
     if current_state == ConversationState.PROCESSING and conv.current_intent == "trv_apply":
@@ -779,9 +882,83 @@ def process_message(
         svc_key = clean_text[4:].lower()
         selected_service = {"key": svc_key, "title": svc_key}
 
+    # ── Free-text: QueryResolver fires FIRST before keyword navigation ─────────
+    # Natural-language questions ("what is my leave balance?") should resolve
+    # directly to a tool, NOT open a submenu. Only if QueryResolver can't classify
+    # the message does keyword_router get a chance to guide navigation.
     if not selected_service and len(clean_text) >= 3 and not clean_text.isdigit():
-        from ai_workplace.services.keyword_router import match_keyword_service
+        from ai_workplace.ai.query_resolver import QueryResolver
+        from ai_workplace.ai.response_formatter import ResponseFormatter
+        from ai_workplace.ai.tools import run_tool
+        from ai_workplace.ai.router import is_ai_chat_enabled
 
+        _intent_key, _meta, _confidence = QueryResolver.resolve(clean_text)
+
+        if _intent_key and _intent_key != "unknown" and _meta:
+            # Authentication guard
+            _requires_auth = _meta.get("requires_authentication") or _meta.get("requires_employee")
+            if _requires_auth and not context.get("employee"):
+                return OutboundMessage(
+                    body_text="You must be an authenticated employee to access this feature. Type *menu* to return."
+                )
+
+            _tool_name = _meta.get("tool")
+            _response_mode = _meta.get("response_mode", "deterministic")
+
+            # ── DETERMINISTIC: zero LLM calls ─────────────────────────────────
+            if _response_mode == "deterministic" and _tool_name and _tool_name != "clarification":
+                _raw_data = run_tool(_tool_name, context)
+                _formatted = ResponseFormatter.format_response(_intent_key, _raw_data)
+                log_ai_action(
+                    trace_id=trace_id,
+                    conversation_name=conv.name,
+                    whatsapp_identity=conv.whatsapp_identity,
+                    erp_user=conv.erp_user or "",
+                    employee=conv.employee or "",
+                    intent=_intent_key,
+                    action=f"deterministic_{_tool_name}",
+                    result=_formatted,
+                    status="Success",
+                )
+                return OutboundMessage(body_text=_formatted)
+
+            # ── HYBRID: fetch tool data then let LLM synthesise (one call) ────
+            # NOTE: we do NOT set current_intent="hr_ai_agent" — this is one-shot.
+            # The next message from the user re-enters the full resolver.
+            elif _response_mode == "hybrid" and is_ai_chat_enabled():
+                from ai_workplace.services.hr_agent import handle_hr_agent_message
+                return handle_hr_agent_message(conv, clean_text, context)
+
+            # ── CLARIFICATION: intent known, parameters missing ───────────────
+            elif _response_mode == "clarification":
+                _lang = context.get("preferred_language", "English")
+                if _lang == "Urdu":
+                    _clarify = (
+                        "آپ کیا جاننا چاہتے ہیں؟ براہ کرم ایک آپشن چنیں:\n\n"
+                        "1️⃣ رخصت بیلنس\n2️⃣ رخصت کی تاریخ\n3️⃣ رخصت کی درخواست\n4️⃣ رخصت پالیسی"
+                    )
+                elif _lang == "Roman Urdu":
+                    _clarify = (
+                        "Aap kya jaanna chahte hain? Ek option chunein:\n\n"
+                        "1️⃣ Leave Balance\n2️⃣ Leave History\n3️⃣ Apply Leave\n4️⃣ Leave Policy"
+                    )
+                else:
+                    _clarify = (
+                        "Sure! What would you like to know? Please choose one:\n\n"
+                        "1️⃣ Leave balance\n2️⃣ Leave history\n3️⃣ Apply leave\n4️⃣ Leave policy"
+                    )
+                return OutboundMessage(body_text=_clarify)
+
+            # ── WORKFLOW: start a multi-step flow directly from natural language ──
+            elif _response_mode == "workflow":
+                _workflow_intent = _meta.get("workflow_intent")
+                if _workflow_intent:
+                    return _start_workflow_from_intent(
+                        conv, _workflow_intent, clean_text, context, trace_id
+                    )
+
+        # ── QueryResolver returned unknown → keyword router as navigation fallback
+        from ai_workplace.services.keyword_router import match_keyword_service
         kw_service = match_keyword_service(clean_text)
         if kw_service:
             selected_service = {"key": kw_service, "title": kw_service}
@@ -938,73 +1115,27 @@ def process_message(
         )
 
     # =========================================================================
-    # PHASE 5: DETERMINISTIC QUERY RESOLVER -> HYBRID RAG -> LLM FALLBACK
+    # FINAL FALLBACK: LLM for genuinely unknown / complex / reasoning queries
     # =========================================================================
+    # If we reach here, the message was not a structured payload, not resolved
+    # by QueryResolver, and not matched by keyword_router as a submenu shortcut.
+    # Route to the LLM as an exception/reasoning layer — not the default.
     if not clean_text.isdigit() and len(clean_text) >= 3:
-        from ai_workplace.ai.query_resolver import QueryResolver
-        from ai_workplace.ai.response_formatter import ResponseFormatter
-        from ai_workplace.ai.tools import run_tool
-        
-        intent_key, meta, confidence = QueryResolver.resolve(clean_text)
-        
-        if intent_key and intent_key != "unknown" and meta:
-            # Check permissions
-            if meta.get("requires_authentication") and not context.get("employee"):
-                return OutboundMessage(body_text="You must be an authenticated employee to access this feature.")
-                
-            tool_name = meta.get("tool")
-            response_mode = meta.get("response_mode", "deterministic")
-            
-            # Tier 0: Zero AI (Deterministic ERP)
-            if response_mode == "deterministic" and tool_name:
-                raw_data = run_tool(tool_name, context)
-                formatted_response = ResponseFormatter.format_response(intent_key, raw_data)
-                
-                log_ai_action(
-                    trace_id=trace_id,
-                    conversation_name=conv.name,
-                    whatsapp_identity=conv.whatsapp_identity,
-                    intent=intent_key,
-                    action=f"run_deterministic_{tool_name}",
-                    result=formatted_response,
-                    status="Success",
-                )
-                return OutboundMessage(body_text=formatted_response)
-                
-            # Tier 1/2: Hybrid RAG or LLM Synthesis
-            elif response_mode == "hybrid" or meta.get("llm_allowed", False):
-                # Call HR Agent to handle it natively with LLM + Tools
-                from ai_workplace.services.hr_agent import handle_hr_agent_message
-                update_conversation(conv, state=ConversationState.PROCESSING, current_intent="hr_ai_agent")
-                return handle_hr_agent_message(conv, clean_text, context)
-                
-            # Navigation / Clarification
-            elif response_mode == "clarification":
-                return OutboundMessage(
-                    body_text="Sure. What would you like to see?\n\n1️⃣ Leave balance\n2️⃣ Leave history\n3️⃣ Leave applications\n4️⃣ Leave policy"
-                )
-                
-            # Escalation
-            elif response_mode == "escalate":
-                return OutboundMessage(
-                    body_text=ResponseFormatter.format_generic_error()
-                )
-        
-        # If no deterministic intent matched, use LLM as final fallback (if enabled)
         from ai_workplace.ai.router import is_ai_chat_enabled
         if is_ai_chat_enabled():
             from ai_workplace.services.hr_agent import handle_hr_agent_message
-            update_conversation(conv, state=ConversationState.PROCESSING, current_intent="hr_ai_agent")
+            # NOTE: do NOT set current_intent="hr_ai_agent" — this is one-shot.
+            # The next message re-enters the full resolver from the top.
             return handle_hr_agent_message(conv, clean_text, context)
-        
-        # If LLM disabled, fallback to menu
+
+        # LLM disabled — show menu with a helpful hint
         lang = context.get("preferred_language", "English")
         if lang == "Urdu":
             hint = "براہ کرم نیچے سے سروس منتخب کریں۔ آپ \"تنخواہ\"، \"رخصت\"، \"حاضری\"، \"سفر\" یا \"HR\" بھی لکھ سکتے ہیں۔"
         elif lang == "Roman Urdu":
             hint = "Neeche se service choose karein. Aap \"salary slip\", \"leave\", \"attendance\", \"travel\" ya \"HR\" bhi likh sakte hain."
         else:
-            hint = "Choose a service below. You can also type common requests such as \"salary slip\", \"leave\", \"attendance\", \"travel\" or \"HR\"."
+            hint = "Choose a service below. You can also type requests like \"leave balance\", \"salary slip\", or \"attendance\"."
         menu_out, _unused = build_menu(context, header_prefix=hint)
         return menu_out
 
