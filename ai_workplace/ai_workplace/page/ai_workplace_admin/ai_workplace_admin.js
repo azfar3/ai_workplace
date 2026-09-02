@@ -54,8 +54,6 @@ function initAdminDashboard(page, wrapper) {
         if (autoRefreshTimer) clearInterval(autoRefreshTimer);
         if (DashboardState.get('autoRefresh')) {
             autoRefreshTimer = setInterval(function () {
-                var activeTab = DashboardState.get('activeTab');
-                // Poll live feed if activeTab is live_feed, else load full data
                 loadData();
             }, DashboardState.get('refreshInterval'));
         }

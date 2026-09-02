@@ -577,3 +577,336 @@
 	0%, 100% { opacity: 1; }
 	50% { opacity: 0.4; }
 }
+
+/* ==========================================================================
+   WHATSAPP WEB DARK THEME ADAPTATION (Automatic when Frappe is in Dark Mode)
+   ========================================================================== */
+.wa-inbox.dark-theme,
+[data-theme="dark"] .wa-inbox,
+body[data-theme="dark"] .wa-inbox,
+html[data-theme="dark"] .wa-inbox,
+body.dark-mode .wa-inbox {
+	background: #111b21 !important;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.wa-inbox.dark-theme .wa-sidebar,
+[data-theme="dark"] .wa-sidebar,
+body[data-theme="dark"] .wa-sidebar,
+html[data-theme="dark"] .wa-sidebar {
+	background: #111b21 !important;
+	border-right: 1px solid #222d34 !important;
+}
+
+.wa-inbox.dark-theme .wa-sidebar-header,
+[data-theme="dark"] .wa-sidebar-header,
+body[data-theme="dark"] .wa-sidebar-header,
+html[data-theme="dark"] .wa-sidebar-header {
+	background: #202c33 !important;
+	color: #e9edef !important;
+	border-bottom: 1px solid #222d34 !important;
+}
+
+.wa-inbox.dark-theme .wa-filters,
+[data-theme="dark"] .wa-filters,
+body[data-theme="dark"] .wa-filters,
+html[data-theme="dark"] .wa-filters {
+	background: #111b21 !important;
+	border-bottom: 1px solid #222d34 !important;
+}
+
+.wa-inbox.dark-theme .wa-filters .wa-filter-btn,
+[data-theme="dark"] .wa-filters .wa-filter-btn,
+body[data-theme="dark"] .wa-filters .wa-filter-btn,
+html[data-theme="dark"] .wa-filters .wa-filter-btn {
+	background: #202c33 !important;
+	color: #aebac1 !important;
+}
+
+.wa-inbox.dark-theme .wa-filters .wa-filter-btn:hover,
+[data-theme="dark"] .wa-filters .wa-filter-btn:hover,
+body[data-theme="dark"] .wa-filters .wa-filter-btn:hover,
+html[data-theme="dark"] .wa-filters .wa-filter-btn:hover {
+	background: #2a3942 !important;
+	color: #e9edef !important;
+}
+
+.wa-inbox.dark-theme .wa-filters .wa-filter-btn.active,
+[data-theme="dark"] .wa-filters .wa-filter-btn.active,
+body[data-theme="dark"] .wa-filters .wa-filter-btn.active,
+html[data-theme="dark"] .wa-filters .wa-filter-btn.active {
+	background: #00a884 !important;
+	color: #111b21 !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-list,
+[data-theme="dark"] .wa-chat-list,
+body[data-theme="dark"] .wa-chat-list,
+html[data-theme="dark"] .wa-chat-list {
+	background: #111b21 !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-item,
+[data-theme="dark"] .wa-chat-item,
+body[data-theme="dark"] .wa-chat-item,
+html[data-theme="dark"] .wa-chat-item {
+	border-bottom: 1px solid #222d34 !important;
+	background: #111b21 !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-item:hover,
+[data-theme="dark"] .wa-chat-item:hover,
+body[data-theme="dark"] .wa-chat-item:hover,
+html[data-theme="dark"] .wa-chat-item:hover {
+	background: #202c33 !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-item.active,
+[data-theme="dark"] .wa-chat-item.active,
+body[data-theme="dark"] .wa-chat-item.active,
+html[data-theme="dark"] .wa-chat-item.active {
+	background: #2a3942 !important;
+}
+
+.wa-inbox.dark-theme .wa-avatar,
+[data-theme="dark"] .wa-avatar,
+body[data-theme="dark"] .wa-avatar,
+html[data-theme="dark"] .wa-avatar {
+	background: #6a7f8a !important;
+	color: #cfd8dc !important;
+}
+
+.wa-inbox.dark-theme .wa-avatar.hr,
+[data-theme="dark"] .wa-avatar.hr,
+body[data-theme="dark"] .wa-avatar.hr,
+html[data-theme="dark"] .wa-avatar.hr {
+	background: #00a884 !important;
+	color: #111b21 !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-item-name,
+[data-theme="dark"] .wa-chat-item-name,
+body[data-theme="dark"] .wa-chat-item-name,
+html[data-theme="dark"] .wa-chat-item-name {
+	color: #e9edef !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-item-time,
+.wa-inbox.dark-theme .wa-chat-item-preview,
+[data-theme="dark"] .wa-chat-item-time,
+[data-theme="dark"] .wa-chat-item-preview,
+body[data-theme="dark"] .wa-chat-item-time,
+body[data-theme="dark"] .wa-chat-item-preview,
+html[data-theme="dark"] .wa-chat-item-time,
+html[data-theme="dark"] .wa-chat-item-preview {
+	color: #8696a0 !important;
+}
+
+.wa-inbox.dark-theme .wa-badge,
+[data-theme="dark"] .wa-badge,
+body[data-theme="dark"] .wa-badge,
+html[data-theme="dark"] .wa-badge {
+	background: rgba(0, 168, 132, 0.2) !important;
+	color: #00a884 !important;
+}
+
+.wa-inbox.dark-theme .wa-badge.Queued,
+body[data-theme="dark"] .wa-badge.Queued { background: rgba(245, 158, 11, 0.2) !important; color: #f59e0b !important; }
+.wa-inbox.dark-theme .wa-badge.Expired,
+body[data-theme="dark"] .wa-badge.Expired { background: rgba(239, 68, 68, 0.2) !important; color: #ef4444 !important; }
+.wa-inbox.dark-theme .wa-badge.Closed,
+body[data-theme="dark"] .wa-badge.Closed { background: #202c33 !important; color: #8696a0 !important; }
+
+.wa-inbox.dark-theme .wa-chat-panel,
+[data-theme="dark"] .wa-chat-panel,
+body[data-theme="dark"] .wa-chat-panel,
+html[data-theme="dark"] .wa-chat-panel {
+	background-color: #0b141a !important;
+	background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231f2c34' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-header,
+[data-theme="dark"] .wa-chat-header,
+body[data-theme="dark"] .wa-chat-header,
+html[data-theme="dark"] .wa-chat-header {
+	background: #202c33 !important;
+	border-bottom: 1px solid #222d34 !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-header-name,
+[data-theme="dark"] .wa-chat-header-name,
+body[data-theme="dark"] .wa-chat-header-name,
+html[data-theme="dark"] .wa-chat-header-name {
+	color: #e9edef !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-header-sub,
+[data-theme="dark"] .wa-chat-header-sub,
+body[data-theme="dark"] .wa-chat-header-sub,
+html[data-theme="dark"] .wa-chat-header-sub {
+	color: #8696a0 !important;
+}
+
+.wa-inbox.dark-theme .wa-action-take,
+[data-theme="dark"] .wa-action-take,
+body[data-theme="dark"] .wa-action-take,
+html[data-theme="dark"] .wa-action-take {
+	background: #00a884 !important;
+	color: #111b21 !important;
+	border-color: #00a884 !important;
+}
+
+.wa-inbox.dark-theme .wa-action-take:hover,
+[data-theme="dark"] .wa-action-take:hover,
+body[data-theme="dark"] .wa-action-take:hover,
+html[data-theme="dark"] .wa-action-take:hover {
+	background: #008f70 !important;
+	border-color: #008f70 !important;
+}
+
+.wa-inbox.dark-theme .wa-action-assign,
+[data-theme="dark"] .wa-action-assign,
+body[data-theme="dark"] .wa-action-assign,
+html[data-theme="dark"] .wa-action-assign {
+	background: #202c33 !important;
+	color: #00a884 !important;
+	border-color: #00a884 !important;
+}
+
+.wa-inbox.dark-theme .wa-action-assign:hover,
+[data-theme="dark"] .wa-action-assign:hover,
+body[data-theme="dark"] .wa-action-assign:hover,
+html[data-theme="dark"] .wa-action-assign:hover {
+	background: rgba(0, 168, 132, 0.15) !important;
+}
+
+.wa-inbox.dark-theme .wa-action-close,
+[data-theme="dark"] .wa-action-close,
+body[data-theme="dark"] .wa-action-close,
+html[data-theme="dark"] .wa-action-close {
+	background: #202c33 !important;
+	color: #f15c6d !important;
+	border-color: #f15c6d !important;
+}
+
+.wa-inbox.dark-theme .wa-action-close:hover,
+[data-theme="dark"] .wa-action-close:hover,
+body[data-theme="dark"] .wa-action-close:hover,
+html[data-theme="dark"] .wa-action-close:hover {
+	background: #f15c6d !important;
+	color: #111b21 !important;
+}
+
+.wa-inbox.dark-theme .wa-banner,
+[data-theme="dark"] .wa-banner,
+body[data-theme="dark"] .wa-banner,
+html[data-theme="dark"] .wa-banner {
+	background: #182229 !important;
+	color: #ffd279 !important;
+	border-bottom: 1px solid #2a3942 !important;
+}
+
+.wa-inbox.dark-theme .wa-messages,
+[data-theme="dark"] .wa-messages,
+body[data-theme="dark"] .wa-messages,
+html[data-theme="dark"] .wa-messages {
+	background-color: #0b141a !important;
+}
+
+.wa-inbox.dark-theme .wa-msg-row.inbound .wa-bubble,
+[data-theme="dark"] .wa-msg-row.inbound .wa-bubble,
+body[data-theme="dark"] .wa-msg-row.inbound .wa-bubble,
+html[data-theme="dark"] .wa-msg-row.inbound .wa-bubble {
+	background: #202c33 !important;
+}
+
+.wa-inbox.dark-theme .wa-msg-row.outbound .wa-bubble,
+[data-theme="dark"] .wa-msg-row.outbound .wa-bubble,
+body[data-theme="dark"] .wa-msg-row.outbound .wa-bubble,
+html[data-theme="dark"] .wa-msg-row.outbound .wa-bubble {
+	background: #005c4b !important;
+}
+
+.wa-inbox.dark-theme .wa-bubble-text,
+[data-theme="dark"] .wa-bubble-text,
+body[data-theme="dark"] .wa-bubble-text,
+html[data-theme="dark"] .wa-bubble-text {
+	color: #e9edef !important;
+}
+
+.wa-inbox.dark-theme .wa-bubble-time,
+[data-theme="dark"] .wa-bubble-time,
+body[data-theme="dark"] .wa-bubble-time,
+html[data-theme="dark"] .wa-bubble-time {
+	color: #8696a0 !important;
+}
+
+.wa-inbox.dark-theme .wa-date-separator,
+[data-theme="dark"] .wa-date-separator,
+body[data-theme="dark"] .wa-date-separator,
+html[data-theme="dark"] .wa-date-separator {
+	background: #182229 !important;
+	color: #8696a0 !important;
+	box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.3) !important;
+}
+
+.wa-inbox.dark-theme .wa-compose,
+[data-theme="dark"] .wa-compose,
+body[data-theme="dark"] .wa-compose,
+html[data-theme="dark"] .wa-compose {
+	background: #202c33 !important;
+}
+
+.wa-inbox.dark-theme .wa-compose-box,
+[data-theme="dark"] .wa-compose-box,
+body[data-theme="dark"] .wa-compose-box,
+html[data-theme="dark"] .wa-compose-box {
+	background: #2a3942 !important;
+}
+
+.wa-inbox.dark-theme .wa-compose-box textarea,
+[data-theme="dark"] .wa-compose-box textarea,
+body[data-theme="dark"] .wa-compose-box textarea,
+html[data-theme="dark"] .wa-compose-box textarea {
+	color: #d1d7db !important;
+}
+
+.wa-inbox.dark-theme .wa-send-btn,
+[data-theme="dark"] .wa-send-btn,
+body[data-theme="dark"] .wa-send-btn,
+html[data-theme="dark"] .wa-send-btn {
+	background: #00a884 !important;
+	color: #111b21 !important;
+}
+
+.wa-inbox.dark-theme .wa-send-btn:hover:not(:disabled),
+body[data-theme="dark"] .wa-send-btn:hover:not(:disabled) {
+	background: #008f70 !important;
+}
+
+.wa-inbox.dark-theme .wa-attach-btn,
+[data-theme="dark"] .wa-attach-btn,
+body[data-theme="dark"] .wa-attach-btn,
+html[data-theme="dark"] .wa-attach-btn {
+	color: #8696a0 !important;
+}
+
+.wa-inbox.dark-theme .wa-attach-btn:hover:not(:disabled),
+body[data-theme="dark"] .wa-attach-btn:hover:not(:disabled) {
+	background: #2a3942 !important;
+	color: #00a884 !important;
+}
+
+.wa-inbox.dark-theme .wa-empty,
+[data-theme="dark"] .wa-empty,
+body[data-theme="dark"] .wa-empty,
+html[data-theme="dark"] .wa-empty {
+	color: #8696a0 !important;
+}
+
+.wa-inbox.dark-theme .wa-empty-title,
+[data-theme="dark"] .wa-empty-title,
+body[data-theme="dark"] .wa-empty-title,
+html[data-theme="dark"] .wa-empty-title {
+	color: #e9edef !important;
+}

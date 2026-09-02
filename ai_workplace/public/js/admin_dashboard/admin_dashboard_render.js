@@ -23,8 +23,9 @@ window.AdminDashboardRender = (function () {
         html += '  </div>';
 
         html += '  <div class="header-controls">';
+
         html += '    <div class="control-group">';
-        html += '      <label><i class="fa fa-calendar"></i> Date Range:</label>';
+        html += '      <label class="mb-0"><i class="fa fa-calendar"></i> Date Range:</label>';
         html += '      <select id="dash-range-select" class="dash-select">';
         html += '        <option value="today"' + (range === 'today' ? ' selected' : '') + '>Today</option>';
         html += '        <option value="yesterday"' + (range === 'yesterday' ? ' selected' : '') + '>Yesterday</option>';
@@ -44,7 +45,7 @@ window.AdminDashboardRender = (function () {
         html += '    </div>';
 
         html += '    <div class="control-group auto-refresh-group">';
-        html += '      <label class="checkbox-label"><input type="checkbox" id="dash-auto-toggle"' + (autoRef ? ' checked' : '') + '> Auto Refresh</label>';
+        html += '      <label class="checkbox-label mb-0"><input type="checkbox" id="dash-auto-toggle"' + (autoRef ? ' checked' : '') + '> Auto Refresh</label>';
         html += '      <button id="dash-refresh-btn" class="btn btn-sm btn-primary"><i class="fa fa-refresh"></i> Refresh</button>';
         html += '    </div>';
         html += '    <div class="header-updated">Updated: <span id="dash-updated-text">' + U.escapeHtml(state.get('lastUpdated') || 'Just now') + '</span></div>';
@@ -104,7 +105,7 @@ window.AdminDashboardRender = (function () {
         var det = o.deterministic || {};
 
         var html = '<div class="tab-pane-content">';
-        
+
         // Key Highlight: Deterministic Resolution Rate Banner
         html += '<div class="highlight-banner-card">';
         html += '  <div class="banner-left">';
@@ -122,7 +123,7 @@ window.AdminDashboardRender = (function () {
         // Stat Cards Grid
         html += '<div class="dash-section-title">System & Operational KPIs</div>';
         html += '<div class="dash-card-grid">';
-        
+
         html += '  <div class="stat-card">';
         html += '    <div class="stat-icon blue"><i class="fa fa-users"></i></div>';
         html += '    <div class="stat-content">';
@@ -195,7 +196,7 @@ window.AdminDashboardRender = (function () {
 
         var html = '<div class="tab-pane-content">';
         html += '<div class="dash-card-grid">';
-        
+
         html += '  <div class="stat-card">';
         html += '    <div class="stat-content">';
         html += '      <div class="stat-value">' + U.formatNumber(s.total_llm_requests) + '</div>';
@@ -280,7 +281,7 @@ window.AdminDashboardRender = (function () {
 
         var html = '<div class="tab-pane-content">';
         html += '<div class="dash-card-grid">';
-        
+
         html += '  <div class="stat-card">';
         html += '    <div class="stat-content">';
         html += '      <div class="stat-value">' + U.formatNumber(d.total_queries) + '</div>';
@@ -356,7 +357,7 @@ window.AdminDashboardRender = (function () {
 
         var html = '<div class="tab-pane-content">';
         html += '<div class="dash-card-grid">';
-        
+
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value">' + U.formatNumber(u.registered_users) + '</div><div class="stat-label">Registered Users</div><div class="stat-sub">' + U.formatNumber(u.active_users) + ' Enabled</div></div></div>';
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value">' + U.formatNumber(u.users_active_today) + '</div><div class="stat-label">Active Today</div><div class="stat-sub">Unique active accounts</div></div></div>';
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value">' + U.formatNumber(u.users_active_week) + '</div><div class="stat-label">Active This Week</div></div></div>';
@@ -407,7 +408,7 @@ window.AdminDashboardRender = (function () {
 
         var html = '<div class="tab-pane-content">';
         html += '<div class="dash-card-grid">';
-        
+
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value green-text">' + U.formatNumber(c.active) + '</div><div class="stat-label">Active Conversations</div></div></div>';
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value">' + U.formatNumber(c.completed) + '</div><div class="stat-label">Completed</div></div></div>';
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value text-warning">' + U.formatNumber(c.expired) + '</div><div class="stat-label">Expired</div></div></div>';
@@ -485,7 +486,7 @@ window.AdminDashboardRender = (function () {
 
         var html = '<div class="tab-pane-content">';
         html += '<div class="dash-card-grid">';
-        
+
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value text-danger">' + U.formatNumber(e.errors_today) + '</div><div class="stat-label">Errors Today</div></div></div>';
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value text-danger">' + U.formatNumber(e.errors_week) + '</div><div class="stat-label">Errors This Week</div></div></div>';
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value">' + U.formatPercent(e.error_rate_pct) + '</div><div class="stat-label">Error Rate</div></div></div>';
@@ -536,7 +537,7 @@ window.AdminDashboardRender = (function () {
 
         var html = '<div class="tab-pane-content">';
         html += '<div class="dash-card-grid">';
-        
+
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value">' + U.formatNumber(sec.total_admins) + '</div><div class="stat-label">System Admins</div></div></div>';
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value">' + U.formatNumber(sec.active_admin_sessions) + '</div><div class="stat-label">Active Admin Sessions</div></div></div>';
         html += '  <div class="stat-card"><div class="stat-content"><div class="stat-value">' + U.formatNumber(sec.auth_failures) + '</div><div class="stat-label">Auth Failures</div></div></div>';
@@ -577,7 +578,7 @@ window.AdminDashboardRender = (function () {
         var k = data.knowledge;
 
         var html = '<div class="tab-pane-content">';
-        
+
         if (k.is_stale) {
             html += '<div class="dash-alert dash-alert-warning"><i class="fa fa-warning"></i> <strong>Knowledge Index Stale:</strong> Knowledge base was last indexed on ' + U.escapeHtml(k.last_indexing_time) + '. Consider triggering re-indexing.</div>';
         }

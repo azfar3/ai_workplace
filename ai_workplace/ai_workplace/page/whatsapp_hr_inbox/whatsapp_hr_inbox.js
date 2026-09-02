@@ -1,14 +1,16 @@
 frappe.pages["whatsapp-hr-inbox"].on_page_load = function (wrapper) {
-	frappe.ui.make_app_page({
-		parent: wrapper,
-		title: __("WhatsApp HR Inbox"),
-		single_column: true,
+	frappe.require("/assets/ai_workplace/css/whatsapp_hr_inbox.css", function () {
+		frappe.ui.make_app_page({
+			parent: wrapper,
+			title: __("WhatsApp HR Inbox"),
+			single_column: true,
+		});
+		const page = wrapper.page;
+		if (page?.page_actions?.length) {
+			page.page_actions.hide();
+		}
+		frappe.whatsapp_hr_inbox.make(page);
 	});
-	const page = wrapper.page;
-	if (page?.page_actions?.length) {
-		page.page_actions.hide();
-	}
-	frappe.whatsapp_hr_inbox.make(page);
 };
 
 frappe.whatsapp_hr_inbox = {
@@ -68,6 +70,9 @@ frappe.whatsapp_hr_inbox = {
 			</div>
 		`).appendTo(page.main);
 
+		// Synchronize theme with Frappe App theme (Light or Dark)
+		this.sync_theme();
+
 		page.main.addClass("wa-inbox-page");
 		if (page.wrapper) {
 			page.wrapper.addClass("wa-inbox-page-wrapper");
@@ -126,6 +131,23 @@ frappe.whatsapp_hr_inbox = {
 				this.load_inbox();
 			},
 		});
+	},
+
+	sync_theme() {
+		var isDark = false;
+		if (window.frappe && frappe.ui && typeof frappe.ui.is_dark === "function") {
+			isDark = frappe.ui.is_dark();
+		} else {
+			var htmlTheme = document.documentElement.getAttribute("data-theme");
+			var bodyTheme = document.body ? document.body.getAttribute("data-theme") : null;
+			isDark = (htmlTheme === "dark" || bodyTheme === "dark" || $(document.body).hasClass("dark-mode"));
+		}
+
+		if (isDark) {
+			this.wrapper.addClass("dark-theme");
+		} else {
+			this.wrapper.removeClass("dark-theme");
+		}
 	},
 
 	_setup_realtime() {
