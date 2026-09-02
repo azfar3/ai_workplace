@@ -237,17 +237,30 @@ def get_recent_leave_requests(employee_id: Optional[str]) -> list[dict[str, Any]
         apps = frappe.db.get_all(
             "Leave Application",
             filters={"employee": employee_id, "docstatus": ["!=", 2]},
-            fields=["leave_type", "from_date", "to_date", "total_leave_days", "status"],
+            fields=["leave_type", "from_date", "to_date", "total_leave_days", "half_day", "half_day_date", "status"],
             order_by="creation desc",
             limit=5,
         )
 
         for app in apps:
+            tot_days = flt(app.get("total_leave_days", 0))
+            if tot_days <= 0:
+                from_d = app.get("from_date")
+                to_d = app.get("to_date")
+                if from_d and to_d:
+                    try:
+                        from hrms.hr.doctype.leave_application.leave_application import get_number_of_leave_days
+                        tot_days = flt(get_number_of_leave_days(employee_id, app.get("leave_type"), from_d, to_d, app.get("half_day"), app.get("half_day_date")))
+                    except Exception:
+                        tot_days = float((getdate(to_d) - getdate(from_d)).days + 1)
+                if tot_days <= 0:
+                    tot_days = 1.0
+
             requests.append({
                 "leave_type": app.get("leave_type") or "Leave",
                 "from_date": formatdate(app.get("from_date"), "dd MMM"),
                 "to_date": formatdate(app.get("to_date"), "dd MMM YYYY"),
-                "total_days": f"{flt(app.get('total_leave_days', 1)):.1f}",
+                "total_days": f"{tot_days:.1f}",
                 "status": app.get("status") or "Open",
             })
 
