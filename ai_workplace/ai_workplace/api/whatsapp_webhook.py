@@ -47,8 +47,9 @@ from werkzeug.wrappers import Response
 
 from ai_workplace.whatsapp.signature import validate_signature, get_app_secret
 from ai_workplace.whatsapp.payload_parser import parse_webhook_payload, ParseError
-from ai_workplace.whatsapp.sender import send_text_message
+from ai_workplace.whatsapp.sender import send_message, send_text_message
 from ai_workplace.identity.resolver import resolve_identity
+from ai_workplace.conversation.orchestrator import process_message
 from ai_workplace.services.welcome import build_welcome_message
 
 
@@ -239,14 +240,22 @@ def _process_receive():
             description="No matching ERPNext identity found for incoming WhatsApp number",
         )
 
-    # ── 8. Build reply ────────────────────────────────────────────────────────
-    welcome_message = build_welcome_message(identity.to_dict())
+    # ── 8. Orchestrate reply via conversation pipeline ────────────────────────
+    outbound = process_message(
+        message_text=parsed.get("text", ""),
+        identity=identity,
+        message_id=message_id,
+        trace_id=trace_id,
+        wa_id=wa_id,
+    )
 
     # ── 9. Send WhatsApp reply ────────────────────────────────────────────────
-    send_result = send_text_message(
+    send_result = send_message(
         phone_number=identity.normalized_phone,
-        message=welcome_message,
+        outbound=outbound,
     )
+
+    response_text = outbound.log_text() if hasattr(outbound, "log_text") else str(outbound)
 
     # ── 10. Mark inbound log as Received ──────────────────────────────────────
     _finalize_log(inbound_log, status="Received")
@@ -264,9 +273,9 @@ def _process_receive():
         recipient=identity.normalized_phone,
         wa_id=wa_id,
         message_type="text",
-        message=welcome_message,
-        erp_user=identity.user,
-        employee=identity.employee,
+        message=response_text,
+        erp_user=identity.user or "",
+        employee=identity.employee or "",
         identity_status=identity.status,
         status=outbound_status,
         trace_id=trace_id,
