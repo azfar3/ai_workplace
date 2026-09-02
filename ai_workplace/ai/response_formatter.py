@@ -135,15 +135,36 @@ class ResponseFormatter:
         return f"🧾 *Latest Tax Deductions*\n\nSlip Name: {data.get('salary_slip_name')}\nPeriod: {data.get('start_date')} to {data.get('end_date')}\nTotal Deductions: {data.get('total_deductions')}"
 
     @staticmethod
-    def format_leave_history(data: list) -> str:
+    def format_leave_history(data: Any) -> str:
         if not data:
             return "📜 I couldn't find any recent leave requests in your records."
+
+        items = []
+        if isinstance(data, dict):
+            items = data.get("leave_history", data.get("value", data.get("data", [])))
+            if isinstance(items, str):
+                import json, ast
+                try:
+                    items = json.loads(items)
+                except Exception:
+                    try:
+                        items = ast.literal_eval(items)
+                    except Exception:
+                        items = []
+        elif isinstance(data, list):
+            items = data
+
+        if not items or not isinstance(items, list):
+            return "📜 I couldn't find any recent leave requests in your records."
+
         res = "📜 *Recent Leave Requests*\n\n"
-        for item in data[:5]:
-            status_icon = "✅" if item.get("status") == "Approved" else ("⏳" if item.get("status") in ("Open", "Draft", "Applied") else "❌")
-            res += f"{status_icon} *{item.get('leave_type', 'Leave')}* ({item.get('total_leave_days', 0)} days)\n"
-            res += f"   Period: {item.get('from_date')} to {item.get('to_date')}\n"
-            res += f"   Status: {item.get('status')}\n\n"
+        for item in items[:5]:
+            if isinstance(item, dict):
+                status_icon = "✅" if item.get("status") == "Approved" else ("⏳" if item.get("status") in ("Open", "Draft", "Applied") else "❌")
+                days_val = item.get("total_days", item.get("total_leave_days", 0))
+                res += f"{status_icon} *{item.get('leave_type', 'Leave')}* ({days_val} days)\n"
+                res += f"   Period: {item.get('from_date')} to {item.get('to_date')}\n"
+                res += f"   Status: {item.get('status')}\n\n"
         return res.strip()
 
     @staticmethod

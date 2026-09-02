@@ -35,6 +35,9 @@ def sanitize_tool_evidence(tool_name: str, raw_result: Any, context: dict[str, A
     if tool_name == "get_leave_balance":
         return _minimize_leave_balance(raw_result)
 
+    if tool_name == "get_leave_history":
+        return _minimize_leave_history(raw_result)
+
     if tool_name == "get_attendance_summary":
         return _minimize_attendance_summary(raw_result)
 
@@ -85,6 +88,27 @@ def _minimize_leave_balance(data: Any) -> dict[str, Any]:
                     "leaves_taken": stats.get("leaves_taken", stats.get("taken", 0.0)),
                 })
     return {"leave_balances": minimized}
+
+
+def _minimize_leave_history(data: Any) -> dict[str, Any]:
+    """Minimizes leave history list to recent leave requests."""
+    if not data:
+        return {"leave_history": []}
+
+    history = []
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict):
+                history.append({
+                    "leave_type": item.get("leave_type", "Leave"),
+                    "from_date": item.get("from_date"),
+                    "to_date": item.get("to_date"),
+                    "total_days": item.get("total_days", item.get("total_leave_days", "1.0")),
+                    "status": item.get("status", "Open"),
+                })
+    elif isinstance(data, dict):
+        history = data.get("leave_history", [data])
+    return {"leave_history": history}
 
 
 def _minimize_attendance_summary(data: Any) -> dict[str, Any]:

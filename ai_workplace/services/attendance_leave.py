@@ -105,10 +105,11 @@ def get_monthly_attendance_data(employee_id: Optional[str]) -> dict[str, Any]:
         att_records = frappe.db.get_all(
             "Attendance",
             filters={"employee": employee_id, "attendance_date": ["between", [first_day, last_day]], "docstatus": ["!=", 2]},
-            fields=["status", "working_hours", "late_entry"],
+            fields=["attendance_date", "status", "working_hours", "late_entry"],
         )
 
-        res["total_days"] = len(att_records)
+        att_dates = {str(rec.get("attendance_date")) for rec in att_records if rec.get("attendance_date")}
+
         for rec in att_records:
             st = rec.get("status")
             res["total_hours"] += flt(rec.get("working_hours", 0))
@@ -123,6 +124,26 @@ def get_monthly_attendance_data(employee_id: Optional[str]) -> dict[str, Any]:
                 if st == "Half Day":
                     res["half_day"] += 1
                 res["leave"] += 1
+
+        # Check raw Employee Checkins for dates without processed Attendance records
+        raw_checkins = frappe.db.get_all(
+            "Employee Checkin",
+            filters={
+                "employee": employee_id,
+                "time": ["between", [f"{first_day} 00:00:00", f"{last_day} 23:59:59"]],
+            },
+            fields=["time"],
+        )
+
+        unprocessed_present_dates = set()
+        for c in raw_checkins:
+            if c.get("time"):
+                c_date = str(getdate(c["time"]))
+                if c_date not in att_dates:
+                    unprocessed_present_dates.add(c_date)
+
+        res["present"] += len(unprocessed_present_dates)
+        res["total_days"] = res["present"] + res["absent"] + res["leave"]
 
         return res
     except Exception:
