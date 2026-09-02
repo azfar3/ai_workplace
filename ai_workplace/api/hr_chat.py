@@ -30,19 +30,27 @@ def _ensure_hr_agent() -> None:
 
 
 @frappe.whitelist()
-def get_inbox(status_filter: str = "queue") -> list[dict]:
+def get_inbox(status_filter: str = "queue", start: int = 0, limit: int = 15) -> list[dict]:
     _ensure_hr_agent()
-    return get_inbox_sessions(status_filter=status_filter or "queue")
+    start_val = frappe.utils.cint(start)
+    limit_val = frappe.utils.cint(limit) or 15
+    return get_inbox_sessions(status_filter=status_filter or "queue", start=start_val, limit=limit_val)
 
 
 @frappe.whitelist()
-def get_session_detail(session_name: str) -> dict:
+def get_session_detail(session_name: str, start: int = 0, limit: int = 15) -> dict:
     _ensure_hr_agent()
     session = get_session_doc(session_name)
     from ai_workplace.services.hr_chat import _session_payload, evaluate_reply_permission
 
+    start_val = frappe.utils.cint(start)
+    limit_val = frappe.utils.cint(limit) or 15
+
     payload = _session_payload(session)
-    payload["thread"] = get_session_thread(session_name)
+    thread = get_session_thread(session_name, limit=limit_val, start=start_val)
+    payload["thread"] = thread
+    payload["has_more_messages"] = len(thread) >= limit_val
+    payload["thread_start"] = start_val
     office = get_office_hours_info()
     payload.update(office)
     payload["is_office_hours"] = office["is_office_hours"]

@@ -17,6 +17,7 @@ from ai_workplace.conversation.manager import (
     get_or_create_conversation,
     update_conversation,
     cancel_conversation,
+    complete_conversation,
 )
 from ai_workplace.conversation.state import ConversationState
 from ai_workplace.conversation.menu import (
@@ -406,6 +407,144 @@ def process_message(
             status="Success",
         )
         return OutboundMessage(body_text=build_cancellation_response(context))
+
+    # ── Global: bye / session close command ────────────────────────────────────
+    bye_keywords = {
+        "bye",
+        "goodbye",
+        "good bye",
+        "byebye",
+        "bye bye",
+        "khuda hafiz",
+        "allah hafiz",
+        "بائے",
+        "خدا حافظ",
+        "اللہ حافظ",
+    }
+    if cmd_lower in bye_keywords or any(cmd_lower.startswith(k + " ") for k in ("bye", "goodbye", "good bye", "byebye", "khuda hafiz", "allah hafiz") if len(k) > 3):
+        if current_state == ConversationState.LIVE_HR_CHAT and conv.active_hr_chat_session:
+            from ai_workplace.services.hr_chat import close_session
+
+            close_session(conv.active_hr_chat_session, reset_conversation=False)
+
+        update_conversation(conv, state=ConversationState.AWAITING_FEEDBACK, current_intent="session_feedback")
+
+        lang = context.get("preferred_language", "English")
+        if lang == "Urdu":
+            bye_text = (
+                "خدا حافظ! 👋\n\n"
+                "آپ کا سیشن ختم کر دیا گیا ہے۔ آپ کا دن اچھا گزرے۔\n\n"
+                "⭐ *آج آپ کا تجربہ کیسا رہا؟*\n"
+                "براہ کرم 1 سے 5 تک کی درجہ بندی کریں:\n"
+                "1️⃣ ⭐️ خراب\n"
+                "2️⃣ ⭐️⭐️ مناسب\n"
+                "3️⃣ ⭐️⭐️⭐️ اچھا\n"
+                "4️⃣ ⭐️⭐️⭐️⭐️ بہت اچھا\n"
+                "5️⃣ ⭐️⭐️⭐️⭐️⭐️ بہترین\n\n"
+                "(یا تاثرات لکھیے!)"
+            )
+        elif lang == "Roman Urdu":
+            bye_text = (
+                "Khuda Hafiz! 👋\n\n"
+                "Aap ka session close kar diya gaya hai. Aap ka din accha guzre.\n\n"
+                "⭐ *Aaj aap ka experience kaisa raha?*\n"
+                "Barah-e-karam 1 se 5 rating dein:\n"
+                "1️⃣ ⭐️ Poor\n"
+                "2️⃣ ⭐️⭐️ Fair\n"
+                "3️⃣ ⭐️⭐️⭐️ Good\n"
+                "4️⃣ ⭐️⭐️⭐️⭐ Very Good\n"
+                "5️⃣ ⭐️⭐️⭐️⭐️⭐️ Excellent\n\n"
+                "(Ya apna feedback likhein!)"
+            )
+        else:
+            bye_text = (
+                "Goodbye! 👋\n\n"
+                "Your session has been closed. Have a great day!\n\n"
+                "⭐ *How was your experience today?*\n"
+                "Please rate your session from 1 to 5:\n"
+                "1️⃣ ⭐ Poor\n"
+                "2️⃣ ⭐⭐ Fair\n"
+                "3️⃣ ⭐⭐⭐ Good\n"
+                "4️⃣ ⭐⭐⭐⭐ Very Good\n"
+                "5️⃣ ⭐⭐⭐⭐⭐ Excellent\n\n"
+                "(Or reply with any feedback comments!)"
+            )
+
+        log_ai_action(
+            trace_id=trace_id,
+            conversation_name=conv.name,
+            whatsapp_identity=conv.whatsapp_identity,
+            erp_user=conv.erp_user or "",
+            employee=conv.employee or "",
+            intent="bye",
+            action="request_session_feedback",
+            result=bye_text,
+            status="Success",
+        )
+        return OutboundMessage(body_text=bye_text)
+
+    # ── Global: session feedback handling ──────────────────────────────────────
+    if current_state == ConversationState.AWAITING_FEEDBACK:
+        if cmd_lower not in ("hi", "hello", "menu", "start", "restart", "cancel"):
+            import re
+
+            rating_num = None
+            match = re.search(r"\b([1-5])\b", clean_text)
+            if match:
+                rating_num = int(match.group(1))
+
+            feedback_type = "HELPFUL"
+            if rating_num and rating_num <= 3:
+                feedback_type = "NOT_HELPFUL"
+            elif any(w in cmd_lower for w in ("bad", "poor", "unhelpful", "wrong", "useless", "خراب", "برائی")):
+                feedback_type = "NOT_HELPFUL"
+
+            try:
+                fb_doc = frappe.new_doc("AI Feedback Log")
+                fb_doc.feedback_type = feedback_type
+                fb_doc.query = clean_text
+                fb_doc.response = f"Session Feedback Rating: {rating_num}" if rating_num else "Session Feedback Comment"
+                fb_doc.whatsapp_identity = conv.whatsapp_identity or ""
+                fb_doc.conversation = conv.name
+                fb_doc.user = conv.erp_user or None
+                fb_doc.employee = conv.employee or None
+                fb_doc.flags.ignore_links = True
+                fb_doc.insert(ignore_permissions=True)
+                frappe.db.commit()
+            except Exception as fb_err:
+                frappe.logger("ai_workplace").error(f"Failed to save AI feedback: {fb_err}")
+
+            complete_conversation(conv)
+
+            lang = context.get("preferred_language", "English")
+            if lang == "Urdu":
+                thank_you_text = (
+                    "آپ کے تاثرات کا بہت شکریہ! 🙏\n\n"
+                    "آپ کا دن اچھا گزرے۔ دوبارہ مدد کے لیے کسی بھی وقت *hi* یا *menu* لکھیے۔"
+                )
+            elif lang == "Roman Urdu":
+                thank_you_text = (
+                    "Aap ke feedback ka bohot shukriya! 🙏\n\n"
+                    "Aap ka din accha guzre. Dobara madad ke liye kisi bhi waqt *hi* ya *menu* likhein."
+                )
+            else:
+                thank_you_text = (
+                    "Thank you so much for your feedback! 🙏\n\n"
+                    "Have a wonderful day! Type *hi* or *menu* whenever you need assistance again."
+                )
+
+            log_ai_action(
+                trace_id=trace_id,
+                conversation_name=conv.name,
+                whatsapp_identity=conv.whatsapp_identity,
+                erp_user=conv.erp_user or "",
+                employee=conv.employee or "",
+                intent="feedback",
+                action="record_session_feedback",
+                result=thank_you_text,
+                status="Success",
+            )
+            return OutboundMessage(body_text=thank_you_text)
 
     # ── Contact HR prompt (wait / phone / email) ───────────────────────────────
     if current_state == ConversationState.HR_CONTACT_PROMPT:

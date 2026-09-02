@@ -27,7 +27,7 @@ def get_default_ttl_minutes() -> int:
             return int(ttl)
     except Exception:
         pass
-    return 30
+    return 60
 
 
 def get_or_create_conversation(
@@ -237,3 +237,137 @@ def complete_conversation(conversation: "frappe.Document") -> "frappe.Document":
     conversation.save(ignore_permissions=True)
     frappe.db.commit()
     return conversation
+
+
+@frappe.whitelist()
+def close_inactive_sessions() -> dict[str, Any]:
+    """
+    Check for active conversations where expires_at <= now.
+    Closes inactive sessions and sends an automated Bye message to the user.
+    """
+    now = frappe.utils.now_datetime()
+    expired_convs = frappe.get_all(
+        "WhatsApp Conversation",
+        filters={
+            "conversation_status": ConversationStatus.ACTIVE,
+            "expires_at": ("<=", now),
+        },
+        fields=[
+            "name",
+            "whatsapp_identity",
+            "wa_id",
+            "preferred_language",
+            "active_hr_chat_session",
+            "erp_user",
+            "employee",
+            "trace_id",
+        ],
+    )
+
+    closed_count = 0
+    for row in expired_convs:
+        try:
+            conv = frappe.get_doc("WhatsApp Conversation", row.name)
+
+            # Close active HR chat session if any
+            if conv.active_hr_chat_session:
+                try:
+                    from ai_workplace.services.hr_chat import close_session
+                    close_session(conv.active_hr_chat_session, reset_conversation=False)
+                except Exception:
+                    pass
+
+            # Mark conversation expired & awaiting feedback
+            expire_conversation(conv, trace_id=row.trace_id or "")
+            conv.current_state = ConversationState.AWAITING_FEEDBACK
+            conv.save(ignore_permissions=True)
+
+            # Get recipient phone number
+            phone_number = None
+            if conv.whatsapp_identity:
+                phone_number = frappe.db.get_value(
+                    "WhatsApp Identity", conv.whatsapp_identity, "normalized_phone"
+                )
+            if not phone_number and conv.wa_id:
+                phone_number = conv.wa_id
+
+            if phone_number:
+                lang = conv.preferred_language or "English"
+                if lang == "Urdu":
+                    bye_text = (
+                        "غیرفعالیت کی وجہ سے آپ کا سیشن ختم کر دیا گیا ہے۔ خدا حافظ! 👋\n\n"
+                        "آپ کا دن اچھا گزرے۔\n\n"
+                        "⭐ *آج آپ کا تجربہ کیسا رہا؟*\n"
+                        "براہ کرم 1 سے 5 تک کی درجہ بندی کریں:\n"
+                        "1️⃣ ⭐️ خراب\n"
+                        "2️⃣ ⭐️⭐️ مناسب\n"
+                        "3️⃣ ⭐️⭐️⭐️ اچھا\n"
+                        "4️⃣ ⭐️⭐️⭐️⭐️ بہت اچھا\n"
+                        "5️⃣ ⭐️⭐️⭐️⭐️⭐️ بہترین\n\n"
+                        "(یا اپنے تاثرات لکھیے!)"
+                    )
+                elif lang == "Roman Urdu":
+                    bye_text = (
+                        "Ghair-faaliyat ki wajah se aap ka session close ho gaya hai. Khuda Hafiz! 👋\n\n"
+                        "Aap ka din accha guzre.\n\n"
+                        "⭐ *Aaj aap ka experience kaisa raha?*\n"
+                        "Barah-e-karam 1 se 5 rating dein:\n"
+                        "1️⃣ ⭐️ Poor\n"
+                        "2️⃣ ⭐️⭐️ Fair\n"
+                        "3️⃣ ⭐️⭐️⭐️ Good\n"
+                        "4️⃣ ⭐️⭐️⭐️⭐ Very Good\n"
+                        "5️⃣ ⭐️⭐️⭐️⭐️⭐️ Excellent\n\n"
+                        "(Ya apna feedback likhein!)"
+                    )
+                else:
+                    bye_text = (
+                        "Your session has expired due to inactivity. Goodbye! 👋\n\n"
+                        "Have a great day!\n\n"
+                        "⭐ *How was your experience today?*\n"
+                        "Please rate your session from 1 to 5:\n"
+                        "1️⃣ ⭐ Poor\n"
+                        "2️⃣ ⭐⭐ Fair\n"
+                        "3️⃣ ⭐⭐⭐ Good\n"
+                        "4️⃣ ⭐⭐⭐⭐ Very Good\n"
+                        "5️⃣ ⭐⭐⭐⭐⭐ Excellent\n\n"
+                        "(Or reply with any feedback comments!)"
+                    )
+
+                from ai_workplace.whatsapp.sender import send_message
+                from ai_workplace.whatsapp.outbound import OutboundMessage
+
+                outbound = OutboundMessage(body_text=bye_text)
+                send_res = send_message(phone_number=phone_number, outbound=outbound)
+
+                # Create Outbound WhatsApp Message Log
+                try:
+                    doc_log = frappe.new_doc("WhatsApp Message Log")
+                    doc_log.meta_message_id = send_res.get("message_id") or ""
+                    doc_log.direction = "Outbound"
+                    doc_log.sender = ""
+                    doc_log.recipient = phone_number
+                    doc_log.whatsapp_id = conv.wa_id or ""
+                    doc_log.message_type = "text"
+                    doc_log.message = bye_text
+                    doc_log.erp_user = conv.erp_user or ""
+                    doc_log.employee = conv.employee or ""
+                    doc_log.status = "Sent" if send_res.get("success") else "Failed"
+                    doc_log.trace_id = conv.trace_id or ""
+                    doc_log.sender_type = "System"
+                    doc_log.timestamp = now
+                    doc_log.flags.ignore_links = True
+                    doc_log.insert(ignore_permissions=True)
+                except Exception as log_err:
+                    frappe.logger("ai_workplace").error(
+                        f"Failed to log inactive session bye message: {log_err}"
+                    )
+
+            closed_count += 1
+            frappe.db.commit()
+
+        except Exception as exc:
+            frappe.logger("ai_workplace").error(
+                f"Failed to close inactive conversation {row.name}: {exc}"
+            )
+
+    return {"status": "success", "closed_count": closed_count}

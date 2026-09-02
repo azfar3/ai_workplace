@@ -18,3 +18,11 @@ def cleanup_temporary_media():
             frappe.delete_doc("WhatsApp Temporary Media", media.name, ignore_permissions=True, force=True)
         except Exception:
             pass
+
+
+@frappe.whitelist()
+def close_inactive_sessions_task():
+    """Scheduled task to close inactive WhatsApp conversations and send Bye message."""
+    from ai_workplace.conversation.manager import close_inactive_sessions
+    return close_inactive_sessions()
+

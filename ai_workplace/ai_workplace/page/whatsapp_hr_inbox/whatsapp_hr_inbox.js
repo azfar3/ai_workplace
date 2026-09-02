@@ -96,6 +96,23 @@ frappe.whatsapp_hr_inbox = {
 			this.load_inbox();
 		});
 
+		// Attach scroll pagination for Sidebar Chat List
+		this.list_el.on("scroll", () => {
+			if (this._loading_chats || !this._has_more_chats) return;
+			const el = this.list_el[0];
+			if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+				this.load_more_chats();
+			}
+		});
+
+		// Attach scroll-up pagination for Message Panel (Load 10-15 older messages when scrolling above)
+		this.messages_el.on("scroll", () => {
+			if (this._loading_messages || !this._has_more_messages || !this.current_session) return;
+			if (this.messages_el.scrollTop() <= 30) {
+				this.load_older_messages();
+			}
+		});
+
 		this.send_btn.on("click", () => this.send_reply());
 		this.attach_btn.on("click", () => this.attach_file());
 		this.compose_el.on("keydown", (e) => {
@@ -253,22 +270,61 @@ frappe.whatsapp_hr_inbox = {
 		}
 	},
 
-	load_inbox(silent) {
+	_chat_start: 0,
+	_chat_limit: 15,
+	_has_more_chats: true,
+	_loading_chats: false,
+
+	_msg_start: 0,
+	_msg_limit: 15,
+	_has_more_messages: true,
+	_loading_messages: false,
+
+	load_inbox(silent, append = false) {
+		if (!append) {
+			this._chat_start = 0;
+			this._has_more_chats = true;
+		}
+		if (this._loading_chats) return;
+		this._loading_chats = true;
+
 		frappe.call({
 			method: "ai_workplace.api.hr_chat.get_inbox",
-			args: { status_filter: this.current_filter },
+			args: {
+				status_filter: this.current_filter,
+				start: this._chat_start,
+				limit: this._chat_limit,
+			},
 			callback: (r) => {
-				this.render_list(r.message || []);
-				if (!silent && !this.current_session && (r.message || []).length) {
-					this.load_session(r.message[0].name);
+				this._loading_chats = false;
+				const chats = r.message || [];
+				if (chats.length < this._chat_limit) {
+					this._has_more_chats = false;
+				} else {
+					this._has_more_chats = true;
 				}
+				this._chat_start += chats.length;
+
+				this.render_list(chats, append);
+				if (!silent && !append && !this.current_session && chats.length) {
+					this.load_session(chats[0].name);
+				}
+			},
+			error: () => {
+				this._loading_chats = false;
 			},
 		});
 	},
 
-	render_list(sessions) {
-		this.list_el.empty();
-		if (!sessions.length) {
+	load_more_chats() {
+		this.load_inbox(true, true);
+	},
+
+	render_list(sessions, append = false) {
+		if (!append) {
+			this.list_el.empty();
+		}
+		if (!sessions.length && !append) {
 			this.list_el.append(`
 				<div class="wa-empty" style="height:200px;padding:24px;">
 					<div class="wa-empty-sub">${__("No chats in this view.")}</div>
@@ -278,6 +334,9 @@ frappe.whatsapp_hr_inbox = {
 		}
 
 		sessions.forEach((s) => {
+			if (this.list_el.find(`.wa-chat-item[data-name="${frappe.utils.escape_html(s.name)}"]`).length) {
+				return;
+			}
 			const title = s.display_title || s.display_name || s.employee_name || s.wa_id || s.name;
 			const initial = (title || "?").charAt(0).toUpperCase();
 			const subtitle = s.phone || s.wa_id || "";
@@ -305,6 +364,9 @@ frappe.whatsapp_hr_inbox = {
 		this._thread_message_ids = new Set();
 		this._thread_content_keys = new Set();
 		this._last_thread_len = 0;
+		this._msg_start = 0;
+		this._has_more_messages = true;
+		this._loading_messages = false;
 		this.list_el.find(".wa-chat-item").removeClass("active");
 		this.list_el.find(".wa-chat-item").each(function () {
 			if ($(this).attr("data-name") === name) {
@@ -320,11 +382,17 @@ frappe.whatsapp_hr_inbox = {
 
 		frappe.call({
 			method: "ai_workplace.api.hr_chat.get_session_detail",
-			args: { session_name: this.current_session },
+			args: {
+				session_name: this.current_session,
+				start: 0,
+				limit: this._msg_limit,
+			},
 			callback: (r) => {
 				if (!r.message) return;
 				const thread = r.message.thread || [];
 				const is_new_messages = thread.length > this._last_thread_len;
+
+				this._has_more_messages = !!r.message.has_more_messages;
 
 				if (!this._session_data || is_new_messages) {
 					if (this._last_thread_len === 0) {
@@ -348,10 +416,93 @@ frappe.whatsapp_hr_inbox = {
 				}
 
 				this._session_data = r.message;
-				if (!silent && this._last_thread_len === thread.length && thread.length > 0) {
-					/* silent refresh */
-				}
 			},
+		});
+	},
+
+	load_older_messages() {
+		if (!this.current_session || this._loading_messages || !this._has_more_messages) return;
+		this._loading_messages = true;
+
+		const next_start = this._msg_start + this._msg_limit;
+		const prevScrollHeight = this.messages_el[0].scrollHeight;
+
+		if (!this.messages_el.find(".wa-msg-loading").length) {
+			this.messages_el.prepend(`
+				<div class="wa-msg-loading" style="text-align:center;padding:8px;font-size:12px;color:var(--text-muted,#888);font-weight:500;">
+					${__("Loading older messages...")}
+				</div>
+			`);
+		}
+
+		frappe.call({
+			method: "ai_workplace.api.hr_chat.get_session_detail",
+			args: {
+				session_name: this.current_session,
+				start: next_start,
+				limit: this._msg_limit,
+			},
+			callback: (r) => {
+				this.messages_el.find(".wa-msg-loading").remove();
+				this._loading_messages = false;
+				if (!r.message) return;
+
+				const older_thread = r.message.thread || [];
+				if (!older_thread.length) {
+					this._has_more_messages = false;
+					return;
+				}
+
+				this._msg_start = next_start;
+				this._has_more_messages = !!r.message.has_more_messages;
+
+				this.prepend_thread_messages(older_thread);
+
+				const newScrollHeight = this.messages_el[0].scrollHeight;
+				this.messages_el.scrollTop(newScrollHeight - prevScrollHeight);
+			},
+			error: () => {
+				this.messages_el.find(".wa-msg-loading").remove();
+				this._loading_messages = false;
+			},
+		});
+	},
+
+	prepend_thread_messages(messages) {
+		let first_elem = this.messages_el.find(".wa-msg-row, .wa-date-separator").first();
+		const msgs = messages.slice().reverse();
+		msgs.forEach((m) => {
+			const msg_key = this._message_key(m);
+			const content_key = this._content_key(m);
+
+			if (this._thread_message_ids.has(msg_key) || this._thread_content_keys.has(content_key)) {
+				return;
+			}
+			this._thread_message_ids.add(msg_key);
+			this._thread_content_keys.add(content_key);
+
+			const inbound = m.direction === "Inbound";
+			const cls = inbound ? "inbound" : "outbound";
+			const time_str = this.format_msg_time(m.timestamp);
+			const tick = this.render_tick_html(m);
+
+			const row_html = `
+				<div class="wa-msg-row ${cls}" data-key="${frappe.utils.escape_html(msg_key)}">
+					<div class="wa-bubble">
+						${this.render_message_body(m)}
+						<div class="wa-bubble-footer">
+							<span class="wa-bubble-time">${time_str}</span>
+							<span class="wa-tick-wrap">${tick}</span>
+						</div>
+					</div>
+				</div>
+			`;
+			if (first_elem.length) {
+				$(row_html).insertBefore(first_elem);
+				first_elem = this.messages_el.find(".wa-msg-row, .wa-date-separator").first();
+			} else {
+				this.messages_el.append(row_html);
+			}
 		});
 	},
 

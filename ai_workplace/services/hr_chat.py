@@ -929,7 +929,7 @@ def send_hr_reply(
     }
 
 
-def get_session_thread(session_name: str, limit: int = 100) -> list[dict[str, Any]]:
+def get_session_thread(session_name: str, limit: int = 15, start: int = 0) -> list[dict[str, Any]]:
     expire_stale_sessions()
     session = get_session_doc(session_name)
 
@@ -973,9 +973,13 @@ def get_session_thread(session_name: str, limit: int = 100) -> list[dict[str, An
             "message_type",
             "media_file",
         ],
-        order_by="timestamp asc",
-        limit=limit,
+        order_by="timestamp desc",
+        start=start,
+        page_length=limit,
     )
+
+    # Reverse to ascending chronological order for display
+    raw_rows.reverse()
 
     seen_names = set()
     rows = []
@@ -990,35 +994,36 @@ def get_session_thread(session_name: str, limit: int = 100) -> list[dict[str, An
                 "Failed" if row.get("status") == "Failed" else "Sent"
             )
 
-    if session.initial_query and not any(r.get("message") == session.initial_query for r in rows):
-        rows.insert(
-            0,
-            {
-                "name": "initial-query",
-                "direction": "Inbound",
-                "message": session.initial_query,
-                "timestamp": session.opened_at,
-                "sender_type": "Employee",
-                "sender": session.display_name or "",
-                "status": "Received",
-                "meta_message_id": "",
-            },
-        )
+    if start == 0:
+        if session.initial_query and not any(r.get("message") == session.initial_query for r in rows):
+            rows.insert(
+                0,
+                {
+                    "name": "initial-query",
+                    "direction": "Inbound",
+                    "message": session.initial_query,
+                    "timestamp": session.opened_at,
+                    "sender_type": "Employee",
+                    "sender": session.display_name or "",
+                    "status": "Received",
+                    "meta_message_id": "",
+                },
+            )
 
-    if session.guest_email:
-        rows.insert(
-            0,
-            {
-                "name": "guest-meta",
-                "direction": "Inbound",
-                "message": _("Guest email: {0}").format(session.guest_email),
-                "timestamp": session.opened_at,
-                "sender_type": "System",
-                "sender": "",
-                "status": "Received",
-                "meta_message_id": "",
-            },
-        )
+        if session.guest_email:
+            rows.insert(
+                0,
+                {
+                    "name": "guest-meta",
+                    "direction": "Inbound",
+                    "message": _("Guest email: {0}").format(session.guest_email),
+                    "timestamp": session.opened_at,
+                    "sender_type": "System",
+                    "sender": "",
+                    "status": "Received",
+                    "meta_message_id": "",
+                },
+            )
 
     return rows
 
@@ -1051,7 +1056,7 @@ def get_session_identity_key(session_row: dict[str, Any]) -> str:
     return f"session:{session_row['name']}"
 
 
-def get_inbox_sessions(status_filter: str = "queue") -> list[dict[str, Any]]:
+def get_inbox_sessions(status_filter: str = "queue", start: int = 0, limit: int = 15) -> list[dict[str, Any]]:
     expire_stale_sessions()
     user = frappe.session.user
     filters: dict[str, Any] = _inbox_base_filters()
@@ -1101,7 +1106,8 @@ def get_inbox_sessions(status_filter: str = "queue") -> list[dict[str, Any]]:
             "modified",
         ],
         order_by="last_user_message_at desc, modified desc",
-        limit=200,
+        start=start,
+        page_length=limit,
     )
 
     # Merge / collapse multiple sessions belonging to the same employee / identity

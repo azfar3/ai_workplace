@@ -141,6 +141,10 @@ scheduler_events = {
 	],
 	"hourly": [
 		"ai_workplace.tasks.cleanup_temporary_media",
+		"ai_workplace.tasks.close_inactive_sessions_task",
+	],
+	"all": [
+		"ai_workplace.tasks.close_inactive_sessions_task",
 	],
 }
 # 	"daily": [
