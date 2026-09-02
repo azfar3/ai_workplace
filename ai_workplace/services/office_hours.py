@@ -410,11 +410,15 @@ def build_connecting_message(context: Optional[dict[str, Any]] = None) -> str:
     )
 
 
-def build_session_open_message(context: Optional[dict[str, Any]] = None) -> str:
+def build_session_open_message(
+    context: Optional[dict[str, Any]] = None,
+    is_open: Optional[bool] = None,
+) -> str:
     """Message when a chat session opens (employee may queue when CLOSED)."""
-    status = get_hr_support_status()
+    if is_open is None:
+        is_open = is_hr_available()
     base = build_connecting_message(context)
-    if status["is_open"]:
+    if is_open:
         return base
 
     lang = (context or {}).get("preferred_language", "English")

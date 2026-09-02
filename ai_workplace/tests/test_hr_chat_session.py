@@ -150,3 +150,54 @@ class TestHRChatSession(unittest.TestCase):
         result = send_hr_reply(session.name, "We will help you shortly.", user="Administrator")
         self.assertTrue(result["success"])
         mock_send.assert_called_once()
+
+    def test_open_session_reuses_closed_session_for_same_employee(self):
+        session1 = self._open_test_session()
+        s1_name = session1.name
+        close_session(s1_name, user="Administrator")
+        
+        # Re-open session for the same employee / identity
+        session2 = self._open_test_session()
+        self.assertEqual(session2.name, s1_name)
+        self.assertEqual(session2.status, "Queued")
+        self.assertIsNone(session2.closed_at)
+
+    def test_get_session_thread_aggregates_messages_across_sessions(self):
+        from ai_workplace.services.hr_chat import get_session_thread, get_inbox_sessions
+
+        session1 = self._open_test_session()
+        log1 = frappe.new_doc("WhatsApp Message Log")
+        log1.meta_message_id = "msg-101"
+        log1.direction = "Inbound"
+        log1.sender = self.phone
+        log1.whatsapp_id = self.wa_id
+        log1.message = "First query from employee"
+        log1.hr_live_chat_session = session1.name
+        log1.timestamp = frappe.utils.now_datetime()
+        log1.insert(ignore_permissions=True)
+
+        close_session(session1.name, user="Administrator")
+
+        # Open session again (will reuse session1)
+        session2 = self._open_test_session()
+        log2 = frappe.new_doc("WhatsApp Message Log")
+        log2.meta_message_id = "msg-102"
+        log2.direction = "Inbound"
+        log2.sender = self.phone
+        log2.whatsapp_id = self.wa_id
+        log2.message = "Second query after re-open"
+        log2.hr_live_chat_session = session2.name
+        log2.timestamp = frappe.utils.now_datetime()
+        log2.insert(ignore_permissions=True)
+
+        thread = get_session_thread(session2.name)
+        messages = [m["message"] for m in thread]
+        self.assertIn("First query from employee", messages)
+        self.assertIn("Second query after re-open", messages)
+
+        # Check inbox deduplication
+        inbox = get_inbox_sessions("all")
+        matching = [s for s in inbox if s.get("whatsapp_identity") == self.wa_identity or s.get("wa_id") == self.wa_id]
+        self.assertEqual(len(matching), 1)
+
+

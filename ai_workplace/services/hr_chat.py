@@ -16,6 +16,7 @@ from frappe import _
 from ai_workplace.conversation.manager import update_conversation
 from ai_workplace.conversation.state import ConversationState
 from ai_workplace.services.office_hours import (
+    build_off_hours_message,
     build_session_open_message,
     get_office_hours_info,
     is_hr_available,
@@ -247,6 +248,47 @@ def resolve_display_name(
     return ""
 
 
+def get_existing_session_for_identity(
+    whatsapp_identity: str = "",
+    employee: str = "",
+    wa_id: str = "",
+) -> Optional[str]:
+    """Return active session first, or falling back to the most recent closed/expired session."""
+    filters_or = []
+    if whatsapp_identity:
+        filters_or.append({"whatsapp_identity": whatsapp_identity})
+    if employee:
+        filters_or.append({"employee": employee})
+    if wa_id:
+        filters_or.append({"wa_id": wa_id})
+
+    if not filters_or:
+        return None
+
+    active = frappe.get_all(
+        "HR Live Chat Session",
+        or_filters=filters_or,
+        filters={"status": ["in", list(OPEN_STATUSES)]},
+        fields=["name"],
+        order_by="modified desc",
+        limit=1,
+    )
+    if active:
+        return active[0]["name"]
+
+    any_session = frappe.get_all(
+        "HR Live Chat Session",
+        or_filters=filters_or,
+        fields=["name"],
+        order_by="modified desc",
+        limit=1,
+    )
+    if any_session:
+        return any_session[0]["name"]
+
+    return None
+
+
 def open_session(
     *,
     whatsapp_identity: str,
@@ -262,8 +304,10 @@ def open_session(
     ready_for_hr: bool = False,
     context: Optional[dict[str, Any]] = None,
 ) -> Any:
-    """Create or resume an open HR live chat session."""
-    existing_name = get_active_session_for_identity(whatsapp_identity)
+    """Create or resume an HR live chat session, merging/reusing existing session for the same employee."""
+    existing_name = get_existing_session_for_identity(
+        whatsapp_identity, employee=employee, wa_id=wa_id
+    )
     now = _now()
     resolved_name = resolve_display_name(
         context=context,
@@ -274,6 +318,9 @@ def open_session(
 
     if existing_name:
         session = frappe.get_doc("HR Live Chat Session", existing_name)
+        was_closed_or_expired = session.status in ("Closed", "Expired")
+        if whatsapp_identity and not session.whatsapp_identity:
+            session.whatsapp_identity = whatsapp_identity
         session.whatsapp_conversation = whatsapp_conversation
         if wa_id:
             session.wa_id = wa_id
@@ -293,11 +340,21 @@ def open_session(
             session.contact_hr_selected = 1
         if ready_for_hr:
             session.ready_for_hr = 1
-            if session.status == "Pending Intake":
+            if session.status in ("Pending Intake", "Closed", "Expired"):
                 session.status = "Queued"
+        session.off_hours_notice_sent = 0
+        session.last_user_message_at = now
+        session.session_window_expires_at = _compute_window_expires(now)
+        if was_closed_or_expired:
+            session.closed_at = None
+            session.closed_by = None
+            session.opened_at = now
+
         session.flags.ignore_links = True
         session.save(ignore_permissions=True)
         frappe.db.commit()
+        if ready_for_hr:
+            publish_session_update(session, {"event": "session_opened"})
         return session
 
     session = frappe.new_doc("HR Live Chat Session")
@@ -443,7 +500,8 @@ def handle_contact_hr_connect(
         active_hr_chat_session=session.name,
     )
 
-    if not is_hr_available():
+    available = is_hr_available()
+    if not available:
         if not session.off_hours_notice_sent:
             session.off_hours_notice_sent = 1
             session.flags.ignore_links = True
@@ -453,7 +511,7 @@ def handle_contact_hr_connect(
     else:
         publish_session_update(session, {"event": "queued"})
 
-    return OutboundMessage(body_text=build_session_open_message(context))
+    return OutboundMessage(body_text=build_session_open_message(context, is_open=available))
 
 
 def handle_live_hr_inbound(
@@ -570,8 +628,76 @@ def assign_session(session_name: str, assign_to: str, user: Optional[str] = None
     return session
 
 
+def consolidate_duplicate_sessions() -> int:
+    """
+    Consolidate multiple HR Live Chat Session records belonging to the same employee identity.
+    Repoints all WhatsApp Message Logs from duplicate sessions to the single primary session,
+    then deletes the duplicate session records from the database.
+    Returns count of deleted duplicate sessions.
+    """
+    all_sessions = frappe.get_all(
+        "HR Live Chat Session",
+        fields=["name", "status", "employee", "whatsapp_identity", "wa_id", "modified", "creation"],
+        order_by="creation desc",
+    )
+    if not all_sessions:
+        return 0
+
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for s in all_sessions:
+        key = get_session_identity_key(s)
+        groups.setdefault(key, []).append(s)
+
+    deleted_count = 0
+    for key, items in groups.items():
+        if len(items) <= 1:
+            continue
+
+        def _sort_key(item: dict[str, Any]) -> tuple[int, str]:
+            is_open = 1 if item.get("status") in OPEN_STATUSES else 0
+            return (is_open, str(item.get("modified") or item.get("creation")))
+
+        sorted_items = sorted(items, key=_sort_key, reverse=True)
+        primary = sorted_items[0]
+        duplicates = sorted_items[1:]
+
+        primary_name = primary["name"]
+        duplicate_names = [d["name"] for d in duplicates]
+
+        frappe.db.sql(
+            """
+            UPDATE `tabWhatsApp Message Log`
+            SET hr_live_chat_session = %s
+            WHERE hr_live_chat_session IN %s
+            """,
+            (primary_name, tuple(duplicate_names)),
+        )
+
+        frappe.db.sql(
+            """
+            UPDATE `tabWhatsApp Conversation`
+            SET active_hr_chat_session = %s
+            WHERE active_hr_chat_session IN %s
+            """,
+            (primary_name, tuple(duplicate_names)),
+        )
+
+        for dup in duplicate_names:
+            frappe.delete_doc("HR Live Chat Session", dup, force=1, ignore_permissions=True)
+            deleted_count += 1
+
+    if deleted_count > 0:
+        frappe.db.commit()
+
+    return deleted_count
+
+
 def expire_stale_sessions() -> None:
     """Mark open sessions as Expired when the 24-hour window has passed."""
+    try:
+        consolidate_duplicate_sessions()
+    except Exception as e:
+        frappe.log_error(f"Error in consolidate_duplicate_sessions: {e}")
     now = _now()
     stale = frappe.get_all(
         "HR Live Chat Session",
@@ -806,9 +932,34 @@ def send_hr_reply(
 def get_session_thread(session_name: str, limit: int = 100) -> list[dict[str, Any]]:
     expire_stale_sessions()
     session = get_session_doc(session_name)
-    rows = frappe.get_all(
+
+    related_session_names = {session_name}
+    filters_or = []
+    if session.whatsapp_identity:
+        filters_or.append({"whatsapp_identity": session.whatsapp_identity})
+    if session.employee:
+        filters_or.append({"employee": session.employee})
+    if session.wa_id:
+        filters_or.append({"wa_id": session.wa_id})
+
+    if filters_or:
+        all_related = frappe.get_all(
+            "HR Live Chat Session",
+            or_filters=filters_or,
+            pluck="name",
+        )
+        related_session_names.update(all_related)
+
+    log_or_filters = [{"hr_live_chat_session": ["in", list(related_session_names)]}]
+    if session.wa_id:
+        log_or_filters.append({"recipient": session.wa_id})
+        log_or_filters.append({"whatsapp_id": session.wa_id})
+    if session.employee:
+        log_or_filters.append({"employee": session.employee})
+
+    raw_rows = frappe.get_all(
         "WhatsApp Message Log",
-        filters={"hr_live_chat_session": session_name},
+        or_filters=log_or_filters,
         fields=[
             "name",
             "direction",
@@ -825,6 +976,13 @@ def get_session_thread(session_name: str, limit: int = 100) -> list[dict[str, An
         order_by="timestamp asc",
         limit=limit,
     )
+
+    seen_names = set()
+    rows = []
+    for row in raw_rows:
+        if row["name"] not in seen_names:
+            seen_names.add(row["name"])
+            rows.append(row)
 
     for row in rows:
         if row.get("direction") == "Outbound":
@@ -883,6 +1041,16 @@ def get_session_list_title(session: Any) -> str:
     return session.wa_id or session.name
 
 
+def get_session_identity_key(session_row: dict[str, Any]) -> str:
+    if session_row.get("employee"):
+        return f"emp:{session_row['employee']}"
+    if session_row.get("whatsapp_identity"):
+        return f"wa_id:{session_row['whatsapp_identity']}"
+    if session_row.get("wa_id"):
+        return f"phone:{session_row['wa_id']}"
+    return f"session:{session_row['name']}"
+
+
 def get_inbox_sessions(status_filter: str = "queue") -> list[dict[str, Any]]:
     expire_stale_sessions()
     user = frappe.session.user
@@ -932,11 +1100,27 @@ def get_inbox_sessions(status_filter: str = "queue") -> list[dict[str, Any]]:
             "session_window_expires_at",
             "modified",
         ],
-        order_by="last_user_message_at desc",
-        limit=100,
+        order_by="last_user_message_at desc, modified desc",
+        limit=200,
     )
 
+    # Merge / collapse multiple sessions belonging to the same employee / identity
+    grouped_sessions: dict[str, dict[str, Any]] = {}
     for row in sessions:
+        key = get_session_identity_key(row)
+        if key not in grouped_sessions:
+            grouped_sessions[key] = row
+        else:
+            existing = grouped_sessions[key]
+            # Prefer active/queued session over closed session
+            existing_open = existing.get("status") in OPEN_STATUSES
+            row_open = row.get("status") in OPEN_STATUSES
+            if row_open and not existing_open:
+                grouped_sessions[key] = row
+
+    merged_sessions = list(grouped_sessions.values())
+
+    for row in merged_sessions:
         row["display_title"] = row.get("display_name") or row.get("employee") or row.get("wa_id") or row["name"]
         if not row.get("display_name") and row.get("employee"):
             row["display_title"] = (
@@ -952,4 +1136,4 @@ def get_inbox_sessions(status_filter: str = "queue") -> list[dict[str, Any]]:
         row["can_reply"] = can_reply
         row["can_reply_reason"] = reason
 
-    return sessions
+    return merged_sessions
