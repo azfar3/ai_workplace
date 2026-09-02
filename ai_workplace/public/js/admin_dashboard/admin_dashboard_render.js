@@ -45,7 +45,7 @@ window.AdminDashboardRender = (function () {
         html += '    </div>';
 
         html += '    <div class="control-group auto-refresh-group">';
-        html += '      <label class="checkbox-label mb-0"><input type="checkbox" id="dash-auto-toggle"' + (autoRef ? ' checked' : '') + '> Auto Refresh</label>';
+        // html += '      <label class="checkbox-label mb-0"><input type="checkbox" id="dash-auto-toggle"' + (autoRef ? ' checked' : '') + '> Auto Refresh</label>';
         html += '      <button id="dash-refresh-btn" class="btn btn-sm btn-primary"><i class="fa fa-refresh"></i> Refresh</button>';
         html += '    </div>';
         html += '    <div class="header-updated">Updated: <span id="dash-updated-text">' + U.escapeHtml(state.get('lastUpdated') || 'Just now') + '</span></div>';
