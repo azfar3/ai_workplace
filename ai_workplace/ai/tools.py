@@ -19,29 +19,45 @@ from ai_workplace.ai.evidence import (
 
 
 def get_latest_salary_slip(employee: str) -> dict[str, Any]:
-    from ai_workplace.services.payroll import get_past_salary_slips
-    slips = get_past_salary_slips(employee, months=1)
+    if not employee or not getattr(frappe, "db", None):
+        return {}
+    slips = frappe.db.get_all(
+        "Salary Slip",
+        filters={"employee": employee, "docstatus": ["!=", 2]},
+        fields=["name", "start_date", "end_date", "net_pay", "rounded_total", "gross_pay"],
+        order_by="creation desc",
+        limit=1,
+    )
     if not slips:
         return {}
     s = slips[0]
+    pay = s.get("rounded_total") or s.get("net_pay") or s.get("gross_pay") or 0.0
     return {
-        "salary_slip_name": s.name,
-        "start_date": str(s.start_date),
-        "end_date": str(s.end_date),
-        "net_pay": s.rounded_total
+        "salary_slip_name": s.get("name"),
+        "start_date": str(s.get("start_date")),
+        "end_date": str(s.get("end_date")),
+        "net_pay": f"{pay:,.2f}" if isinstance(pay, (int, float)) else str(pay)
     }
 
 def get_tax_details(employee: str) -> dict[str, Any]:
-    from ai_workplace.services.payroll import get_past_salary_slips
-    slips = get_past_salary_slips(employee, months=1)
+    if not employee or not getattr(frappe, "db", None):
+        return {}
+    slips = frappe.db.get_all(
+        "Salary Slip",
+        filters={"employee": employee, "docstatus": ["!=", 2]},
+        fields=["name", "start_date", "end_date", "total_deduction"],
+        order_by="creation desc",
+        limit=1,
+    )
     if not slips:
         return {}
     s = slips[0]
+    ded = s.get("total_deduction") or 0.0
     return {
-        "salary_slip_name": s.name,
-        "start_date": str(s.start_date),
-        "end_date": str(s.end_date),
-        "total_deductions": s.total_deduction
+        "salary_slip_name": s.get("name"),
+        "start_date": str(s.get("start_date")),
+        "end_date": str(s.get("end_date")),
+        "total_deductions": f"{ded:,.2f}" if isinstance(ded, (int, float)) else str(ded)
     }
 
 def get_office_timings(employee: Optional[str] = None) -> dict[str, Any]:
@@ -351,6 +367,8 @@ def run_tool(tool_name: str, context: dict[str, Any], **kwargs) -> Any:
                 limit=clean_kwargs.get("limit", 5),
                 context=context,
             )
+        elif tool_name in ("get_latest_salary_slip", "get_tax_details"):
+            raw = meta["handler"](auth_employee)
         elif tool_name == "create_leave_application":
             raw = meta["handler"](employee=auth_employee, context=context, **clean_kwargs)
         else:

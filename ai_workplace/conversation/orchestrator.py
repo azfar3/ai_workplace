@@ -985,7 +985,16 @@ def process_message(
                         conv, _workflow_intent, clean_text, context, trace_id
                     )
 
-        # ── QueryResolver returned unknown → keyword router as navigation fallback
+        # ── QueryResolver returned unknown → AI Agent or keyword router navigation fallback
+        from ai_workplace.ai.router import is_ai_chat_enabled
+        is_natural_question = (
+            len(clean_text.split()) > 1
+            or any(w in clean_text.lower() for w in ("what", "how", "why", "where", "when", "can", "tell", "explain", "policy", "rule", "handbook", "slip", "leave", "detail"))
+        )
+        if is_ai_chat_enabled() and is_natural_question:
+            from ai_workplace.services.hr_agent import handle_hr_agent_message
+            return handle_hr_agent_message(conv, clean_text, context)
+
         from ai_workplace.services.keyword_router import match_keyword_service
         kw_service = match_keyword_service(clean_text)
         if kw_service:

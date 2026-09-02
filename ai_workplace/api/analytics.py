@@ -637,13 +637,13 @@ def get_system_health() -> Dict[str, Any]:
     p_details = []
     for p in providers:
         state = frappe.cache().get_value(f"ai_workplace:circuit:{p.name}")
-        c_state = "CLOSED"
+        c_state = "CLOSED (Operational)"
         if state and '"state": "OPEN"' in state:
-            c_state = "OPEN"
+            c_state = "OPEN (Tripped)"
         elif state and '"state": "HALF_OPEN"' in state:
-            c_state = "HALF_OPEN"
+            c_state = "HALF_OPEN (Testing)"
 
-        if c_state != "OPEN":
+        if "OPEN" not in c_state:
             healthy_p += 1
         p_details.append(f"{p.provider_name}: {c_state}")
 

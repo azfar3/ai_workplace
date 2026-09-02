@@ -73,23 +73,37 @@ def handle_hr_agent_message(conv: Any, text: str, context: dict[str, Any]) -> Ou
     ai_context = AIRequestContext.from_erp_context(context)
     
     # 2. Extract allowed tools based on context
-    allowed_tools = []
+    allowed_tools = ["search_knowledge"]
+    if context.get("employee"):
+        allowed_tools.extend([
+            "get_leave_balance",
+            "get_leave_history",
+            "get_latest_salary_slip",
+            "get_tax_details",
+            "get_attendance_summary",
+            "get_employee_profile",
+            "get_profile_gaps",
+            "get_published_policies",
+        ])
     from ai_workplace.ai.intent_catalog import INTENT_CATALOG
     for intent in (ai_context.allowed_intents or []):
         if intent in INTENT_CATALOG:
             t = INTENT_CATALOG[intent].get("tool")
-            if t and t != "clarification":
+            if t and t != "clarification" and t not in allowed_tools:
                 allowed_tools.append(t)
     
     from ai_workplace.ai.tools import get_openai_tools_schema
     tools_schema = get_openai_tools_schema(allowed_tools)
 
     # 3. Setup ReAct Loop Prompts
-    system_prompt = f"""You are a highly capable AI HR Assistant.
-Your goal is to answer the user's questions or execute HR processes by reasoning and calling the appropriate tools.
-- ONLY answer questions using data from your tools. Do not invent HR facts.
-- The user is: {ai_context.employee_name or 'Guest'}.
-- Always reply in {ai_context.language}.
+    system_prompt = f"""You are an expert, helpful AI HR Assistant for MicroMerger.
+Your goal is to answer employee queries accurately by reasoning and calling the appropriate tools.
+
+Strict Guidelines:
+1. For company policies, rules, sick leave policy, quality policy, employee handbook, or general guidelines, ALWAYS call the `search_knowledge` tool with a descriptive search query.
+2. For personal records (leave balance, salary slip, attendance summary, profile), call the corresponding user tool (`get_leave_balance`, `get_latest_salary_slip`, `get_attendance_summary`, etc.).
+3. ONLY synthesize information returned by your tool calls into a friendly, clear response. Do not invent HR policies.
+4. User: {ai_context.employee_name or 'Guest'}. Language: {ai_context.language}.
 """
     messages = [
         {"role": "system", "content": system_prompt},
@@ -125,18 +139,23 @@ Your goal is to answer the user's questions or execute HR processes by reasoning
             from ai_workplace.ai.evidence import redact_sensitive_text
             final_text = redact_sensitive_text(final_text)
             
-            # Log final response
-            trace_id = getattr(conv, "trace_id", "") or ""
-            from ai_workplace.conversation.orchestrator import log_ai_action
-            log_ai_action(
-                trace_id=trace_id,
-                conversation_name=conv.name,
-                whatsapp_identity=conv.whatsapp_identity,
-                intent="planner_synthesis",
-                action="agent_planner_loop",
-                result={"steps": step + 1, "final_text": final_text},
-                status="Success"
-            )
+            # Log final response safely
+            try:
+                import json
+                trace_id = getattr(conv, "trace_id", "") or ""
+                from ai_workplace.conversation.orchestrator import log_ai_action
+                log_ai_action(
+                    trace_id=trace_id,
+                    conversation_name=getattr(conv, "name", ""),
+                    whatsapp_identity=getattr(conv, "whatsapp_identity", ""),
+                    intent="planner_synthesis",
+                    action="agent_planner_loop",
+                    result=json.dumps({"steps": step + 1, "final_text": final_text[:200]}),
+                    status="Success"
+                )
+            except Exception:
+                pass
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION)
             return _build_feedback_message(final_text, context)
             
         # Execute tools observed by the planner

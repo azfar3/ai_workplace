@@ -425,6 +425,25 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
         "source_type": "ERP",
     },
 
+    "search_knowledge": {
+        "category": "policy",
+        "intents": ["search_knowledge", "policy_search", "knowledge_base"],
+        "aliases": [
+            "quality policy",
+            "what is the quality policy",
+            "sick leave policy",
+            "what is the policy for sick leave",
+            "employee handbook policy",
+        ],
+        "tool": "search_knowledge",
+        "requires_authentication": False,
+        "read_only": True,
+        "requires_confirmation": False,
+        "llm_allowed": True,
+        "response_mode": "hybrid",
+        "source_type": "RAG",
+    },
+
     "policy_list": {
         "category": "policy",
         "intents": ["policy_list", "show_policies", "all_policies"],
@@ -433,7 +452,6 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
             "list of policies",
             "show all policies",
             "available policies",
-            "company policies",
             "hr policies",
         ],
         "tool": "get_published_policies",

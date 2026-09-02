@@ -199,26 +199,31 @@ def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
             leave_type = alloc.get("leave_type")
             allocated = flt(alloc.get("total_leaves_allocated", 0))
             
-            # Query approved Leave Application records for this allocation period
-            taken_records = frappe.db.get_all(
+            # Query all non-cancelled Leave Application records for this allocation period
+            leave_apps = frappe.db.get_all(
                 "Leave Application",
                 filters={
                     "employee": employee_id,
                     "leave_type": leave_type,
-                    "status": "Approved",
-                    "docstatus": 1,
-                    "from_date": [">=", alloc.get("from_date")],
-                    "to_date": ["<=", alloc.get("to_date")],
+                    "docstatus": ["!=", 2],
+                    "status": ["!=", "Rejected"],
                 },
-                fields=["total_leave_days"]
+                fields=["total_leave_days", "status", "from_date", "to_date"]
             )
-            taken = sum(flt(r.get("total_leave_days", 0)) for r in taken_records)
-            remaining = max(0.0, allocated - taken)
+            
+            approved_taken = sum(flt(r.get("total_leave_days", 0)) for r in leave_apps if r.get("status") == "Approved")
+            pending_taken = sum(flt(r.get("total_leave_days", 0)) for r in leave_apps if r.get("status") in ("Open", "Draft", "Applied"))
+            total_taken = approved_taken + pending_taken
+            remaining = max(0.0, allocated - total_taken)
+
+            taken_str = f"{approved_taken:.1f}"
+            if pending_taken > 0:
+                taken_str += f" ({pending_taken:.1f} pending)"
 
             balances.append({
                 "leave_type": leave_type or "General Leave",
                 "allocated": f"{allocated:.1f}",
-                "taken": f"{taken:.1f}",
+                "taken": taken_str,
                 "remaining": f"{remaining:.1f}",
             })
 

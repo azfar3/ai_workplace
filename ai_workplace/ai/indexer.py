@@ -411,8 +411,10 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
         n_qi = df[w]
         idf[w] = math.log(1 + (N - n_qi + 0.5) / (n_qi + 0.5))
 
-    kw_weight = float(_get_setting("rag_keyword_weight", 0.4))
-    sem_weight = float(_get_setting("rag_semantic_weight", 0.6))
+    kw_weight = float(_get_setting("rag_keyword_weight", 0.5) or 0.5)
+    sem_weight = float(_get_setting("rag_semantic_weight", 0.5) or 0.5)
+    if (kw_weight + sem_weight) <= 0.001:
+        kw_weight, sem_weight = 0.5, 0.5
 
     raw_candidates = []
     max_kw_score = 0.0001

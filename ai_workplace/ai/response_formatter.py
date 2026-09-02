@@ -74,13 +74,25 @@ class ResponseFormatter:
         return res.strip()
 
     @staticmethod
-    def format_policy_list(data: List[dict]) -> str:
+    def format_policy_list(data: Any) -> str:
         if not data:
             return "📚 I'm not seeing any published policies in our system. If you were looking for a specific policy, feel free to let me know."
-            
+        
+        if isinstance(data, str):
+            return data
+
+        if not isinstance(data, list):
+            return str(data)
+
         res = "📚 *Published Policies*\n\n"
         for policy in data:
-            res += f"• {policy.get('policy_name', 'Unnamed Policy')} (v{policy.get('version', '1.0')})\n"
+            if isinstance(policy, dict):
+                title = policy.get("title") or policy.get("policy_name") or policy.get("name") or "Unnamed Policy"
+                ver = policy.get("version", "1.0")
+                category = policy.get("category", "Policy")
+                res += f"• *{title}* ({category}, v{ver})\n"
+            elif isinstance(policy, str):
+                res += f"• *{policy}*\n"
         return res.strip()
 
     @staticmethod

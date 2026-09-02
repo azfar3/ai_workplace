@@ -122,6 +122,9 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
     "search_knowledge": [
         r"(employee |company |staff |hr )?(handbook|manual|guide|guideline|rulebook)",
         r"what does (the |employee |company |hr )?(handbook|manual|policy) say",
+        r"quality policy",
+        r".{0,20}policy.{0,30}",
+        r"(what|tell|explain|show).{0,20}(policy|rule|guideline)",
     ],
     "policy_list": [
         r"(show|list|view|all|get) (the |)?policies",
