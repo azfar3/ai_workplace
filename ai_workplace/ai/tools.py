@@ -181,10 +181,28 @@ def get_leave_balance(employee: str) -> list[dict[str, Any]]:
 
 
 def get_published_policies(employee: str = "") -> list[dict[str, Any]]:
+    """Fetch active policy documents directly from AI Workplace Knowledge Source."""
     try:
-        from hrms.api.employee import get_policies_data
+        if not getattr(frappe, "db", None) or not frappe.db.exists("DocType", "AI Workplace Knowledge Source"):
+            return []
 
-        return get_policies_data() or []
+        sources = frappe.db.get_all(
+            "AI Workplace Knowledge Source",
+            filters={"is_active": 1},
+            fields=["source_name", "source_type", "description", "file_attachment", "version", "effective_from"],
+            order_by="creation desc",
+        )
+        return [
+            {
+                "title": s.get("source_name"),
+                "category": s.get("source_type") or "Policy",
+                "description": s.get("description") or "",
+                "file_url": s.get("file_attachment") or "",
+                "version": s.get("version") or "1.0",
+                "effective_from": str(s.get("effective_from")) if s.get("effective_from") else None,
+            }
+            for s in sources
+        ]
     except Exception:
         return []
 

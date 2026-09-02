@@ -169,10 +169,15 @@ def reindex_source(source_name: str) -> int:
         
         doc.insert(ignore_permissions=True)
 
-    source.last_indexed = frappe.utils.now_datetime()
-    source.version_hash = hashlib.md5(json.dumps([c["text"] for c in extracted_chunks]).encode()).hexdigest()
-    source.flags.ignore_permissions = True
-    source.save(ignore_permissions=True)
+    frappe.db.set_value(
+        "AI Workplace Knowledge Source",
+        source_name,
+        {
+            "last_indexed": frappe.utils.now_datetime(),
+            "version_hash": hashlib.md5(json.dumps([c["text"] for c in extracted_chunks]).encode()).hexdigest(),
+        },
+        update_modified=False,
+    )
     frappe.db.commit()
     return len(extracted_chunks)
 
@@ -185,24 +190,19 @@ def reindex_all_sources() -> dict[str, int]:
 
 
 def _extract_chunks_with_metadata(source: Any) -> list[dict[str, Any]]:
-    source_type = source.source_type
-    if source_type == "MenuCatalog":
+    source_type = source.get("source_type") if hasattr(source, "get") else getattr(source, "source_type", "")
+    doc_title = getattr(source, "source_name", None) or getattr(source, "name", "Knowledge Source")
+    
+    if source_type == "MenuCatalog" and not (getattr(source, "content", None) or getattr(source, "file_attachment", None)):
         return _index_menu_catalog_structured()
-    if source_type == "Policy":
-        return _index_policies_structured()
-    if source_type == "PortalHelp":
-        content = source.content or _load_portal_guides_from_disk()
-        return _chunk_text_with_overlap(content, doc_name="Portal Help")
-    if source_type == "Onboarding":
-        return _index_onboarding_structured()
 
-    # If there is a file attached, prioritize extracting from it.
+    # Priority 1: Attachment file extraction (PDF, DOCX, TXT)
     file_content = ""
     if getattr(source, "file_attachment", None):
         file_content = _extract_text_from_file(source.file_attachment)
 
-    content = file_content or source.content or source.description or ""
-    return _chunk_text_with_overlap(content, doc_name=source.name)
+    content = file_content or getattr(source, "content", None) or getattr(source, "description", None) or ""
+    return _chunk_text_with_overlap(content, doc_name=doc_title)
 
 def _extract_text_from_file(file_url: str) -> str:
     """Phase C: Extract text from PDF, DOCX, and TXT attachments."""

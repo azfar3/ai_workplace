@@ -130,9 +130,6 @@ scheduler_events = {
 # Hook on document methods and events
 
 doc_events = {
-	"System Notifications": {
-		"on_update": "ai_workplace.ai.indexer.reindex_policies_on_notification_update",
-	},
 	"Employee Profile Change Request": {
 		"on_update": "ai_workplace.services.profile_notifications.handle_epcr_update",
 	},
