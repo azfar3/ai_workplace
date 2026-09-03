@@ -105,7 +105,6 @@ class TestEmployeeSupportPinField(unittest.TestCase):
 
         mock_frappe.db.has_column.return_value = True
         mock_frappe.db.get_value.return_value = ""
-        mock_frappe.db.exists.return_value = False
         self.assertFalse(employee_support_pin_is_set("EMP-001"))
 
     @patch("ai_workplace.security.support_pin.frappe")
