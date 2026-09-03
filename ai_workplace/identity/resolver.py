@@ -198,6 +198,60 @@ def get_or_create_whatsapp_identity(identity: IdentityResult | dict, wa_id: str 
         return doc.name
 
 
+def recheck_all_whatsapp_identities() -> dict[str, int]:
+    """
+    Re-evaluate all existing WhatsApp Identity records in the database.
+    Updates status, erp_user, and employee for all existing and new records.
+    """
+    identities = frappe.get_all(
+        "WhatsApp Identity",
+        fields=["name", "normalized_phone", "phone_number", "whatsapp_id", "status", "erp_user", "employee"],
+    )
+
+    updated_count = 0
+    matched_count = 0
+
+    for item in identities:
+        phone = item.get("normalized_phone") or item.get("phone_number") or item.get("whatsapp_id")
+        if not phone:
+            continue
+
+        res = resolve_identity(phone)
+        status_map = {
+            "matched": "Active",
+            "guest": "Guest",
+            "ambiguous": "Ambiguous",
+            "inactive": "Inactive",
+        }
+        new_db_status = status_map.get(res.status, "Guest")
+
+        doc = frappe.get_doc("WhatsApp Identity", item["name"])
+        changed = False
+
+        if doc.status != new_db_status:
+            doc.status = new_db_status
+            changed = True
+
+        if res.user and doc.erp_user != res.user:
+            doc.erp_user = res.user
+            changed = True
+
+        if res.employee and doc.employee != res.employee:
+            doc.employee = res.employee
+            changed = True
+
+        if changed:
+            doc.flags.ignore_links = True
+            doc.save(ignore_permissions=True)
+            updated_count += 1
+
+        if new_db_status == "Active":
+            matched_count += 1
+
+    frappe.db.commit()
+    return {"total": len(identities), "updated": updated_count, "matched": matched_count}
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Internal search helpers
 # ──────────────────────────────────────────────────────────────────────────────
@@ -205,14 +259,7 @@ def get_or_create_whatsapp_identity(identity: IdentityResult | dict, wa_id: str 
 def _find_candidates(normalized_phone: str) -> list[_Candidate]:
     """
     Search Employee and User tables for *normalized_phone*.
-
-    We compare the stored phone values (which may be in raw format) by
-    normalizing them on-the-fly.  This is safe for the typical data volumes
-    in an ERPNext installation (hundreds to low thousands of employees).
-
-    For very large installations a custom index / stored normalized column
-    (e.g. a Custom Field on Employee/User) would be more efficient and can
-    be added in a future phase without changing this interface.
+    Deduplicates candidates when Employee and User represent the same person.
     """
     candidates: dict[str, _Candidate] = {}
 
@@ -237,10 +284,10 @@ def _find_candidates(normalized_phone: str) -> list[_Candidate]:
                 is_active=is_active,
                 project=emp.get("project") or None,
             )
-            candidates[c.identity_key()] = c
+            key = f"emp::{emp['name']}"
+            candidates[key] = c
 
     # ── Search Users ──────────────────────────────────────────────────────────
-    # Only search enabled users (enabled=1) or disabled (0) to flag inactive.
     users = frappe.get_all(
         "User",
         fields=["name", "full_name", "enabled", "phone", "mobile_no"],
@@ -253,17 +300,25 @@ def _find_candidates(normalized_phone: str) -> list[_Candidate]:
            _phone_field_matches(usr.get("mobile_no"), normalized_phone):
 
             is_active = bool(usr.get("enabled"))
-            # Try to find an existing candidate with this user already
-            # (linked via Employee.user_id).  If found, enrich; else add.
             merged = False
-            for key, cand in candidates.items():
+
+            # Check if user matches an existing candidate by user_id
+            for key, cand in list(candidates.items()):
                 if cand.user == usr["name"]:
-                    # Already captured via Employee; update active flag from User.
                     cand.is_active = cand.is_active and is_active
                     if not cand.full_name:
                         cand.full_name = usr.get("full_name")
                     merged = True
                     break
+
+            # If user matches phone of an employee candidate without user_id set, merge them
+            if not merged:
+                for key, cand in list(candidates.items()):
+                    if cand.employee and not cand.user:
+                        cand.user = usr["name"]
+                        cand.is_active = cand.is_active and is_active
+                        merged = True
+                        break
 
             if not merged:
                 c = _Candidate(
@@ -273,7 +328,7 @@ def _find_candidates(normalized_phone: str) -> list[_Candidate]:
                     is_active=is_active,
                     project=None,
                 )
-                candidates[c.identity_key()] = c
+                candidates[f"usr::{usr['name']}"] = c
 
     return list(candidates.values())
 

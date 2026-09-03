@@ -1,7 +1,7 @@
 """
 ai_workplace/tests/test_cascade_delete.py
 ──────────────────────────────────────────
-Unit tests for automatic cascade deletion of linked records in AI Workplace.
+Unit tests for targeted cascade deletion of Log DocTypes in AI Workplace.
 """
 
 import unittest
@@ -10,9 +10,13 @@ import frappe
 
 class TestCascadeDelete(unittest.TestCase):
     def test_knowledge_source_cascade_delete(self):
+        source_name = "Test Policy Document Unique 123"
+        if frappe.db.exists("AI Workplace Knowledge Source", source_name):
+            frappe.delete_doc("AI Workplace Knowledge Source", source_name, ignore_permissions=True, force=True)
+
         # Create a Knowledge Source
         source = frappe.new_doc("AI Workplace Knowledge Source")
-        source.source_name = "Test Policy Document"
+        source.source_name = source_name
         source.source_type = "Policy"
         source.status = "Active"
         source.insert(ignore_permissions=True)
@@ -35,8 +39,12 @@ class TestCascadeDelete(unittest.TestCase):
         self.assertFalse(frappe.db.exists("AI Workplace Knowledge Source", source.name))
 
     def test_whatsapp_identity_cascade_delete(self):
+        wa_id = "test_wa_id_99999_unique"
+        existing = frappe.db.get_value("WhatsApp Identity", {"whatsapp_id": wa_id}, "name")
+        if existing:
+            frappe.delete_doc("WhatsApp Identity", existing, ignore_permissions=True, force=True)
+
         # Create a WhatsApp Identity
-        wa_id = "test_wa_id_99999"
         identity = frappe.new_doc("WhatsApp Identity")
         identity.whatsapp_id = wa_id
         identity.normalized_phone = "+923999999999"

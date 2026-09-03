@@ -1,10 +1,10 @@
 """
 ai_workplace/services/cascade_delete.py
 ────────────────────────────────────────
-Automatic cascade deletion for linked records across AI Workplace DocTypes.
-When a record in an AI Workplace DocType is deleted, all dependent/linked
-records within AI Workplace are automatically cleaned up to prevent orphaned records
-and avoid LinkExistsError.
+Targeted cascade deletion for Log and related DocTypes across AI Workplace.
+When a record is deleted, checks if matching link or reference fields exist
+in target DocTypes (Logs, Conversations, Sessions, Chunks) and cleans up those
+linked records.
 """
 
 from __future__ import annotations
@@ -12,128 +12,106 @@ from __future__ import annotations
 from typing import Any
 import frappe
 
-AI_WORKPLACE_DOCTYPES = {
-    "WhatsApp Identity",
-    "WhatsApp Conversation",
-    "HR Live Chat Session",
+TARGET_DOCTYPES = (
     "WhatsApp Message Log",
-    "WhatsApp Temporary Media",
-    "WhatsApp Menu Item",
-    "WhatsApp Security Profile",
-    "WhatsApp Service Security Policy",
-    "AI Workplace Knowledge Source",
-    "AI Workplace Knowledge Chunk",
-    "AI Workplace Provider",
-    "AI Workplace Model",
-    "AI Workplace Agent",
-    "AI Workplace HR Chat Agent",
-    "AI Workplace HR Working Day",
-    "AI Workplace Settings",
-    "AI Workplace Usage Log",
     "AI Action Log",
     "AI Feedback Log",
-    "AI Knowledge Entry",
     "AI Knowledge Gap Log",
-    "AI Onboarding Playbook",
+    "AI Workplace Usage Log",
     "AI Security Event",
-    "AI Intent Pattern",
-    "Employee Profile Change Request",
-    "Profile Change Item",
-    "Groq AI Settings",
-}
+    "WhatsApp Conversation",
+    "HR Live Chat Session",
+    "AI Workplace Knowledge Chunk",
+    "WhatsApp Security Profile",
+)
 
 
 def handle_cascade_delete(doc: Any, method: str | None = None) -> None:
     """
     Hook called on_trash for any document.
-    If the document belongs to AI Workplace, cascade-delete all linked child/referencing
-    records in AI Workplace to maintain clean database state and prevent LinkExistsError.
+    Checks if target DocTypes contain field options/names linking to doc.doctype,
+    and deletes all matching linked records.
     """
     if not doc or not getattr(doc, "doctype", None) or not getattr(doc, "name", None):
         return
 
-    doctype = doc.doctype
-    docname = doc.name
+    parent_doctype = doc.doctype
+    parent_docname = doc.name
+    wa_id = getattr(doc, "whatsapp_id", "") or ""
 
-    if doctype not in AI_WORKPLACE_DOCTYPES:
-        return
-
-    # Specific high-priority parent-child cascading relationships
-    _cascade_delete_specific_relations(doc)
-
-    # Dynamic cascade delete for any other AI Workplace Link fields pointing to this document
-    _cascade_delete_dynamic_links(doctype, docname)
+    _cascade_delete_linked_records(parent_doctype, parent_docname, wa_id)
 
 
-def _cascade_delete_specific_relations(doc: Any) -> None:
-    doctype = doc.doctype
-    docname = doc.name
+def _cascade_delete_linked_records(parent_doctype: str, parent_docname: str, wa_id: str = "") -> None:
+    """Find and delete records in target DocTypes that link to parent_doctype or parent_docname."""
+    snake_name = parent_doctype.lower().replace(" ", "_")
+    short_snake = snake_name.replace("whatsapp_", "").replace("ai_workplace_", "")
 
-    if doctype == "WhatsApp Identity":
-        # Delete Conversations linked to this Identity
-        for conv in frappe.get_all("WhatsApp Conversation", filters={"whatsapp_identity": docname}, pluck="name"):
-            _safe_delete("WhatsApp Conversation", conv)
+    candidate_fieldnames = {
+        snake_name,
+        short_snake,
+        f"{snake_name}_id",
+        f"{snake_name}_name",
+        f"{short_snake}_id",
+        f"{short_snake}_name",
+    }
 
-        # Delete HR Live Chat Sessions linked to this Identity
-        for session in frappe.get_all("HR Live Chat Session", filters={"whatsapp_identity": docname}, pluck="name"):
-            _safe_delete("HR Live Chat Session", session)
-
-        # Delete Message Logs for this Identity
-        wa_id = getattr(doc, "whatsapp_id", "") or ""
-        filters = []
-        if wa_id:
-            filters.append({"whatsapp_id": wa_id})
-        filters.append({"sender": docname})
-        filters.append({"recipient": docname})
-
-        for f in filters:
-            for msg in frappe.get_all("WhatsApp Message Log", filters=f, pluck="name"):
-                _safe_delete("WhatsApp Message Log", msg)
-
-        # Delete Security Profiles linked to this Identity
-        for prof in frappe.get_all("WhatsApp Security Profile", filters={"whatsapp_identity": docname}, pluck="name"):
-            _safe_delete("WhatsApp Security Profile", prof)
-
-    elif doctype == "WhatsApp Conversation":
-        # Delete HR Live Chat Sessions linked to this Conversation
-        for session in frappe.get_all("HR Live Chat Session", filters={"conversation": docname}, pluck="name"):
-            _safe_delete("HR Live Chat Session", session)
-
-    elif doctype == "HR Live Chat Session":
-        # Delete Message Logs linked to this HR Chat Session
-        for msg in frappe.get_all("WhatsApp Message Log", filters={"hr_live_chat_session": docname}, pluck="name"):
-            _safe_delete("WhatsApp Message Log", msg)
-
-    elif doctype == "AI Workplace Knowledge Source":
-        # Delete Chunks linked to this Knowledge Source
-        for chunk in frappe.get_all("AI Workplace Knowledge Chunk", filters={"knowledge_source": docname}, pluck="name"):
-            _safe_delete("AI Workplace Knowledge Chunk", chunk)
-
-    elif doctype == "AI Workplace Provider":
-        # Delete Models linked to this Provider
-        for model in frappe.get_all("AI Workplace Model", filters={"provider": docname}, pluck="name"):
-            _safe_delete("AI Workplace Model", model)
-
-
-def _cascade_delete_dynamic_links(parent_doctype: str, parent_docname: str) -> None:
-    """Find and delete any remaining linked records in AI Workplace DocTypes."""
-    for dt in AI_WORKPLACE_DOCTYPES:
+    for dt in TARGET_DOCTYPES:
         if dt == parent_doctype:
             continue
+
         try:
             meta = frappe.get_meta(dt)
-            for df in meta.get("fields", []):
-                if df.fieldtype == "Link" and df.options == parent_doctype:
-                    fieldname = df.fieldname
-                    linked_names = frappe.get_all(dt, filters={fieldname: parent_docname}, pluck="name")
-                    for name in linked_names:
+            fields = meta.get("fields", [])
+
+            for df in fields:
+                fname = df.fieldname
+                foptions = getattr(df, "options", "") or ""
+
+                # Check if field options or fieldname matches the parent doctype
+                if foptions == parent_doctype or fname in candidate_fieldnames:
+                    matching_names = frappe.get_all(dt, filters={fname: parent_docname}, pluck="name")
+                    for name in matching_names:
                         _safe_delete(dt, name)
-        except Exception:
-            pass
+
+                    # Special case for WhatsApp Identity: also check by wa_id if available
+                    if parent_doctype == "WhatsApp Identity" and wa_id and fname in ("wa_id", "whatsapp_id"):
+                        matching_by_wa_id = frappe.get_all(dt, filters={fname: wa_id}, pluck="name")
+                        for name in matching_by_wa_id:
+                            _safe_delete(dt, name)
+
+            # Check for generic reference fields (reference_doctype + reference_name)
+            has_ref_dt = any(df.fieldname in ("reference_doctype", "ref_doctype", "doctype_name") for df in fields)
+            has_ref_dn = any(df.fieldname in ("reference_name", "ref_name", "doc_name") for df in fields)
+
+            if has_ref_dt and has_ref_dn:
+                ref_dt_field = (
+                    "reference_doctype"
+                    if meta.has_field("reference_doctype")
+                    else ("ref_doctype" if meta.has_field("ref_doctype") else "doctype_name")
+                )
+                ref_dn_field = (
+                    "reference_name"
+                    if meta.has_field("reference_name")
+                    else ("ref_name" if meta.has_field("ref_name") else "doc_name")
+                )
+
+                matching_refs = frappe.get_all(
+                    dt,
+                    filters={ref_dt_field: parent_doctype, ref_dn_field: parent_docname},
+                    pluck="name",
+                )
+                for name in matching_refs:
+                    _safe_delete(dt, name)
+
+        except Exception as exc:
+            frappe.logger("ai_workplace").warning(
+                f"Cascade delete check failed for {dt}: {exc}"
+            )
 
 
 def _safe_delete(doctype: str, name: str) -> None:
-    """Safely delete a document using Frappe API while suppressing recursive link errors."""
+    """Safely delete a document using Frappe API."""
     if not frappe.db.exists(doctype, name):
         return
     try:
