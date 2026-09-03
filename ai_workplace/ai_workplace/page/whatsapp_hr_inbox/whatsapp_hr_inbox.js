@@ -307,10 +307,6 @@ frappe.whatsapp_hr_inbox = {
 				}
 				frappe.realtime.off("hr_chat_update", this._realtime_handler);
 				frappe.realtime.on("hr_chat_update", this._realtime_handler);
-				if (typeof frappe.realtime.doctype_subscribe === "function") {
-					frappe.realtime.doctype_subscribe("HR Live Chat Session");
-					frappe.realtime.doctype_subscribe("WhatsApp Message Log");
-				}
 			} catch (e) {
 				console.warn("HR Inbox: realtime bind failed", e);
 			}
@@ -331,17 +327,20 @@ frappe.whatsapp_hr_inbox = {
 	},
 
 	on_realtime_update(payload) {
+		if (!payload || typeof payload !== "object") return;
+
 		this.load_inbox(true);
 
 		if (!this.current_session) {
 			return;
 		}
 
-		if (payload && payload.name && payload.name !== this.current_session) {
+		const target_session = payload.name || payload.session_name || (payload.doc ? payload.doc.name : null);
+		if (target_session && target_session !== this.current_session) {
 			return;
 		}
 
-		if (payload && payload.event === "inbound_message" && (payload.message || payload.media_file)) {
+		if (payload.event === "inbound_message" && (payload.message || payload.media_file)) {
 			this.append_thread_message({
 				direction: "Inbound",
 				message: payload.message,
@@ -356,12 +355,12 @@ frappe.whatsapp_hr_inbox = {
 			return;
 		}
 
-		if (payload && payload.event === "delivery_status_update") {
+		if (payload.event === "delivery_status_update") {
 			this.update_message_delivery(payload);
 			return;
 		}
 
-		if (payload && payload.event === "outbound_message" && payload.message) {
+		if (payload.event === "outbound_message" && payload.message) {
 			this.append_thread_message({
 				direction: "Outbound",
 				message: payload.message,
@@ -377,7 +376,10 @@ frappe.whatsapp_hr_inbox = {
 			return;
 		}
 
-		this.refresh_session(true);
+		const lifecycle_events = ["session_opened", "session_taken", "session_assigned", "session_closed", "off_hours_queue", "queued"];
+		if (payload.event && lifecycle_events.includes(payload.event)) {
+			this.refresh_session(true);
+		}
 	},
 
 	play_notify() {
@@ -520,8 +522,11 @@ frappe.whatsapp_hr_inbox = {
 		this.show_mobile_chat();
 	},
 
+	_refreshing_session: false,
+
 	refresh_session(silent) {
-		if (!this.current_session) return;
+		if (!this.current_session || this._refreshing_session) return;
+		this._refreshing_session = true;
 
 		frappe.call({
 			method: "ai_workplace.api.hr_chat.get_session_detail",
@@ -531,6 +536,7 @@ frappe.whatsapp_hr_inbox = {
 				limit: this._msg_limit,
 			},
 			callback: (r) => {
+				this._refreshing_session = false;
 				if (!r.message) return;
 				const thread = r.message.thread || [];
 
@@ -554,6 +560,9 @@ frappe.whatsapp_hr_inbox = {
 				}
 
 				this._session_data = r.message;
+			},
+			error: () => {
+				this._refreshing_session = false;
 			},
 		});
 	},

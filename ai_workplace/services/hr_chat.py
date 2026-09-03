@@ -930,7 +930,6 @@ def send_hr_reply(
 
 
 def get_session_thread(session_name: str, limit: int = 15, start: int = 0) -> list[dict[str, Any]]:
-    expire_stale_sessions()
     session = get_session_doc(session_name)
 
     related_session_names = {session_name}
@@ -1057,7 +1056,6 @@ def get_session_identity_key(session_row: dict[str, Any]) -> str:
 
 
 def get_inbox_sessions(status_filter: str = "queue", start: int = 0, limit: int = 15) -> list[dict[str, Any]]:
-    expire_stale_sessions()
     user = frappe.session.user
     filters: dict[str, Any] = _inbox_base_filters()
 
