@@ -170,36 +170,47 @@ frappe.whatsapp_hr_inbox = {
 	_setup_realtime() {
 		const bind = () => {
 			try {
-				frappe.realtime.connect();
+				if (frappe.realtime?.socket) {
+					frappe.realtime.socket.off("hr_chat_update", this._realtime_handler);
+					frappe.realtime.socket.on("hr_chat_update", this._realtime_handler);
+				}
 				frappe.realtime.off("hr_chat_update", this._realtime_handler);
 				frappe.realtime.on("hr_chat_update", this._realtime_handler);
+				if (typeof frappe.realtime.doctype_subscribe === "function") {
+					frappe.realtime.doctype_subscribe("HR Live Chat Session");
+					frappe.realtime.doctype_subscribe("WhatsApp Message Log");
+				}
 			} catch (e) {
 				console.warn("HR Inbox: realtime bind failed", e);
 			}
 		};
+
 		if (frappe.realtime?.socket) {
 			bind();
-			return;
+			try {
+				frappe.realtime.socket.on("connect", bind);
+				frappe.realtime.socket.on("reconnect", bind);
+			} catch (e) {}
+		} else {
+			if (typeof frappe.realtime.init === "function") {
+				frappe.realtime.init();
+			}
+			setTimeout(bind, 500);
 		}
-		if (typeof frappe.realtime.init === "function") {
-			frappe.realtime.init(undefined, true);
-		}
-		setTimeout(bind, 500);
 	},
 
 	on_realtime_update(payload) {
-		if (!payload) {
-			this.load_inbox(true);
-			return;
-		}
-
 		this.load_inbox(true);
 
-		if (!this.current_session || payload.name !== this.current_session) {
+		if (!this.current_session) {
 			return;
 		}
 
-		if (payload.event === "inbound_message" && (payload.message || payload.media_file)) {
+		if (payload && payload.name && payload.name !== this.current_session) {
+			return;
+		}
+
+		if (payload && payload.event === "inbound_message" && (payload.message || payload.media_file)) {
 			this.append_thread_message({
 				direction: "Inbound",
 				message: payload.message,
@@ -214,12 +225,12 @@ frappe.whatsapp_hr_inbox = {
 			return;
 		}
 
-		if (payload.event === "delivery_status_update") {
+		if (payload && payload.event === "delivery_status_update") {
 			this.update_message_delivery(payload);
 			return;
 		}
 
-		if (payload.event === "outbound_message" && payload.message) {
+		if (payload && payload.event === "outbound_message" && payload.message) {
 			this.append_thread_message({
 				direction: "Outbound",
 				message: payload.message,
@@ -390,25 +401,20 @@ frappe.whatsapp_hr_inbox = {
 			callback: (r) => {
 				if (!r.message) return;
 				const thread = r.message.thread || [];
-				const is_new_messages = thread.length > this._last_thread_len;
 
 				this._has_more_messages = !!r.message.has_more_messages;
 
-				if (!this._session_data || is_new_messages) {
-					if (this._last_thread_len === 0) {
-						this.render_session(r.message);
-					} else {
-						thread.slice(this._last_thread_len).forEach((m) => {
-							this.append_thread_message(m, true);
-						});
-						this._update_compose(r.message);
-						this.render_banner(r.message);
-						this.render_actions(r.message);
-					}
+				if (!this._session_data || this._last_thread_len === 0) {
+					this.render_session(r.message);
 					this._last_thread_len = thread.length;
 				} else {
+					thread.forEach((m) => {
+						this.append_thread_message(m, true);
+					});
 					this._update_compose(r.message);
 					this.render_banner(r.message);
+					this.render_actions(r.message);
+					this._last_thread_len = Math.max(this._last_thread_len, thread.length);
 				}
 
 				if (thread.length > 0) {

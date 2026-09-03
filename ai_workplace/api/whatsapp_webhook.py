@@ -693,22 +693,23 @@ def _link_inbound_to_hr_session(
                 },
             )
             frappe.db.commit()
-            from ai_workplace.services.hr_chat import get_session_doc, publish_session_update
 
-            session = get_session_doc(session_name)
-            publish_session_update(
-                session,
-                {
-                    "event": "inbound_message",
-                    "message": message_text,
-                    "meta_message_id": log_doc.meta_message_id or log_doc.name,
-                    "direction": "Inbound",
-                    "sender_type": "Employee",
-                    "timestamp": frappe.utils.now(),
-                    "message_type": message_type or "text",
-                    "media_file": media_file or log_doc.media_file or "",
-                },
-            )
+        from ai_workplace.services.hr_chat import get_session_doc, publish_session_update
+
+        session = get_session_doc(session_name)
+        publish_session_update(
+            session,
+            {
+                "event": "inbound_message",
+                "message": message_text,
+                "meta_message_id": log_doc.meta_message_id or log_doc.name,
+                "direction": "Inbound",
+                "sender_type": "Employee",
+                "timestamp": frappe.utils.now(),
+                "message_type": message_type or "text",
+                "media_file": media_file or log_doc.media_file or "",
+            },
+        )
     except Exception as exc:
         frappe.logger("ai_workplace").warning(
             f"AI Workplace: Failed to link inbound message to HR session: {exc}"
