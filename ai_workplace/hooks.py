@@ -130,6 +130,9 @@ scheduler_events = {
 # Hook on document methods and events
 
 doc_events = {
+	"*": {
+		"on_trash": "ai_workplace.services.cascade_delete.handle_cascade_delete",
+	},
 	"Employee Profile Change Request": {
 		"on_update": "ai_workplace.services.profile_notifications.handle_epcr_update",
 	},

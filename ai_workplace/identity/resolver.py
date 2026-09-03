@@ -84,6 +84,7 @@ class _Candidate:
     employee: Optional[str] = None
     full_name: Optional[str] = None
     is_active: bool = True
+    project: Optional[str] = None
 
     def identity_key(self) -> str:
         """
@@ -219,7 +220,7 @@ def _find_candidates(normalized_phone: str) -> list[_Candidate]:
     employees = frappe.get_all(
         "Employee",
         fields=["name", "employee_name", "user_id", "status",
-                "cell_number", "company_mobile"],
+                "cell_number", "company_mobile", "project"],
         filters={"status": ["in", ["Active", "Left", "Inactive"]]},
         ignore_permissions=True,
     )
@@ -234,6 +235,7 @@ def _find_candidates(normalized_phone: str) -> list[_Candidate]:
                 user=emp.get("user_id") or None,
                 full_name=emp.get("employee_name"),
                 is_active=is_active,
+                project=emp.get("project") or None,
             )
             candidates[c.identity_key()] = c
 
@@ -269,6 +271,7 @@ def _find_candidates(normalized_phone: str) -> list[_Candidate]:
                     employee=None,
                     full_name=usr.get("full_name"),
                     is_active=is_active,
+                    project=None,
                 )
                 candidates[c.identity_key()] = c
 
@@ -296,6 +299,17 @@ def _phone_field_matches(stored: str | None, normalized_target: str) -> bool:
 def _classify(candidates: list[_Candidate], normalized_phone: str) -> IdentityResult:
     """
     Apply identity matching rules to the candidate list.
+    
+    Disambiguation Logic:
+    1. Filter to candidates with is_active == True.
+    2. If exactly 1 active profile exists -> matched.
+    3. If > 1 active profiles exist:
+       Check the 'project' field on each active profile.
+       Prefer the active profile where 'project' is empty / not filled.
+       If exactly 1 active profile has an empty project field -> matched.
+    4. If all checks fail (e.g. multiple active with empty project or multiple with filled project) -> ambiguous.
+    5. If 0 active candidates exist, but inactive candidates exist -> inactive.
+    6. Otherwise -> guest.
     """
     if not candidates:
         return IdentityResult(
@@ -306,6 +320,7 @@ def _classify(candidates: list[_Candidate], normalized_phone: str) -> IdentityRe
     active = [c for c in candidates if c.is_active]
     inactive = [c for c in candidates if not c.is_active]
 
+    # Rule 1: Single active candidate found
     if len(active) == 1:
         c = active[0]
         return IdentityResult(
@@ -316,13 +331,27 @@ def _classify(candidates: list[_Candidate], normalized_phone: str) -> IdentityRe
             full_name=c.full_name,
         )
 
+    # Rule 2: Multiple active candidates found -> Disambiguate by empty 'project' field
     if len(active) > 1:
+        no_project_candidates = [c for c in active if not (c.project or "").strip()]
+
+        if len(no_project_candidates) == 1:
+            c = no_project_candidates[0]
+            return IdentityResult(
+                status="matched",
+                normalized_phone=normalized_phone,
+                user=c.user,
+                employee=c.employee,
+                full_name=c.full_name,
+            )
+
+        # Ambiguous if disambiguation fails
         return IdentityResult(
             status="ambiguous",
             normalized_phone=normalized_phone,
         )
 
-    # No active candidates; were there inactive ones?
+    # Rule 3: No active candidates; check for inactive
     if inactive:
         return IdentityResult(
             status="inactive",
