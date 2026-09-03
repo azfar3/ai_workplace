@@ -500,8 +500,133 @@
 }
 
 .wa-attach-btn,
+.wa-emoji-btn,
 .wa-send-btn {
 	align-self: center;
+}
+
+.wa-emoji-btn {
+	width: 36px;
+	height: 36px;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	color: #54656f;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	transition: color 0.15s, background 0.15s;
+}
+
+.wa-emoji-btn:hover:not(:disabled) {
+	background: #f0f2f5;
+	color: #008069;
+}
+
+.wa-emoji-btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.wa-emoji-btn svg {
+	width: 22px;
+	height: 22px;
+	fill: currentColor;
+}
+
+.wa-compose {
+	position: relative;
+}
+
+.wa-emoji-picker {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 12px;
+	width: 340px;
+	height: 300px;
+	background: #ffffff;
+	border-radius: 12px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+	border: 1px solid #e9edef;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	z-index: 100;
+	transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.wa-emoji-picker.hidden {
+	display: none !important;
+}
+
+.wa-emoji-categories {
+	display: flex;
+	background: #f0f2f5;
+	border-bottom: 1px solid #e9edef;
+	padding: 4px;
+	gap: 4px;
+}
+
+.wa-emoji-cat-btn {
+	flex: 1;
+	border: none;
+	background: transparent;
+	font-size: 18px;
+	padding: 6px 0;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: background 0.15s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.wa-emoji-cat-btn:hover,
+.wa-emoji-cat-btn.active {
+	background: #ffffff;
+}
+
+.wa-emoji-search-wrap {
+	padding: 6px 10px;
+	border-bottom: 1px solid #f0f2f5;
+}
+
+.wa-emoji-search-input {
+	width: 100%;
+	padding: 6px 10px;
+	font-size: 13px;
+	border: 1px solid #e9edef;
+	border-radius: 16px;
+	outline: none;
+	box-sizing: border-box;
+}
+
+.wa-emoji-grid {
+	flex: 1;
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 4px;
+	padding: 8px;
+	overflow-y: auto;
+}
+
+.wa-emoji-item {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 20px;
+	height: 36px;
+	border-radius: 6px;
+	cursor: pointer;
+	user-select: none;
+	transition: background 0.12s, transform 0.1s;
+}
+
+.wa-emoji-item:hover {
+	background: #f0f2f5;
+	transform: scale(1.18);
 }
 
 .wa-send-btn {
@@ -909,4 +1034,60 @@ html[data-theme="dark"] .wa-empty {
 body[data-theme="dark"] .wa-empty-title,
 html[data-theme="dark"] .wa-empty-title {
 	color: #e9edef !important;
+}
+
+.wa-inbox.dark-theme .wa-emoji-btn,
+[data-theme="dark"] .wa-emoji-btn,
+body[data-theme="dark"] .wa-emoji-btn,
+html[data-theme="dark"] .wa-emoji-btn {
+	color: #8696a0 !important;
+}
+
+.wa-inbox.dark-theme .wa-emoji-btn:hover:not(:disabled),
+body[data-theme="dark"] .wa-emoji-btn:hover:not(:disabled) {
+	background: #2a3942 !important;
+	color: #00a884 !important;
+}
+
+.wa-inbox.dark-theme .wa-emoji-picker,
+[data-theme="dark"] .wa-emoji-picker,
+body[data-theme="dark"] .wa-emoji-picker,
+html[data-theme="dark"] .wa-emoji-picker {
+	background: #202c33 !important;
+	border-color: #2a3942 !important;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.wa-inbox.dark-theme .wa-emoji-categories,
+body[data-theme="dark"] .wa-emoji-categories {
+	background: #111b21 !important;
+	border-bottom-color: #2a3942 !important;
+}
+
+.wa-inbox.dark-theme .wa-emoji-cat-btn,
+body[data-theme="dark"] .wa-emoji-cat-btn {
+	color: #8696a0 !important;
+}
+
+.wa-inbox.dark-theme .wa-emoji-cat-btn:hover,
+.wa-inbox.dark-theme .wa-emoji-cat-btn.active,
+body[data-theme="dark"] .wa-emoji-cat-btn.active {
+	background: #2a3942 !important;
+}
+
+.wa-inbox.dark-theme .wa-emoji-search-wrap,
+body[data-theme="dark"] .wa-emoji-search-wrap {
+	border-bottom-color: #2a3942 !important;
+}
+
+.wa-inbox.dark-theme .wa-emoji-search-input,
+body[data-theme="dark"] .wa-emoji-search-input {
+	background: #2a3942 !important;
+	color: #e9edef !important;
+	border-color: #3b4a54 !important;
+}
+
+.wa-inbox.dark-theme .wa-emoji-item:hover,
+body[data-theme="dark"] .wa-emoji-item:hover {
+	background: #2a3942 !important;
 }

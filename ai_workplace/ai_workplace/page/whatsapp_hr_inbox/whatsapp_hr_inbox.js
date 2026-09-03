@@ -13,6 +13,53 @@ frappe.pages["whatsapp-hr-inbox"].on_page_load = function (wrapper) {
 	});
 };
 
+const EMOJI_CATEGORIES = {
+	smileys: {
+		name: "Smileys & Emotion",
+		icon: "😀",
+		list: [
+			"😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇",
+			"🙂","😉","😌","😍","🥰","😘","😗","😙","😚","😋",
+			"😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🤐",
+			"🤨","😐","😑","😶","😏","😒","🙄","😬","🤥","😌",
+			"😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧",
+			"🥵","🥶","🥴","😵","🤯","🤠","🥳","😎","🤓","🧐",
+			"😮","😯","😲","😳","🥺","😦","😧","😨","😰","😥",
+			"😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱"
+		]
+	},
+	gestures: {
+		name: "People & Gestures",
+		icon: "👍",
+		list: [
+			"👍","👎","👌","✌️","🤞","🤟","🤘","🤙","👈","👉",
+			"👆","👇","🖐️","✋","🖖","👋","👏","🙌","👐","🤲",
+			"🤝","🙏","✍️","💅","🤳","💪","🦾","👀","👁️","🧑‍💼",
+			"👨‍💼","👩‍💼","🙋‍♂️","🙋‍♀️","🙆‍♂️","🙆‍♀️","🙇‍♂️","🙇‍♀️","🤦‍♂️","🤦‍♀️"
+		]
+	},
+	workplace: {
+		name: "Work & HR",
+		icon: "💼",
+		list: [
+			"💼","📋","📌","📍","📁","📂","📄","📑","📊","📈",
+			"📉","📆","📅","📇","📝","✏️","✒️","✉️","📧","📨",
+			"🏢","🏥","🏦","⏰","⏱️","⌛","⏳","💡","🔑","🔒",
+			"🔔","📣","📢","💬","🎯","🚀","🎉","🎊","🎁","🏆",
+			"🥇","🥈","🥉","✅","❌","❓","❗","ℹ️","⭐","✨"
+		]
+	},
+	hearts: {
+		name: "Hearts & Symbols",
+		icon: "❤️",
+		list: [
+			"❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔",
+			"❣️","💕","💞","💓","💗","💖","💘","💝","💟","💯",
+			"🔥","💥","⚡","🌈","☀️","🌤️","🌧️","❄️","🍀","🌺"
+		]
+	}
+};
+
 frappe.whatsapp_hr_inbox = {
 	current_filter: "queue",
 	current_session: null,
@@ -56,9 +103,24 @@ frappe.whatsapp_hr_inbox = {
 						</div>
 					</div>
 					<footer class="wa-compose">
+						<div class="wa-emoji-picker hidden">
+							<div class="wa-emoji-categories">
+								<button type="button" class="wa-emoji-cat-btn active" data-cat="smileys" title="${__("Smileys & Emotion")}">😀</button>
+								<button type="button" class="wa-emoji-cat-btn" data-cat="gestures" title="${__("People & Gestures")}">👍</button>
+								<button type="button" class="wa-emoji-cat-btn" data-cat="workplace" title="${__("Work & HR")}">💼</button>
+								<button type="button" class="wa-emoji-cat-btn" data-cat="hearts" title="${__("Hearts & Symbols")}">❤️</button>
+							</div>
+							<div class="wa-emoji-search-wrap">
+								<input type="text" class="wa-emoji-search-input" placeholder="${__("Search emoji...")}">
+							</div>
+							<div class="wa-emoji-grid"></div>
+						</div>
 						<div class="wa-compose-box">
 							<button class="wa-attach-btn" disabled title="${__("Attach file or image")}">
 								<svg viewBox="0 0 24 24"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6h-1.5v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6H16.5z"/></svg>
+							</button>
+							<button class="wa-emoji-btn" disabled title="${__("Insert Emoji")}">
+								<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
 							</button>
 							<textarea rows="1" placeholder="${__("Type a message")}" disabled></textarea>
 							<button class="wa-send-btn" disabled title="${__("Send")}">
@@ -84,6 +146,8 @@ frappe.whatsapp_hr_inbox = {
 		this.compose_el = this.wrapper.find(".wa-compose textarea");
 		this.send_btn = this.wrapper.find(".wa-send-btn");
 		this.attach_btn = this.wrapper.find(".wa-attach-btn");
+		this.emoji_btn = this.wrapper.find(".wa-emoji-btn");
+		this.emoji_picker = this.wrapper.find(".wa-emoji-picker");
 		this.title_el = this.wrapper.find(".hr-inbox-title");
 		this.subtitle_el = this.wrapper.find(".hr-inbox-subtitle");
 		this.avatar_el = this.wrapper.find(".hr-inbox-avatar");
@@ -115,6 +179,25 @@ frappe.whatsapp_hr_inbox = {
 
 		this.send_btn.on("click", () => this.send_reply());
 		this.attach_btn.on("click", () => this.attach_file());
+		this.emoji_btn.on("click", (e) => {
+			e.stopPropagation();
+			this.toggle_emoji_picker();
+		});
+		this.emoji_picker.on("click", (e) => e.stopPropagation());
+		$(document).on("click", () => this.hide_emoji_picker());
+
+		this.wrapper.find(".wa-emoji-cat-btn").on("click", (e) => {
+			const cat = $(e.currentTarget).data("cat");
+			this.wrapper.find(".wa-emoji-cat-btn").removeClass("active");
+			$(e.currentTarget).addClass("active");
+			this.render_emoji_grid(cat, this.wrapper.find(".wa-emoji-search-input").val());
+		});
+
+		this.wrapper.find(".wa-emoji-search-input").on("input", (e) => {
+			const active_cat = this.wrapper.find(".wa-emoji-cat-btn.active").data("cat") || "smileys";
+			this.render_emoji_grid(active_cat, $(e.currentTarget).val());
+		});
+
 		this.compose_el.on("keydown", (e) => {
 			if (e.key === "Enter" && !e.shiftKey) {
 				e.preventDefault();
@@ -544,6 +627,12 @@ frappe.whatsapp_hr_inbox = {
 		this.compose_el.prop("disabled", !can_reply);
 		this.send_btn.prop("disabled", !can_reply);
 		this.attach_btn.prop("disabled", !can_reply);
+		if (this.emoji_btn) {
+			this.emoji_btn.prop("disabled", !can_reply);
+		}
+		if (!can_reply) {
+			this.hide_emoji_picker();
+		}
 		this.compose_el.attr(
 			"placeholder",
 			can_reply ? __("Type a message") : data.can_reply_reason || __("Reply window is closed.")
@@ -551,6 +640,61 @@ frappe.whatsapp_hr_inbox = {
 		if (can_reply) {
 			this.send_btn.prop("disabled", false);
 		}
+	},
+
+	toggle_emoji_picker() {
+		if (!this.emoji_btn || this.emoji_btn.prop("disabled")) return;
+		if (this.emoji_picker.hasClass("hidden")) {
+			this.emoji_picker.removeClass("hidden");
+			const active_cat = this.wrapper.find(".wa-emoji-cat-btn.active").data("cat") || "smileys";
+			this.render_emoji_grid(active_cat);
+		} else {
+			this.hide_emoji_picker();
+		}
+	},
+
+	hide_emoji_picker() {
+		if (this.emoji_picker) {
+			this.emoji_picker.addClass("hidden");
+		}
+	},
+
+	render_emoji_grid(cat_key, query = "") {
+		const grid = this.wrapper.find(".wa-emoji-grid");
+		grid.empty();
+		query = (query || "").trim().toLowerCase();
+
+		let list = [];
+		if (query) {
+			Object.keys(EMOJI_CATEGORIES).forEach((k) => {
+				list.push(...EMOJI_CATEGORIES[k].list);
+			});
+			list = Array.from(new Set(list));
+		} else {
+			const category = EMOJI_CATEGORIES[cat_key] || EMOJI_CATEGORIES.smileys;
+			list = category.list;
+		}
+
+		list.forEach((emoji) => {
+			$(`<span class="wa-emoji-item">${emoji}</span>`)
+				.on("click", () => this.insert_emoji(emoji))
+				.appendTo(grid);
+		});
+	},
+
+	insert_emoji(emoji) {
+		const textarea = this.compose_el[0];
+		if (!textarea || textarea.disabled) return;
+
+		const start = textarea.selectionStart || 0;
+		const end = textarea.selectionEnd || 0;
+		const text = textarea.value;
+
+		textarea.value = text.substring(0, start) + emoji + text.substring(end);
+		textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+		textarea.focus();
+
+		$(textarea).trigger("input");
 	},
 
 	render_banner(data) {
@@ -878,9 +1022,13 @@ frappe.whatsapp_hr_inbox = {
 		const message = (this.compose_el.val() || "").trim();
 		if (!message || !this.current_session) return;
 
+		this.hide_emoji_picker();
 		this.compose_el.val("").css("height", "auto");
 		this.send_btn.prop("disabled", true);
 		this.attach_btn.prop("disabled", true);
+		if (this.emoji_btn) {
+			this.emoji_btn.prop("disabled", true);
+		}
 
 		frappe.call({
 			method: "ai_workplace.api.hr_chat.send_reply",
@@ -888,11 +1036,17 @@ frappe.whatsapp_hr_inbox = {
 			callback: () => {
 				this.send_btn.prop("disabled", false);
 				this.attach_btn.prop("disabled", false);
+				if (this.emoji_btn) {
+					this.emoji_btn.prop("disabled", false);
+				}
 				this.refresh_session(true);
 			},
 			error: () => {
 				this.send_btn.prop("disabled", false);
 				this.attach_btn.prop("disabled", false);
+				if (this.emoji_btn) {
+					this.emoji_btn.prop("disabled", false);
+				}
 			},
 		});
 	},
