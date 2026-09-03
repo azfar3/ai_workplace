@@ -68,24 +68,16 @@ def employee_support_pin_is_set(employee: str) -> bool:
         return False
     if not frappe.db.has_column("Employee", "custom_support_pin"):
         return False
-    return bool(
-        frappe.db.exists(
-            "__Auth",
-            {"doctype": "Employee", "name": employee, "fieldname": "custom_support_pin"},
-        )
-    )
+    val = frappe.db.get_value("Employee", employee, "custom_support_pin")
+    return bool(val and str(val).strip())
 
 
 def verify_employee_support_pin(employee: str, pin: str) -> bool:
-    """Verify PIN against Employee.custom_support_pin (HRMIS-stored)."""
+    """Verify PIN against Employee.custom_support_pin (Data field)."""
     if not employee_support_pin_is_set(employee):
         return False
     try:
-        from frappe.utils.password import get_decrypted_password
-
-        stored = get_decrypted_password(
-            "Employee", employee, "custom_support_pin", raise_exception=False
-        )
+        stored = frappe.db.get_value("Employee", employee, "custom_support_pin")
         if not stored:
             return False
         return str(stored).strip() == str(pin).strip()
@@ -94,12 +86,10 @@ def verify_employee_support_pin(employee: str, pin: str) -> bool:
 
 
 def _save_employee_support_pin(employee: str, pin: str) -> None:
-    """Persist PIN to Employee.custom_support_pin (encrypted) for HRMIS parity."""
+    """Persist PIN to Employee.custom_support_pin (Data field) for HRMIS parity."""
     if not frappe.db.has_column("Employee", "custom_support_pin"):
         return
-    from frappe.utils.password import set_encrypted_password
-
-    set_encrypted_password("Employee", employee, pin, "custom_support_pin")
+    frappe.db.set_value("Employee", employee, "custom_support_pin", str(pin).strip())
 
 
 def get_security_profile_name(employee: str) -> Optional[str]:
