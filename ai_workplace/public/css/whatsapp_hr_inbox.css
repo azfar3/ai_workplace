@@ -1091,3 +1091,137 @@ body[data-theme="dark"] .wa-emoji-search-input {
 body[data-theme="dark"] .wa-emoji-item:hover {
 	background: #2a3942 !important;
 }
+
+/* ── Back button (hidden on desktop) ───────────────────────────────────── */
+.wa-back-btn {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	margin: 0;
+	border: none;
+	background: transparent;
+	color: #54656f;
+	border-radius: 50%;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: background 0.15s;
+}
+
+.wa-back-btn:hover {
+	background: rgba(0, 0, 0, 0.06);
+}
+
+.wa-back-btn svg {
+	display: block;
+}
+
+/* ── Mobile: WhatsApp-style list ↔ chat navigation ─────────────────────── */
+@media (max-width: 767px) {
+	.wa-inbox-page-wrapper .layout-main-section,
+	.wa-inbox-page {
+		padding: 0 !important;
+	}
+
+	.wa-inbox-page .page-content,
+	.wa-inbox-page-wrapper .page-content {
+		padding: 0 !important;
+	}
+
+	.wa-inbox {
+		height: calc(100dvh - 112px);
+		height: calc(100vh - 112px);
+		max-height: none;
+		min-height: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+
+	.wa-sidebar {
+		width: 100%;
+		min-width: 0;
+		border-right: none;
+		flex: 1 1 100%;
+	}
+
+	.wa-chat-panel {
+		display: none;
+		width: 100%;
+		flex: 1 1 100%;
+	}
+
+	.wa-inbox.wa-mobile-chat-open .wa-sidebar {
+		display: none;
+	}
+
+	.wa-inbox.wa-mobile-chat-open .wa-chat-panel {
+		display: flex;
+	}
+
+	.wa-back-btn {
+		display: inline-flex;
+	}
+
+	.wa-chat-header {
+		padding: 6px 8px 6px 4px;
+		gap: 4px;
+	}
+
+	.wa-chat-header .wa-avatar {
+		width: 40px;
+		height: 40px;
+		font-size: 16px;
+	}
+
+	.wa-chat-header-name {
+		font-size: 15px;
+	}
+
+	.wa-chat-header-sub {
+		font-size: 12px;
+	}
+
+	.wa-chat-header-actions {
+		flex-wrap: wrap;
+		gap: 4px;
+		max-width: 42%;
+		justify-content: flex-end;
+	}
+
+	.wa-action-btn {
+		padding: 6px 8px;
+		font-size: 11px;
+	}
+
+	.wa-action-btn span {
+		display: none;
+	}
+
+	.wa-compose {
+		padding: 6px 8px;
+	}
+
+	.wa-compose-box {
+		padding: 4px 8px;
+	}
+
+	.wa-emoji-picker {
+		left: 8px;
+		right: 8px;
+		max-width: none;
+	}
+}
+
+.wa-inbox.dark-theme .wa-back-btn,
+[data-theme="dark"] .wa-back-btn,
+body[data-theme="dark"] .wa-back-btn {
+	color: #aebac1 !important;
+}
+
+.wa-inbox.dark-theme .wa-back-btn:hover,
+[data-theme="dark"] .wa-back-btn:hover,
+body[data-theme="dark"] .wa-back-btn:hover {
+	background: rgba(255, 255, 255, 0.08) !important;
+}

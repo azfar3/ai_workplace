@@ -99,7 +99,6 @@ def upload_media_bytes(
             data={"messaging_product": "whatsapp", "type": mime_type},
             files={"file": (upload_name, content, mime_type)},
             timeout=_SEND_TIMEOUT_SECONDS,
-            proxies={"http": None, "https": None},
         )
         response.raise_for_status()
         data = response.json()
@@ -297,7 +296,6 @@ def _post_message(
             json=payload,
             headers=headers,
             timeout=_SEND_TIMEOUT_SECONDS,
-            proxies={"http": None, "https": None},
         )
         response.raise_for_status()
         data = response.json()

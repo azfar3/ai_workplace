@@ -87,6 +87,9 @@ frappe.whatsapp_hr_inbox = {
 				</aside>
 				<main class="wa-chat-panel">
 					<header class="wa-chat-header">
+						<button type="button" class="wa-back-btn" title="${__("Back")}" aria-label="${__("Back to chats")}">
+							<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+						</button>
 						<div class="wa-avatar hr-inbox-avatar">?</div>
 						<div class="wa-chat-header-info">
 							<div class="wa-chat-header-name hr-inbox-title">${__("Select a chat")}</div>
@@ -152,11 +155,18 @@ frappe.whatsapp_hr_inbox = {
 		this.subtitle_el = this.wrapper.find(".hr-inbox-subtitle");
 		this.avatar_el = this.wrapper.find(".hr-inbox-avatar");
 		this.actions_el = this.wrapper.find(".wa-chat-header-actions");
+		this.back_btn = this.wrapper.find(".wa-back-btn");
+		this.inbox_el = this.wrapper;
+
+		this.init_mobile_nav();
 
 		this.wrapper.find(".wa-filter-btn").on("click", (e) => {
 			this.current_filter = $(e.currentTarget).data("filter");
 			this.wrapper.find(".wa-filter-btn").removeClass("active");
 			$(e.currentTarget).addClass("active");
+			if (this.is_mobile()) {
+				this.show_mobile_list();
+			}
 			this.load_inbox();
 		});
 
@@ -248,6 +258,44 @@ frappe.whatsapp_hr_inbox = {
 		} else {
 			this.wrapper.removeClass("dark-theme");
 		}
+	},
+
+	is_mobile() {
+		return window.matchMedia("(max-width: 767px)").matches;
+	},
+
+	show_mobile_list() {
+		this.inbox_el.removeClass("wa-mobile-chat-open");
+	},
+
+	show_mobile_chat() {
+		if (this.is_mobile()) {
+			this.inbox_el.addClass("wa-mobile-chat-open");
+		}
+	},
+
+	handle_viewport_change() {
+		if (!this.is_mobile()) {
+			this.inbox_el.removeClass("wa-mobile-chat-open");
+		} else if (this.current_session) {
+			this.inbox_el.addClass("wa-mobile-chat-open");
+		}
+	},
+
+	init_mobile_nav() {
+		if (this._mobile_nav_initialized) {
+			return;
+		}
+		this._mobile_nav_initialized = true;
+		this._mobile_mql = window.matchMedia("(max-width: 767px)");
+		const on_change = () => this.handle_viewport_change();
+		if (this._mobile_mql.addEventListener) {
+			this._mobile_mql.addEventListener("change", on_change);
+		} else if (this._mobile_mql.addListener) {
+			this._mobile_mql.addListener(on_change);
+		}
+		this.back_btn.on("click", () => this.show_mobile_list());
+		this.handle_viewport_change();
 	},
 
 	_setup_realtime() {
@@ -400,7 +448,7 @@ frappe.whatsapp_hr_inbox = {
 				this._chat_start += chats.length;
 
 				this.render_list(chats, append);
-				if (!silent && !append && !this.current_session && chats.length) {
+				if (!silent && !append && !this.current_session && chats.length && !this.is_mobile()) {
 					this.load_session(chats[0].name);
 				}
 			},
@@ -469,6 +517,7 @@ frappe.whatsapp_hr_inbox = {
 		});
 		this.start_live_poll();
 		this.refresh_session(silent);
+		this.show_mobile_chat();
 	},
 
 	refresh_session(silent) {
@@ -1005,6 +1054,7 @@ frappe.whatsapp_hr_inbox = {
 					frappe.show_alert({ message: __("Chat closed"), indicator: "blue" });
 					this.current_session = null;
 					this.stop_live_poll();
+					this.show_mobile_list();
 					this.load_inbox();
 					this.messages_el.html(`
 						<div class="wa-empty">

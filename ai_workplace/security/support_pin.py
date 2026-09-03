@@ -68,19 +68,39 @@ def employee_support_pin_is_set(employee: str) -> bool:
         return False
     if not frappe.db.has_column("Employee", "custom_support_pin"):
         return False
+
     val = frappe.db.get_value("Employee", employee, "custom_support_pin")
-    return bool(val and str(val).strip())
+    if val and str(val).strip():
+        return True
+
+    return bool(
+        frappe.db.exists(
+            "__Auth",
+            {"doctype": "Employee", "name": employee, "fieldname": "custom_support_pin"},
+        )
+    )
 
 
 def verify_employee_support_pin(employee: str, pin: str) -> bool:
-    """Verify PIN against Employee.custom_support_pin (Data field)."""
+    """Verify PIN against Employee.custom_support_pin (HRMIS-stored Data field with legacy __Auth fallback)."""
     if not employee_support_pin_is_set(employee):
         return False
     try:
         stored = frappe.db.get_value("Employee", employee, "custom_support_pin")
-        if not stored:
-            return False
-        return str(stored).strip() == str(pin).strip()
+        if stored and str(stored).strip():
+            stored_str = str(stored).strip()
+            pin_str = str(pin).strip()
+            if stored_str == pin_str or verify_pin_hash(pin_str, stored_str):
+                return True
+
+        from frappe.utils.password import get_decrypted_password
+
+        stored_auth = get_decrypted_password(
+            "Employee", employee, "custom_support_pin", raise_exception=False
+        )
+        if stored_auth:
+            return str(stored_auth).strip() == str(pin).strip()
+        return False
     except Exception:
         return False
 
@@ -89,7 +109,8 @@ def _save_employee_support_pin(employee: str, pin: str) -> None:
     """Persist PIN to Employee.custom_support_pin (Data field) for HRMIS parity."""
     if not frappe.db.has_column("Employee", "custom_support_pin"):
         return
-    frappe.db.set_value("Employee", employee, "custom_support_pin", str(pin).strip())
+    frappe.db.set_value("Employee", employee, "custom_support_pin", pin, update_modified=False)
+
 
 
 def get_security_profile_name(employee: str) -> Optional[str]:
@@ -214,7 +235,7 @@ def verify_support_pin(
     pin_valid = False
     if employee_support_pin_is_set(employee):
         pin_valid = verify_employee_support_pin(employee, pin)
-    elif profile.pin_is_set:
+    if not pin_valid and profile.pin_is_set:
         pin_valid = verify_pin_hash(pin, profile.pin_hash or "")
 
     if not pin_valid:

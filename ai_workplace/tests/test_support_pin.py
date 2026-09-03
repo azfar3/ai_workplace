@@ -96,7 +96,7 @@ class TestEmployeeSupportPinField(unittest.TestCase):
         from ai_workplace.security.support_pin import employee_support_pin_is_set
 
         mock_frappe.db.has_column.return_value = True
-        mock_frappe.db.exists.return_value = True
+        mock_frappe.db.get_value.return_value = "4827"
         self.assertTrue(employee_support_pin_is_set("EMP-001"))
 
     @patch("ai_workplace.security.support_pin.frappe")
@@ -104,8 +104,27 @@ class TestEmployeeSupportPinField(unittest.TestCase):
         from ai_workplace.security.support_pin import employee_support_pin_is_set
 
         mock_frappe.db.has_column.return_value = True
+        mock_frappe.db.get_value.return_value = ""
         mock_frappe.db.exists.return_value = False
         self.assertFalse(employee_support_pin_is_set("EMP-001"))
+
+    @patch("ai_workplace.security.support_pin.frappe")
+    def test_verify_employee_support_pin_data_field(self, mock_frappe):
+        from ai_workplace.security.support_pin import verify_employee_support_pin
+
+        mock_frappe.db.has_column.return_value = True
+        mock_frappe.db.get_value.return_value = "4827"
+        self.assertTrue(verify_employee_support_pin("EMP-001", "4827"))
+        self.assertFalse(verify_employee_support_pin("EMP-001", "9999"))
+
+    @patch("ai_workplace.security.support_pin.frappe")
+    def test_save_employee_support_pin_data_field(self, mock_frappe):
+        from ai_workplace.security.support_pin import _save_employee_support_pin
+
+        mock_frappe.db.has_column.return_value = True
+        _save_employee_support_pin("EMP-001", "4827")
+        mock_frappe.db.set_value.assert_called_with("Employee", "EMP-001", "custom_support_pin", "4827", update_modified=False)
+
 
 
 if __name__ == "__main__":
