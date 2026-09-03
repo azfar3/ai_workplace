@@ -36,7 +36,7 @@ def handle_embedded_signup_code(code: str):
         params["client_secret"] = app_secret
 
     try:
-        res = requests.get(token_url, params=params, timeout=15).json()
+        res = requests.get(token_url, params=params, timeout=15, proxies={"http": None, "https": None}).json()
     except Exception as e:
         frappe.log_error(f"Meta OAuth request exception: {str(e)}", "WhatsApp Setup Error")
         frappe.throw(f"Connection to Meta API failed: {str(e)}")
@@ -55,7 +55,8 @@ def handle_embedded_signup_code(code: str):
     try:
         waba_res = requests.get(
             f"https://graph.facebook.com/v20.0/me/whatsapp_business_accounts?access_token={access_token}",
-            timeout=15
+            timeout=15,
+            proxies={"http": None, "https": None},
         ).json()
         if "data" in waba_res and len(waba_res["data"]) > 0:
             waba_id = waba_res["data"][0].get("id", "")
@@ -68,7 +69,8 @@ def handle_embedded_signup_code(code: str):
         try:
             phone_res = requests.get(
                 f"https://graph.facebook.com/v20.0/{waba_id}/phone_numbers?access_token={access_token}",
-                timeout=15
+                timeout=15,
+                proxies={"http": None, "https": None},
             ).json()
             if "data" in phone_res and len(phone_res["data"]) > 0:
                 phone_number_id = phone_res["data"][0].get("id", "")
