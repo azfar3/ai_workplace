@@ -616,31 +616,44 @@ def process_message(
         )
 
     # ── Live HR chat routing ──────────────────────────────────────────────────
-    if current_state == ConversationState.LIVE_HR_CHAT:
-        from ai_workplace.services.hr_chat import close_session, handle_live_hr_inbound
+    active_hr_session = conv.active_hr_chat_session
+    if not active_hr_session and conv.whatsapp_identity:
+        from ai_workplace.services.hr_chat import get_active_session_for_identity
+        active_hr_session = get_active_session_for_identity(conv.whatsapp_identity)
 
-        end_chat_commands = (
-            "end chat",
-            "end",
-            "close chat",
-            "close",
-            "exit chat",
-            "exit",
-        )
-        if cmd_lower in end_chat_commands:
-            session_name = conv.active_hr_chat_session
-            if session_name:
-                close_session(session_name)
-            menu_out, _unused = build_menu(context)
-            menu_out.body_text = frappe._("Chat ended.\n\n") + menu_out.body_text
-            return menu_out
+    if current_state == ConversationState.LIVE_HR_CHAT or active_hr_session:
+        from ai_workplace.services.hr_chat import close_session, handle_live_hr_inbound, get_session_doc
 
-        return handle_live_hr_inbound(
-            conv,
-            clean_text,
-            meta_message_id=message_id or "",
-            trace_id=trace_id,
-        )
+        session_to_use = active_hr_session or conv.active_hr_chat_session
+        if session_to_use:
+            s_doc = get_session_doc(session_to_use)
+            if s_doc.ready_for_hr and s_doc.status in ("Queued", "Assigned", "Active"):
+                if current_state != ConversationState.LIVE_HR_CHAT:
+                    update_conversation(
+                        conv,
+                        state=ConversationState.LIVE_HR_CHAT,
+                        active_hr_chat_session=session_to_use,
+                    )
+                end_chat_commands = (
+                    "end chat",
+                    "end",
+                    "close chat",
+                    "close",
+                    "exit chat",
+                    "exit",
+                )
+                if cmd_lower in end_chat_commands:
+                    close_session(session_to_use)
+                    menu_out, _unused = build_menu(context)
+                    menu_out.body_text = frappe._("Chat ended.\n\n") + menu_out.body_text
+                    return menu_out
+
+                return handle_live_hr_inbound(
+                    conv,
+                    clean_text,
+                    meta_message_id=message_id or "",
+                    trace_id=trace_id,
+                )
 
     # ── Support PIN verification ─────────────────────────────────────────────
     if current_state == ConversationState.WAITING_FOR_SUPPORT_PIN:

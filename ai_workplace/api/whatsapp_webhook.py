@@ -291,6 +291,31 @@ def _process_receive():
         return Response("ok", status=200, mimetype="text/plain")
 
     # ── 8. Orchestrate conversation & generate reply (Synchronous / Test mode)
+    from ai_workplace.services.hr_chat import (
+        get_active_session_for_identity,
+        get_session_doc,
+        append_inbound_message,
+    )
+
+    session_name = get_active_session_for_identity(wa_identity_name)
+    if session_name:
+        session = get_session_doc(session_name)
+        if session.ready_for_hr and session.status in ("Queued", "Assigned", "Active"):
+            cmd_lower = (inbound_text or "").strip().lower()
+            end_chat_commands = ("end chat", "end", "close chat", "close", "exit chat", "exit", "cancel")
+            if cmd_lower not in end_chat_commands:
+                _finalize_log(inbound_log, status="Received")
+                append_inbound_message(
+                    session,
+                    inbound_text,
+                    meta_message_id=message_id,
+                    message_type=message_type,
+                )
+                frappe.logger("ai_workplace").info(
+                    f"AI Workplace [{trace_id}]: Routed inbound text to active HR session {session_name} without bot reply."
+                )
+                return Response("ok", status=200, mimetype="text/plain")
+
     outbound = None
     processing_error = ""
     try:
@@ -411,6 +436,32 @@ def process_async_whatsapp_message(
     identity.whatsapp_identity = wa_identity_name
 
     inbound_log = frappe.get_doc("WhatsApp Message Log", inbound_log_name)
+
+    from ai_workplace.services.hr_chat import (
+        get_active_session_for_identity,
+        get_session_doc,
+        append_inbound_message,
+    )
+
+    session_name = get_active_session_for_identity(wa_identity_name)
+    if session_name:
+        session = get_session_doc(session_name)
+        if session.ready_for_hr and session.status in ("Queued", "Assigned", "Active"):
+            cmd_lower = (message_text or "").strip().lower()
+            end_chat_commands = ("end chat", "end", "close chat", "close", "exit chat", "exit", "cancel")
+            if cmd_lower not in end_chat_commands:
+                _finalize_log(inbound_log, status="Received")
+                append_inbound_message(
+                    session,
+                    message_text,
+                    meta_message_id=message_id,
+                    message_type="text",
+                )
+                frappe.logger("ai_workplace").info(
+                    f"AI Workplace [{trace_id}]: Routed async inbound text to active HR session {session_name} without bot reply."
+                )
+                frappe.cache().set_value(lock_key, "1")
+                return {"success": True}
 
     outbound = None
     processing_error = ""
