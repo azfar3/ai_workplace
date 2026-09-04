@@ -105,6 +105,10 @@ frappe.whatsapp_hr_inbox = {
 							<div class="wa-empty-sub">${__("Select a chat to view messages. New WhatsApp messages appear here automatically.")}</div>
 						</div>
 					</div>
+					<button type="button" class="wa-scroll-bottom-btn hidden" title="${__("Scroll to bottom")}" aria-label="${__("Scroll to bottom")}">
+						<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+						<span class="wa-scroll-bottom-badge hidden"></span>
+					</button>
 					<footer class="wa-compose">
 						<div class="wa-emoji-picker hidden">
 							<div class="wa-emoji-categories">
@@ -146,6 +150,8 @@ frappe.whatsapp_hr_inbox = {
 		this.list_el = this.wrapper.find(".wa-chat-list");
 		this.messages_el = this.wrapper.find(".wa-messages");
 		this.banner_el = this.wrapper.find(".wa-banner");
+		this.scroll_bottom_btn = this.wrapper.find(".wa-scroll-bottom-btn");
+		this.scroll_bottom_badge = this.wrapper.find(".wa-scroll-bottom-badge");
 		this.compose_el = this.wrapper.find(".wa-compose textarea");
 		this.send_btn = this.wrapper.find(".wa-send-btn");
 		this.attach_btn = this.wrapper.find(".wa-attach-btn");
@@ -179,12 +185,24 @@ frappe.whatsapp_hr_inbox = {
 			}
 		});
 
-		// Attach scroll-up pagination for Message Panel (Load 10-15 older messages when scrolling above)
+		// Attach scroll pagination & floating scroll-to-bottom button
 		this.messages_el.on("scroll", () => {
+			const el = this.messages_el[0];
+			if (el && el.scrollHeight - el.scrollTop - el.clientHeight > 120) {
+				this.scroll_bottom_btn.removeClass("hidden");
+			} else {
+				this.scroll_bottom_btn.addClass("hidden");
+			}
+
 			if (this._loading_messages || !this._has_more_messages || !this.current_session) return;
 			if (this.messages_el.scrollTop() <= 30) {
 				this.load_older_messages();
 			}
+		});
+
+		this.scroll_bottom_btn.on("click", () => {
+			this.scroll_to_bottom(true);
+			this.scroll_bottom_btn.addClass("hidden");
 		});
 
 		this.send_btn.on("click", () => this.send_reply());
@@ -485,12 +503,17 @@ frappe.whatsapp_hr_inbox = {
 			const initial = (title || "?").charAt(0).toUpperCase();
 			const subtitle = s.phone || s.wa_id || "";
 			const assignee = s.assigned_to_name || s.assigned_to || __("Unassigned");
+			const unread_badge = (s.unread_count > 0 && s.name !== this.current_session)
+				? `<span class="wa-chat-item-unread-count" title="${s.unread_count} ${__("unread message(s)")}">${s.unread_count}</span>`
+				: "";
+
 			const item = $(`
 				<div class="wa-chat-item" data-name="${frappe.utils.escape_html(s.name)}">
 					<div class="wa-avatar">${frappe.utils.escape_html(initial)}</div>
 					<div class="wa-chat-item-body">
 						<div class="wa-chat-item-top">
 							<span class="wa-chat-item-name">${frappe.utils.escape_html(title)}</span>
+							${unread_badge}
 						</div>
 						<div class="wa-chat-item-preview">${frappe.utils.escape_html(subtitle)} · ${frappe.utils.escape_html(assignee)}</div>
 						<span class="wa-badge ${frappe.utils.escape_html(s.status)}">${frappe.utils.escape_html(s.status)}</span>
@@ -515,6 +538,7 @@ frappe.whatsapp_hr_inbox = {
 		this.list_el.find(".wa-chat-item").each(function () {
 			if ($(this).attr("data-name") === name) {
 				$(this).addClass("active");
+				$(this).find(".wa-chat-item-unread-count").remove();
 			}
 		});
 		this.start_live_poll();
@@ -546,9 +570,15 @@ frappe.whatsapp_hr_inbox = {
 					this.render_session(r.message);
 					this._last_thread_len = thread.length;
 				} else {
+					let new_msg_added = false;
 					thread.forEach((m) => {
-						this.append_thread_message(m, true);
+						if (this.append_thread_message(m, true)) {
+							new_msg_added = true;
+						}
 					});
+					if (new_msg_added) {
+						this.scroll_to_bottom(true);
+					}
 					this._update_compose(r.message);
 					this.render_banner(r.message);
 					this.render_actions(r.message);
@@ -662,6 +692,18 @@ frappe.whatsapp_hr_inbox = {
 			.join(" · ");
 
 		this.title_el.text(title);
+
+		// Render In-Chat Header Unread Indicator
+		this.wrapper.find(".wa-header-unread-badge").remove();
+		if (data.unread_count > 0) {
+			this.title_el.after(`
+				<span class="wa-header-unread-badge">
+					<span class="wa-unread-dot"></span>
+					${data.unread_count} ${__("Unread")}
+				</span>
+			`);
+		}
+
 		this.subtitle_el.text(status_line);
 		this.avatar_el.text(initial);
 
@@ -828,12 +870,21 @@ frappe.whatsapp_hr_inbox = {
 			return;
 		}
 		let last_date = "";
+		let unread_separator_inserted = false;
 		messages.forEach((m) => {
 			const d = frappe.datetime.str_to_obj(m.timestamp);
 			const date_key = d ? frappe.datetime.obj_to_str(d).split(" ")[0] : "";
 			if (date_key && date_key !== last_date) {
 				last_date = date_key;
 				this.messages_el.append(`<div class="wa-date-separator">${frappe.datetime.str_to_user(date_key)}</div>`);
+			}
+			if (m.is_unread && !unread_separator_inserted) {
+				unread_separator_inserted = true;
+				this.messages_el.append(`
+					<div class="wa-unread-separator">
+						<span class="wa-unread-separator-text">${__("Unread Messages")}</span>
+					</div>
+				`);
 			}
 			this.append_thread_message(m, true);
 		});
@@ -963,7 +1014,7 @@ frappe.whatsapp_hr_inbox = {
 		const content_key = this._content_key(message);
 
 		if (this._thread_message_ids.has(msg_key) || this._thread_content_keys.has(content_key)) {
-			return;
+			return false;
 		}
 		this._thread_message_ids.add(msg_key);
 		this._thread_content_keys.add(content_key);
@@ -974,22 +1025,30 @@ frappe.whatsapp_hr_inbox = {
 		const cls = inbound ? "inbound" : "outbound";
 		const time_str = this.format_msg_time(message.timestamp);
 		const tick = this.render_tick_html(message);
+		const unread_dot = (inbound && message.is_unread) ? `<span class="wa-bubble-unread-dot" title="${__("Unread message")}"></span>` : "";
 
-		this.messages_el.append(`
+		const row_html = $(`
 			<div class="wa-msg-row ${cls}" data-key="${frappe.utils.escape_html(msg_key)}">
 				<div class="wa-bubble">
 					${this.render_message_body(message)}
 					<div class="wa-bubble-footer">
-						<span class="wa-bubble-time">${time_str}</span>
+						<span class="wa-bubble-time">${unread_dot}${time_str}</span>
 						<span class="wa-tick-wrap">${tick}</span>
 					</div>
 				</div>
 			</div>
 		`);
 
-		if (!skip_scroll) {
+		row_html.find("img.wa-media-img").on("load", () => {
 			this.scroll_to_bottom();
+		});
+
+		this.messages_el.append(row_html);
+
+		if (!skip_scroll) {
+			this.scroll_to_bottom(true);
 		}
+		return true;
 	},
 
 	format_msg_time(ts) {
@@ -1003,8 +1062,21 @@ frappe.whatsapp_hr_inbox = {
 		}
 	},
 
-	scroll_to_bottom() {
-		this.messages_el.scrollTop(this.messages_el[0].scrollHeight);
+	scroll_to_bottom(smooth = false) {
+		if (!this.messages_el || !this.messages_el.length) return;
+		const el = this.messages_el[0];
+		if (!el) return;
+		if (smooth) {
+			this.messages_el.animate({ scrollTop: el.scrollHeight }, 200);
+		} else {
+			el.scrollTop = el.scrollHeight;
+		}
+		setTimeout(() => {
+			if (el) el.scrollTop = el.scrollHeight;
+		}, 60);
+		setTimeout(() => {
+			if (el) el.scrollTop = el.scrollHeight;
+		}, 200);
 	},
 
 	take_chat(name) {

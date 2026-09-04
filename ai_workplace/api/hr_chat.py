@@ -48,6 +48,27 @@ def get_session_detail(session_name: str, start: int = 0, limit: int = 15) -> di
 
     payload = _session_payload(session)
     thread = get_session_thread(session_name, limit=limit_val, start=start_val)
+
+    # Compute unread count and tag individual messages
+    last_user = session.last_user_message_at
+    last_hr = session.last_hr_reply_at
+    unread_count = 0
+    if last_user and (not last_hr or last_user > last_hr):
+        cnt_filters = {"hr_live_chat_session": session_name, "direction": "Inbound"}
+        if last_hr:
+            cnt_filters["timestamp"] = [">", last_hr]
+        unread_count = frappe.db.count("WhatsApp Message Log", cnt_filters)
+
+    payload["unread_count"] = unread_count
+    payload["last_hr_reply_at"] = session.last_hr_reply_at
+
+    for m in thread:
+        if m.get("direction") == "Inbound":
+            is_unread = bool(
+                unread_count > 0 and (not last_hr or (m.get("timestamp") and m.get("timestamp") > last_hr))
+            )
+            m["is_unread"] = is_unread
+
     payload["thread"] = thread
     payload["has_more_messages"] = len(thread) >= limit_val
     payload["thread_start"] = start_val

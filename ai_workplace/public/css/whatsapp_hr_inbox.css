@@ -1225,3 +1225,183 @@ body[data-theme="dark"] .wa-back-btn {
 body[data-theme="dark"] .wa-back-btn:hover {
 	background: rgba(255, 255, 255, 0.08) !important;
 }
+
+/* ── Unread Message Indicators & Floating Scroll Button ───────────────────── */
+.wa-chat-item-unread-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 20px;
+	height: 20px;
+	padding: 0 6px;
+	border-radius: 10px;
+	background: #25d366;
+	color: #ffffff;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.wa-header-unread-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 10px;
+	border-radius: 12px;
+	background: #e7fce3;
+	color: #008069;
+	font-size: 12px;
+	font-weight: 600;
+	margin-left: 8px;
+}
+
+.wa-header-unread-badge .wa-unread-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #25d366;
+	display: inline-block;
+	animation: wa-pulse 1.5s infinite;
+}
+
+.wa-unread-separator {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 16px 0;
+	position: relative;
+	text-align: center;
+	width: 100%;
+}
+
+.wa-unread-separator::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	height: 1px;
+	background: #25d366;
+	opacity: 0.4;
+	z-index: 1;
+}
+
+.wa-unread-separator-text {
+	position: relative;
+	z-index: 2;
+	background: #e7fce3;
+	color: #008069;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 4px 14px;
+	border-radius: 14px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.wa-bubble-unread-dot {
+	display: inline-block;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #25d366;
+	margin-right: 4px;
+	vertical-align: middle;
+	box-shadow: 0 0 4px rgba(37, 211, 102, 0.6);
+}
+
+.wa-scroll-bottom-btn {
+	position: absolute;
+	bottom: 80px;
+	right: 24px;
+	width: 42px;
+	height: 42px;
+	border-radius: 50%;
+	background: #ffffff;
+	color: #54656f;
+	border: 1px solid #e9edef;
+	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 90;
+	transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s;
+}
+
+.wa-scroll-bottom-btn:hover {
+	background: #f0f2f5;
+	color: #111b21;
+	transform: translateY(-2px);
+}
+
+.wa-scroll-bottom-btn.hidden {
+	display: none !important;
+}
+
+.wa-scroll-bottom-badge {
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: 9px;
+	background: #25d366;
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Dark mode additions for unread indicators */
+.wa-inbox.dark-theme .wa-chat-item-unread-count,
+[data-theme="dark"] .wa-chat-item-unread-count,
+body[data-theme="dark"] .wa-chat-item-unread-count {
+	background: #00a884 !important;
+	color: #111b21 !important;
+}
+
+.wa-inbox.dark-theme .wa-header-unread-badge,
+[data-theme="dark"] .wa-header-unread-badge,
+body[data-theme="dark"] .wa-header-unread-badge {
+	background: rgba(0, 168, 132, 0.2) !important;
+	color: #00a884 !important;
+}
+
+.wa-inbox.dark-theme .wa-unread-separator-text,
+[data-theme="dark"] .wa-unread-separator-text,
+body[data-theme="dark"] .wa-unread-separator-text {
+	background: #202c33 !important;
+	color: #00a884 !important;
+	border: 1px solid #00a884 !important;
+}
+
+.wa-inbox.dark-theme .wa-unread-separator::before,
+[data-theme="dark"] .wa-unread-separator::before,
+body[data-theme="dark"] .wa-unread-separator::before {
+	background: #00a884 !important;
+}
+
+.wa-inbox.dark-theme .wa-scroll-bottom-btn,
+[data-theme="dark"] .wa-scroll-bottom-btn,
+body[data-theme="dark"] .wa-scroll-bottom-btn {
+	background: #202c33 !important;
+	color: #aebac1 !important;
+	border-color: #2a3942 !important;
+}
+
+.wa-inbox.dark-theme .wa-scroll-bottom-btn:hover,
+[data-theme="dark"] .wa-scroll-bottom-btn:hover,
+body[data-theme="dark"] .wa-scroll-bottom-btn:hover {
+	background: #2a3942 !important;
+	color: #e9edef !important;
+}
+

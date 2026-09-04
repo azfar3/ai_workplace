@@ -107,6 +107,7 @@ def _session_payload(session: Any) -> dict[str, Any]:
         "wa_id": session.wa_id,
         "whatsapp_identity": session.whatsapp_identity,
         "last_user_message_at": session.last_user_message_at,
+        "last_hr_reply_at": getattr(session, "last_hr_reply_at", None),
         "session_window_expires_at": session.session_window_expires_at,
         "can_reply": can_reply,
         "can_reply_reason": reason,
@@ -1100,6 +1101,7 @@ def get_inbox_sessions(status_filter: str = "queue", start: int = 0, limit: int 
             "person_type",
             "initial_query",
             "last_user_message_at",
+            "last_hr_reply_at",
             "session_window_expires_at",
             "modified",
         ],
@@ -1139,5 +1141,19 @@ def get_inbox_sessions(status_filter: str = "queue", start: int = 0, limit: int 
             can_reply, reason = evaluate_reply_permission(session, user=user)
         row["can_reply"] = can_reply
         row["can_reply_reason"] = reason
+
+        # Calculate unread count for outside list indicator
+        last_user = row.get("last_user_message_at")
+        last_hr = row.get("last_hr_reply_at")
+        if last_user and (not last_hr or last_user > last_hr):
+            cnt_filters = {
+                "hr_live_chat_session": row["name"],
+                "direction": "Inbound",
+            }
+            if last_hr:
+                cnt_filters["timestamp"] = [">", last_hr]
+            row["unread_count"] = frappe.db.count("WhatsApp Message Log", cnt_filters)
+        else:
+            row["unread_count"] = 0
 
     return merged_sessions
