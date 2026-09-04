@@ -138,6 +138,7 @@ doc_events = {
 scheduler_events = {
 	"daily": [
 		"ai_workplace.ai.indexer.reindex_stale_sources",
+		"ai_workplace.scripts.clear_old_logs.execute",
 	],
 	"hourly": [
 		"ai_workplace.tasks.cleanup_temporary_media",
