@@ -709,13 +709,15 @@ def _link_inbound_to_hr_session(
     """Attach inbound WhatsApp Message Log to an active HR live chat session."""
     try:
         wa_identity = getattr(identity, "whatsapp_identity", "") or ""
-        if not wa_identity:
-            return
+        employee = getattr(identity, "employee", "") or ""
+        wa_id = getattr(identity, "wa_id", "") or getattr(log_doc, "whatsapp_id", "") or getattr(log_doc, "recipient", "") or getattr(log_doc, "sender", "") or ""
 
-        from ai_workplace.services.hr_chat import get_active_session_for_identity
+        from ai_workplace.services.hr_chat import get_active_session_for_identity, get_session_doc, publish_session_update
 
-        session_name = get_active_session_for_identity(wa_identity)
-        if not session_name:
+        session_name = get_active_session_for_identity(
+            wa_identity, employee=employee, wa_id=wa_id
+        )
+        if not session_name and wa_identity:
             conv_name = frappe.db.get_value(
                 "WhatsApp Conversation",
                 {
@@ -734,6 +736,9 @@ def _link_inbound_to_hr_session(
         if not session_name:
             return
 
+        now_dt = frappe.utils.now_datetime()
+        frappe.db.set_value("HR Live Chat Session", session_name, "last_user_message_at", now_dt)
+
         if not log_doc.hr_live_chat_session:
             frappe.db.set_value(
                 "WhatsApp Message Log",
@@ -743,23 +748,22 @@ def _link_inbound_to_hr_session(
                     "sender_type": "Employee",
                 },
             )
-            frappe.db.commit()
-            from ai_workplace.services.hr_chat import get_session_doc, publish_session_update
+        frappe.db.commit()
 
-            session = get_session_doc(session_name)
-            publish_session_update(
-                session,
-                {
-                    "event": "inbound_message",
-                    "message": message_text,
-                    "meta_message_id": log_doc.meta_message_id or log_doc.name,
-                    "direction": "Inbound",
-                    "sender_type": "Employee",
-                    "timestamp": frappe.utils.now(),
-                    "message_type": message_type or "text",
-                    "media_file": media_file or log_doc.media_file or "",
-                },
-            )
+        session = get_session_doc(session_name)
+        publish_session_update(
+            session,
+            {
+                "event": "inbound_message",
+                "message": message_text,
+                "meta_message_id": log_doc.meta_message_id or log_doc.name,
+                "direction": "Inbound",
+                "sender_type": "Employee",
+                "timestamp": str(now_dt),
+                "message_type": message_type or "text",
+                "media_file": media_file or log_doc.media_file or "",
+            },
+        )
     except Exception as exc:
         frappe.logger("ai_workplace").warning(
             f"AI Workplace: Failed to link inbound message to HR session: {exc}"

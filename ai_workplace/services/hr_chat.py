@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 import frappe
 from frappe import _
+from frappe.utils import get_datetime
 
 from ai_workplace.conversation.manager import update_conversation
 from ai_workplace.conversation.state import ConversationState
@@ -143,18 +144,33 @@ def user_is_hr_manager(user: Optional[str] = None) -> bool:
     return "HR Manager" in roles or "System Manager" in roles
 
 
-def get_active_session_for_identity(whatsapp_identity: str) -> Optional[str]:
-    if not whatsapp_identity:
+def get_active_session_for_identity(
+    whatsapp_identity: str = "",
+    employee: str = "",
+    wa_id: str = "",
+) -> Optional[str]:
+    filters_or = []
+    if whatsapp_identity:
+        filters_or.append({"whatsapp_identity": whatsapp_identity})
+    if employee:
+        filters_or.append({"employee": employee})
+    if wa_id:
+        filters_or.append({"wa_id": wa_id})
+
+    if not filters_or:
         return None
-    return frappe.db.get_value(
+
+    active = frappe.get_all(
         "HR Live Chat Session",
-        {
-            "whatsapp_identity": whatsapp_identity,
-            "status": ["in", list(OPEN_STATUSES)],
-        },
-        "name",
+        or_filters=filters_or,
+        filters={"status": ["in", list(OPEN_STATUSES)]},
+        fields=["name"],
         order_by="modified desc",
+        limit=1,
     )
+    if active:
+        return active[0]["name"]
+    return None
 
 
 def get_session_doc(session_name: str) -> Any:
@@ -1142,9 +1158,57 @@ def get_inbox_sessions(status_filter: str = "queue", start: int = 0, limit: int 
         row["can_reply"] = can_reply
         row["can_reply_reason"] = reason
 
+        # Fetch last message text and timestamp for sidebar preview
+        related_session_names = {row["name"]}
+        filters_or = []
+        if row.get("whatsapp_identity"):
+            filters_or.append({"whatsapp_identity": row["whatsapp_identity"]})
+        if row.get("employee"):
+            filters_or.append({"employee": row["employee"]})
+        if row.get("wa_id"):
+            filters_or.append({"wa_id": row["wa_id"]})
+
+        if filters_or:
+            all_related = frappe.get_all(
+                "HR Live Chat Session",
+                or_filters=filters_or,
+                pluck="name",
+            )
+            related_session_names.update(all_related)
+
+        log_or_filters = [{"hr_live_chat_session": ["in", list(related_session_names)]}]
+        if row.get("wa_id"):
+            log_or_filters.append({"recipient": row["wa_id"]})
+            log_or_filters.append({"whatsapp_id": row["wa_id"]})
+        if row.get("employee"):
+            log_or_filters.append({"employee": row["employee"]})
+
+        last_logs = frappe.get_all(
+            "WhatsApp Message Log",
+            or_filters=log_or_filters,
+            fields=["message", "media_file", "message_type", "direction", "timestamp", "creation"],
+            order_by="timestamp desc, creation desc",
+            limit_page_length=1,
+        )
+        if last_logs:
+            msg_obj = last_logs[0]
+            if msg_obj.get("message"):
+                row["last_message"] = msg_obj["message"]
+            elif msg_obj.get("media_file"):
+                row["last_message"] = f"📎 Media ({msg_obj.get('message_type') or 'file'})"
+            else:
+                row["last_message"] = row.get("initial_query") or ""
+            if msg_obj.get("timestamp"):
+                msg_dt = get_datetime(msg_obj["timestamp"])
+                curr_dt = get_datetime(row.get("last_user_message_at"))
+                if not curr_dt or (msg_dt and msg_dt > curr_dt):
+                    row["last_user_message_at"] = msg_dt
+        else:
+            row["last_message"] = row.get("initial_query") or ""
+
         # Calculate unread count for outside list indicator
-        last_user = row.get("last_user_message_at")
-        last_hr = row.get("last_hr_reply_at")
+        last_user = get_datetime(row.get("last_user_message_at"))
+        last_hr = get_datetime(row.get("last_hr_reply_at"))
         if last_user and (not last_hr or last_user > last_hr):
             cnt_filters = {
                 "hr_live_chat_session": row["name"],
@@ -1157,3 +1221,64 @@ def get_inbox_sessions(status_filter: str = "queue", start: int = 0, limit: int 
             row["unread_count"] = 0
 
     return merged_sessions
+
+
+def get_inbox_tab_counts() -> dict[str, int]:
+    """Return badge counts for inbox tabs (My Chats, Queue, Closed, All)."""
+    user = frappe.session.user
+    access_role = get_hr_agent_role_access(user)
+
+    # Queue count
+    queue_filters = _inbox_base_filters()
+    queue_filters["status"] = "Queued"
+    queue_sessions = frappe.get_all(
+        "HR Live Chat Session",
+        filters=queue_filters,
+        fields=["name", "last_user_message_at", "last_hr_reply_at"],
+    )
+    queue_count = len(queue_sessions)
+
+    # Mine unread count
+    mine_filters = _inbox_base_filters()
+    mine_filters["assigned_to"] = user
+    mine_filters["status"] = ["in", ["Assigned", "Active"]]
+    mine_sessions = frappe.get_all(
+        "HR Live Chat Session",
+        filters=mine_filters,
+        fields=["name", "last_user_message_at", "last_hr_reply_at"],
+    )
+    mine_unread = 0
+    for s in mine_sessions:
+        last_u = get_datetime(s.get("last_user_message_at"))
+        last_h = get_datetime(s.get("last_hr_reply_at"))
+        if last_u and (not last_h or last_u > last_h):
+            cnt_flt = {"hr_live_chat_session": s["name"], "direction": "Inbound"}
+            if last_h:
+                cnt_flt["timestamp"] = [">", last_h]
+            mine_unread += frappe.db.count("WhatsApp Message Log", cnt_flt)
+
+    # All unread count
+    all_filters = _inbox_base_filters()
+    all_filters["status"] = ["in", list(INBOX_STATUSES)]
+    if access_role == "Assigned HR User (View & Reply Assigned Only)":
+        all_filters["assigned_to"] = user
+    all_sessions = frappe.get_all(
+        "HR Live Chat Session",
+        filters=all_filters,
+        fields=["name", "last_user_message_at", "last_hr_reply_at"],
+    )
+    all_unread = 0
+    for s in all_sessions:
+        last_u = get_datetime(s.get("last_user_message_at"))
+        last_h = get_datetime(s.get("last_hr_reply_at"))
+        if last_u and (not last_h or last_u > last_h):
+            cnt_flt = {"hr_live_chat_session": s["name"], "direction": "Inbound"}
+            if last_h:
+                cnt_flt["timestamp"] = [">", last_h]
+            all_unread += frappe.db.count("WhatsApp Message Log", cnt_flt)
+
+    return {
+        "queue": queue_count,
+        "mine_unread": mine_unread,
+        "all_unread": all_unread,
+    }

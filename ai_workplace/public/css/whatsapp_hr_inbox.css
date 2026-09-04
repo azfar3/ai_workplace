@@ -60,6 +60,10 @@
 	border-radius: 16px;
 	cursor: pointer;
 	transition: background 0.15s;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	position: relative;
 }
 
 .wa-filters .wa-filter-btn:hover {
@@ -69,6 +73,44 @@
 .wa-filters .wa-filter-btn.active {
 	background: #008069;
 	color: #fff;
+}
+
+.wa-tab-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: 9px;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+	background-color: #25d366;
+	color: #ffffff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.wa-filter-btn.active .wa-tab-badge {
+	background-color: #ffffff;
+	color: #008069;
+}
+
+.wa-tab-badge-queue {
+	background-color: #ef4444;
+	color: #ffffff;
+	animation: wa-badge-pulse 2s infinite;
+}
+
+.wa-filter-btn.active .wa-tab-badge-queue {
+	background-color: #ffffff;
+	color: #dc2626;
+}
+
+@keyframes wa-badge-pulse {
+	0% { transform: scale(1); }
+	50% { transform: scale(1.15); }
+	100% { transform: scale(1); }
 }
 
 .wa-chat-list {
@@ -141,13 +183,27 @@
 	flex-shrink: 0;
 }
 
+.wa-chat-item.has-unread .wa-chat-item-time {
+	color: #25d366;
+	font-weight: 600;
+}
+
+.wa-chat-item-bottom {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	margin-top: 2px;
+}
+
 .wa-chat-item-preview {
 	font-size: 13px;
 	color: #667781;
-	margin-top: 2px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	flex: 1;
+	min-width: 0;
 }
 
 .wa-badge {

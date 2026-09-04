@@ -38,6 +38,14 @@ def get_inbox(status_filter: str = "queue", start: int = 0, limit: int = 15) -> 
 
 
 @frappe.whitelist()
+def get_inbox_counts() -> dict[str, int]:
+    _ensure_hr_agent()
+    from ai_workplace.services.hr_chat import get_inbox_tab_counts
+
+    return get_inbox_tab_counts()
+
+
+@frappe.whitelist()
 def get_session_detail(session_name: str, start: int = 0, limit: int = 15) -> dict:
     _ensure_hr_agent()
     session = get_session_doc(session_name)
@@ -49,11 +57,14 @@ def get_session_detail(session_name: str, start: int = 0, limit: int = 15) -> di
     payload = _session_payload(session)
     thread = get_session_thread(session_name, limit=limit_val, start=start_val)
 
-    # Compute unread count and tag individual messages
+    # Compute unread count and tag individual messages accurately using datetime objects
     last_user = session.last_user_message_at
     last_hr = session.last_hr_reply_at
+    last_hr_dt = frappe.utils.get_datetime(last_hr) if last_hr else None
+    last_user_dt = frappe.utils.get_datetime(last_user) if last_user else None
+
     unread_count = 0
-    if last_user and (not last_hr or last_user > last_hr):
+    if last_user_dt and (not last_hr_dt or last_user_dt > last_hr_dt):
         cnt_filters = {"hr_live_chat_session": session_name, "direction": "Inbound"}
         if last_hr:
             cnt_filters["timestamp"] = [">", last_hr]
@@ -64,9 +75,11 @@ def get_session_detail(session_name: str, start: int = 0, limit: int = 15) -> di
 
     for m in thread:
         if m.get("direction") == "Inbound":
-            is_unread = bool(
-                unread_count > 0 and (not last_hr or (m.get("timestamp") and m.get("timestamp") > last_hr))
-            )
+            m_dt = frappe.utils.get_datetime(m.get("timestamp")) if m.get("timestamp") else None
+            if unread_count > 0 and m_dt:
+                is_unread = bool(not last_hr_dt or m_dt > last_hr_dt)
+            else:
+                is_unread = False
             m["is_unread"] = is_unread
 
     payload["thread"] = thread
@@ -81,6 +94,8 @@ def get_session_detail(session_name: str, start: int = 0, limit: int = 15) -> di
     payload["display_title"] = session.display_name or ""
     if not payload["display_title"] and session.employee:
         payload["display_title"] = frappe.db.get_value("Employee", session.employee, "employee_name") or ""
+    if session.employee:
+        payload["employee_name"] = frappe.db.get_value("Employee", session.employee, "employee_name") or session.employee
     if session.guest_email:
         payload["guest_email"] = session.guest_email
     if session.initial_query:
