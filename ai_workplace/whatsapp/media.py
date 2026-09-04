@@ -63,7 +63,12 @@ def fetch_inbound_media(parsed: dict[str, Any], settings: Optional[Any] = None) 
     meta_url = f"https://graph.facebook.com/{api_version}/{media_id}"
 
     try:
-        meta_resp = requests.get(meta_url, headers=headers, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
+        meta_resp = requests.get(
+            meta_url,
+            headers=headers,
+            timeout=_DOWNLOAD_TIMEOUT_SECONDS,
+            proxies={"http": None, "https": None},
+        )
         meta_resp.raise_for_status()
         meta = meta_resp.json()
         download_url = meta.get("url") or ""
@@ -71,7 +76,12 @@ def fetch_inbound_media(parsed: dict[str, Any], settings: Optional[Any] = None) 
         if not download_url:
             return {"success": False, "file_url": "", "filename": "", "error": f"No download URL: {meta}"}
 
-        file_resp = requests.get(download_url, headers=headers, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
+        file_resp = requests.get(
+            download_url,
+            headers=headers,
+            timeout=_DOWNLOAD_TIMEOUT_SECONDS,
+            proxies={"http": None, "https": None},
+        )
         file_resp.raise_for_status()
         content = file_resp.content
 
@@ -114,8 +124,20 @@ def read_frappe_file_bytes(file_doc: Any) -> tuple[bytes, str, str]:
 
     file_url = (file_doc.file_url or "").strip()
     if file_url.startswith("/"):
+        site_path = frappe.get_site_path("public", file_url.lstrip("/"))
+        if os.path.exists(site_path):
+            with open(site_path, "rb") as handle:
+                return handle.read(), filename, mime_type
+        private_path = frappe.get_site_path("private", file_url.lstrip("/"))
+        if os.path.exists(private_path):
+            with open(private_path, "rb") as handle:
+                return handle.read(), filename, mime_type
         site_url = frappe.utils.get_url(file_url)
-        response = requests.get(site_url, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
+        response = requests.get(
+            site_url,
+            timeout=_DOWNLOAD_TIMEOUT_SECONDS,
+            proxies={"http": None, "https": None},
+        )
         response.raise_for_status()
         return response.content, filename, mime_type
 

@@ -296,6 +296,7 @@ def _post_message(
             json=payload,
             headers=headers,
             timeout=_SEND_TIMEOUT_SECONDS,
+            proxies={"http": None, "https": None},
         )
         response.raise_for_status()
         data = response.json()

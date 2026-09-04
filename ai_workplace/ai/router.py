@@ -470,6 +470,7 @@ def _call_provider_single(
         headers=headers,
         json=payload,
         timeout=(connect_timeout, read_timeout),
+        proxies={"http": None, "https": None},
     )
     resp.raise_for_status()
     data = resp.json()
@@ -542,6 +543,7 @@ def _groq_settings_fallback(
             headers=headers,
             json=payload,
             timeout=(5, 15),
+            proxies={"http": None, "https": None},
         )
         resp.raise_for_status()
         data = resp.json()
