@@ -865,7 +865,7 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
                 frappe.get_doc({
                     "doctype": "WhatsApp Temporary Media",
                     "conversation_id": conv_for_route.name,
-                    "employee": identity.employee if identity.is_employee else "",
+                    "employee": identity.employee or "",
                     "document_type": message_type,
                     "media_id": parsed.get("media_id", ""),
                     "file_reference": media_result.get("file_doc_name"),
