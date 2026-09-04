@@ -20,6 +20,17 @@ _DEFAULT_GRAPH_API_VERSION = "v18.0"
 _SEND_TIMEOUT_SECONDS = 30
 
 
+def _build_http_session() -> requests.Session:
+    """
+    Build a dedicated requests.Session isolated from host environment proxies.
+    Setting trust_env = False prevents reading system proxy environment variables
+    (e.g., HTTP_PROXY, HTTPS_PROXY) and avoids proxy recursion in requests/urllib3.
+    """
+    session = requests.Session()
+    session.trust_env = False
+    return session
+
+
 def send_text_message(
     phone_number: str,
     message: str,
@@ -72,8 +83,6 @@ def upload_media_bytes(
     settings: Optional[Any] = None,
 ) -> dict[str, Any]:
     """Upload in-memory bytes to Meta and return the media id."""
-    import os
-
     try:
         cfg = settings or frappe.get_single("AI Workplace Settings")
     except Exception as exc:
@@ -93,13 +102,14 @@ def upload_media_bytes(
     upload_name = filename or f"upload{mimetype_to_extension(mime_type)}"
 
     try:
-        response = requests.post(
-            url,
-            headers=headers,
-            data={"messaging_product": "whatsapp", "type": mime_type},
-            files={"file": (upload_name, content, mime_type)},
-            timeout=_SEND_TIMEOUT_SECONDS,
-        )
+        with _build_http_session() as session:
+            response = session.post(
+                url,
+                headers=headers,
+                data={"messaging_product": "whatsapp", "type": mime_type},
+                files={"file": (upload_name, content, mime_type)},
+                timeout=_SEND_TIMEOUT_SECONDS,
+            )
         response.raise_for_status()
         data = response.json()
         media_id = data.get("id")
@@ -107,8 +117,24 @@ def upload_media_bytes(
             return _error_result(f"Meta media upload returned no id: {data}")
         return {"success": True, "media_id": media_id, "error": None}
     except Exception as exc:
+        masked_phone_id = phone_number_id[:3] + "..." + phone_number_id[-3:] if len(phone_number_id) > 6 else "***"
+        diag_msg = (
+            f"{frappe.get_traceback()}\n\n"
+            f"Diagnostic Context:\n"
+            f"  Domain: graph.facebook.com\n"
+            f"  API Version: {api_version}\n"
+            f"  Phone Number ID: {masked_phone_id}\n"
+            f"  Exception Class: {type(exc).__module__}.{type(exc).__qualname__}\n"
+            f"  Session trust_env: False\n"
+        )
+        frappe.log_error(
+            message=diag_msg,
+            title="WhatsApp Meta API Full Traceback",
+        )
         err = f"Meta media upload failed: {exc}"
-        frappe.logger("ai_workplace").error(f"WhatsApp Sender: {err}")
+        frappe.logger("ai_workplace").error(
+            f"WhatsApp Sender: {err} (domain=graph.facebook.com, api_ver={api_version}, phone_id={masked_phone_id}, exc_class={type(exc).__qualname__}, trust_env=False)"
+        )
         return _error_result(err)
 
 
@@ -291,13 +317,13 @@ def _post_message(
     }
 
     try:
-        response = requests.post(
-            url,
-            json=payload,
-            headers=headers,
-            timeout=_SEND_TIMEOUT_SECONDS,
-            proxies={"http": None, "https": None},
-        )
+        with _build_http_session() as session:
+            response = session.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=_SEND_TIMEOUT_SECONDS,
+            )
         response.raise_for_status()
         data = response.json()
         message_id = None
@@ -328,8 +354,27 @@ def _post_message(
         return _error_result(err)
 
     except Exception as exc:
+        masked_phone_id = phone_number_id[:3] + "..." + phone_number_id[-3:] if len(phone_number_id) > 6 else "***"
+        diag_msg = (
+            f"{frappe.get_traceback()}\n\n"
+            f"Diagnostic Context:\n"
+            f"  Domain: graph.facebook.com\n"
+            f"  API Version: {api_version}\n"
+            f"  Phone Number ID: {masked_phone_id}\n"
+            f"  Exception Class: {type(exc).__module__}.{type(exc).__qualname__}\n"
+            f"  Session trust_env: False\n"
+        )
+        frappe.log_error(
+            message=diag_msg,
+            title="WhatsApp Meta API Full Traceback",
+        )
+
         err = f"Unexpected error sending WhatsApp message: {exc}"
-        frappe.logger("ai_workplace").error(f"WhatsApp Sender: {err}")
+
+        frappe.logger("ai_workplace").error(
+            f"WhatsApp Sender: {err} (domain=graph.facebook.com, api_ver={api_version}, phone_id={masked_phone_id}, exc_class={type(exc).__qualname__}, trust_env=False)"
+        )
+
         return _error_result(err)
 
 
@@ -346,3 +391,4 @@ def _get_access_token(cfg: Any) -> str:
 
 def _error_result(error_message: str) -> dict[str, Any]:
     return {"success": False, "message_id": None, "error": error_message}
+
