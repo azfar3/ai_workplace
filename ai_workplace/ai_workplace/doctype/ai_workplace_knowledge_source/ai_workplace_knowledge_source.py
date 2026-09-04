@@ -7,7 +7,11 @@ class AIWorkplaceKnowledgeSource(Document):
         if self.file_attachment:
             extracted = self.extract_attachment_text()
             if extracted:
-                self.content = extracted
+                if self.content and self.content.strip() and self.content.strip() != extracted.strip():
+                    if extracted not in self.content:
+                        self.content = f"{self.content}\n\n{extracted}".strip()
+                else:
+                    self.content = extracted
 
     def extract_attachment_text(self) -> str:
         if not self.file_attachment:
