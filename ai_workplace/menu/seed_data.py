@@ -113,7 +113,7 @@ def get_menu_seed_items() -> list[dict[str, Any]]:
             "sequence": 6,
             "description": "Workplace guidance, safety and confidential matters.",
             "submenus": [
-                {"menu_key": "staff_hr_guidance", "title": "📚 Workplace Guidance", "sequence": 1, "description": "Browse applicable company policies.", "security_level": SEC_PIN},
+                {"menu_key": "staff_hr_guidance", "title": "🤖 AI Policy Assistant", "title_urdu": "🤖 AI پالیسی اسسٹنٹ", "title_roman_urdu": "🤖 AI Policy Assistant", "sequence": 1, "description": "Ask AI any company policy or workplace question.", "security_level": SEC_NONE},
                 {"menu_key": "staff_supervisor", "title": "👨‍💼 Supervisor Support", "sequence": 2, "description": "Supervisor and reporting contact.", "security_level": SEC_PIN},
                 {"menu_key": "concerns", "title": "🔒 Confidential Concern", "sequence": 3, "description": "Report a confidential workplace concern.", "security_level": SEC_NONE},
                 {"menu_key": "staff_contact_hr", "title": "💬 Chat with HR", "sequence": 4, "description": "Speak with HR live on WhatsApp.", "security_level": SEC_NONE},
@@ -121,16 +121,13 @@ def get_menu_seed_items() -> list[dict[str, Any]]:
         },
         {
             "menu_key": "policies",
-            "title": "📚 Policies & Help",
-            "title_urdu": "📚 پالیسیاں اور مدد",
-            "title_roman_urdu": "📚 Policies & Help",
+            "title": "🤖 AI Policy Assistant",
+            "title_urdu": "🤖 AI پالیسی اسسٹنٹ",
+            "title_roman_urdu": "🤖 AI Policy Assistant",
             "user_category": "Active Employee",
             "sequence": 7,
-            "description": "Organizational policies applicable to you.",
-            "submenus": [
-                {"menu_key": "pol_view_policies", "title": "📋 View My Policies", "sequence": 1, "description": "Browse and download your policies.", "security_level": SEC_PIN},
-                {"menu_key": "pol_ai_assistant", "title": "🤖 AI Policy Assistant", "title_urdu": "🤖 AI اسسٹنٹ", "title_roman_urdu": "🤖 AI Policy Assistant", "sequence": 2, "description": "Ask AI Assistant any policy or workplace question.", "security_level": SEC_NONE},
-            ],
+            "description": "Ask AI Assistant any question about company policies.",
+            "security_level": SEC_NONE,
         },
         {
             "menu_key": "deliverables",
@@ -326,6 +323,8 @@ LEGACY_MENU_KEYS = (
     "con_wrongdoing",
     "con_anonymous_info",
     # Orphan policy submenus not in canonical seed
+    "pol_view_policies",
+    "pol_ai_assistant",
     "pol_casual_leaves",
     "pol_att_policy",
     "pol_personal_vehicle",

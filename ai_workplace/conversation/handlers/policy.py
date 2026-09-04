@@ -15,21 +15,29 @@ class PolicyHandler:
         action = intent
         clean_intent = intent.replace("svc_", "")
         
-        if clean_intent in ("pol_view_policies", "pol_policy_hub"):
-            from ai_workplace.services.policies import build_policies_list_message
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            outbound = build_policies_list_message(context)
-            action = "view_published_policies"
-            
-        elif clean_intent in ("pol_ai_assistant", "policies_help"):
-            from ai_workplace.whatsapp.interactive import build_show_menu_again_button
+        if clean_intent in ("pol_view_policies", "pol_policy_hub", "pol_ai_assistant", "policies_help", "staff_hr_guidance"):
             lang = context.get("preferred_language", "English")
             if lang == "Urdu":
-                msg = "💬 *پالیسی اور HR اسسٹنٹ*\n\nآپ کسی بھی وقت اپنا سوال یہاں لکھیے (مثلاً: رخصت کی پالیسی کیا ہے؟، پروProbation کا دورانیہ کتنا ہے؟)۔"
+                msg = (
+                    "🤖 *ای آئی پالیسی اسسٹنٹ*\n\n"
+                    "کمپنی کی کسی بھی پالیسی یا قاعدے کے بارے میں اپنا سوال براہ راست لکھیے "
+                    "(مثلاً: *'رخصت کی پالیسی کیا ہے؟'*, *'ٹریول الاؤنس کتنا ہے؟'*, *'ڈیٹا پرائیویسی کی کیا پالیسی ہے؟'*).\n\n"
+                    "میں تمام شائع شدہ پالیسیوں سے آپ کے لیے درست جواب تلاش کر کے فراہم کروں گا۔"
+                )
             elif lang == "Roman Urdu":
-                msg = "💬 *Policy & HR Assistant*\n\nAap kisi bhi waqt apna sawal yahan likhein (maslan: leave policy kya hai?, probation period kitna hai?)."
+                msg = (
+                    "🤖 *AI Policy Assistant*\n\n"
+                    "Company ki kisi bhi policy ya rule ke baray mein apna sawal poochein "
+                    "(maslan: *'Leave policy kya hai?'*, *'Travel allowance kitna hai?'*, *'Data privacy policy kya hai?'*).\n\n"
+                    "Main tamam published policies se aap ke liye sahi jawab dhoond kar bataoon ga."
+                )
             else:
-                msg = "💬 *Policy & HR Assistant*\n\nYou can ask any HR or policy question directly here (e.g. *'What is the leave policy?'*, *'How long is probation?'*)."
+                msg = (
+                    "🤖 *AI Policy Assistant*\n\n"
+                    "Ask any question about company policies or workplace guidelines "
+                    "(e.g., *'What is the leave policy?'*, *'What are the travel DSA rates?'*, *'What is the data privacy policy?'*).\n\n"
+                    "I will search across all published company policies and provide the exact answer for you."
+                )
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             outbound = wrap_with_menu_again(msg, context)
             action = "start_hr_ai_agent"

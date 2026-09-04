@@ -57,7 +57,9 @@ SERVICE_ALIASES: dict[str, str] = {
     "doc_experience_letter": "pay_experience_letter",
     "doc_bank_letter": "pay_bank_letter",
     "doc_my_requests": "prof_my_requests",
-    "staff_hr_guidance": "pol_view_policies",
+    "staff_hr_guidance": "pol_ai_assistant",
+    "policies": "pol_ai_assistant",
+    "pol_view_policies": "pol_ai_assistant",
     "staff_supervisor": "supervisor_reporting",
     "staff_contact_hr": "contact_hr",
 }
