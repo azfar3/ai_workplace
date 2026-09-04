@@ -17,17 +17,7 @@ from ai_workplace.services.office_hours import HR_STATUS_CLOSED, HR_STATUS_OPEN
 
 class TestHRContactAvailability(unittest.TestCase):
     @patch("ai_workplace.services.office_hours.get_hr_support_status")
-    def test_open_shows_chat_with_hr_button(self, mock_status):
-        mock_status.return_value = {"is_open": True, "status": HR_STATUS_OPEN}
-        outbound = build_contact_hr_options_message(
-            {"preferred_language": "English", "employee": "EMP-001"}
-        )
-        buttons = outbound.interactive["action"]["buttons"]
-        self.assertEqual(buttons[0]["reply"]["title"], "Chat with HR")
-        self.assertIn("open", (outbound.body_text or "").lower())
-
-    @patch("ai_workplace.services.office_hours.get_hr_support_status")
-    def test_closed_shows_leave_message_button(self, mock_status):
+    def test_closed_shows_leave_message_and_main_menu_buttons(self, mock_status):
         mock_status.return_value = {
             "is_open": False,
             "status": HR_STATUS_CLOSED,
@@ -41,7 +31,10 @@ class TestHRContactAvailability(unittest.TestCase):
                 {"preferred_language": "English", "employee": "EMP-001"}
             )
         buttons = outbound.interactive["action"]["buttons"]
+        self.assertEqual(len(buttons), 2)
         self.assertEqual(buttons[0]["reply"]["title"], "Leave Message")
+        self.assertEqual(buttons[1]["reply"]["title"], "Main Menu")
+        self.assertEqual(buttons[1]["reply"]["id"], "main_menu")
 
     def test_resubmit_detection(self):
         self.assertTrue(is_contact_hr_menu_resubmit("svc_contact_hr"))

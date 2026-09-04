@@ -110,8 +110,16 @@ def _wait_button_title(lang: str, *, is_open: bool) -> str:
     return "Leave Message"
 
 
+def _menu_button_title(lang: str) -> str:
+    if lang == "Urdu":
+        return "اصلی مینو"
+    if lang == "Roman Urdu":
+        return "Main Menu"
+    return "Main Menu"
+
+
 def build_contact_hr_options_message(context: dict[str, Any]) -> OutboundMessage:
-    """Show HR contact options with OPEN/CLOSED status and appropriate action button."""
+    """Show HR contact options when CLOSED with Leave Message and Main Menu action buttons."""
     from ai_workplace.services.office_hours import get_hr_support_status
     from ai_workplace.whatsapp.interactive import _truncate
 
@@ -128,17 +136,47 @@ def build_contact_hr_options_message(context: dict[str, Any]) -> OutboundMessage
                     "type": "reply",
                     "reply": {
                         "id": WAIT_BUTTON_ID,
-                        "title": _wait_button_title(lang, is_open=status["is_open"])[:20],
+                        "title": _wait_button_title(lang, is_open=False)[:20],
                     },
-                }
+                },
+                {
+                    "type": "reply",
+                    "reply": {
+                        "id": "main_menu",
+                        "title": _menu_button_title(lang)[:20],
+                    },
+                },
             ]
         },
     }
     return OutboundMessage(body_text=body, interactive=interactive)
 
 
-def handle_contact_hr_intro(conv: Any, context: dict[str, Any]) -> OutboundMessage:
-    """First step after Contact HR — show phone/email and wait option."""
+def handle_contact_hr_intro(
+    conv: Any,
+    context: dict[str, Any],
+    trace_id: str = "",
+    identity: Any = None,
+) -> OutboundMessage:
+    """
+    First step after Contact HR.
+    Within office hours (OPEN): automatically connect & show direct response message.
+    Outside office hours (CLOSED): show off-hours info with Leave Message & Main Menu buttons.
+    """
+    from ai_workplace.services.office_hours import get_hr_support_status
+
+    status = get_hr_support_status(employee=context.get("employee"))
+
+    if status["is_open"]:
+        from ai_workplace.services.hr_chat import handle_contact_hr_connect
+
+        return handle_contact_hr_connect(
+            conv,
+            context,
+            trace_id=trace_id,
+            identity=identity,
+        )
+
     update_conversation(
         conv,
         state=ConversationState.HR_CONTACT_PROMPT,
