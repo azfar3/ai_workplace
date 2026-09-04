@@ -197,28 +197,45 @@ def get_leave_balance(employee: str) -> list[dict[str, Any]]:
 
 
 def get_published_policies(employee: str = "") -> list[dict[str, Any]]:
-    """Fetch active policy documents directly from AI Workplace Knowledge Source."""
+    """Fetch active policy documents directly from System Notifications (type=Policy) or Knowledge Chunks."""
     try:
-        if not getattr(frappe, "db", None) or not frappe.db.exists("DocType", "AI Workplace Knowledge Source"):
-            return []
+        from frappe.utils import strip_html
+        results = []
+        if getattr(frappe, "db", None) and frappe.db.exists("DocType", "System Notifications"):
+            notifs = frappe.db.get_all(
+                "System Notifications",
+                filters={"notification_type": "Policy", "is_published": 1},
+                fields=["name", "subject", "version", "policy_document", "published_from", "notifiction", "last_updated_on"],
+                order_by="published_from desc, modified desc",
+            )
+            for n in notifs:
+                raw_body = strip_html(n.get("notifiction") or "").strip()
+                results.append({
+                    "title": (n.get("subject") or n.get("name")).strip(),
+                    "category": "Policy",
+                    "description": raw_body[:300] if raw_body else "Published Company Policy",
+                    "file_url": n.get("policy_document") or "",
+                    "version": n.get("version") or "1.0",
+                    "effective_from": str(n.get("published_from") or n.get("last_updated_on")) if (n.get("published_from") or n.get("last_updated_on")) else None,
+                })
 
-        sources = frappe.db.get_all(
-            "AI Workplace Knowledge Source",
-            filters={"is_active": 1},
-            fields=["source_name", "source_type", "description", "file_attachment", "version", "effective_from"],
-            order_by="creation desc",
-        )
-        return [
-            {
-                "title": s.get("source_name"),
-                "category": s.get("source_type") or "Policy",
-                "description": s.get("description") or "",
-                "file_url": s.get("file_attachment") or "",
-                "version": s.get("version") or "1.0",
-                "effective_from": str(s.get("effective_from")) if s.get("effective_from") else None,
-            }
-            for s in sources
-        ]
+        if not results and getattr(frappe, "db", None) and frappe.db.exists("DocType", "AI Workplace Knowledge Source"):
+            sources = frappe.db.get_all(
+                "AI Workplace Knowledge Source",
+                filters={"is_active": 1},
+                fields=["source_name", "source_type", "description", "file_attachment", "version", "effective_from"],
+                order_by="creation desc",
+            )
+            for s in sources:
+                results.append({
+                    "title": s.get("source_name"),
+                    "category": s.get("source_type") or "Policy",
+                    "description": s.get("description") or "",
+                    "file_url": s.get("file_attachment") or "",
+                    "version": s.get("version") or "1.0",
+                    "effective_from": str(s.get("effective_from")) if s.get("effective_from") else None,
+                })
+        return results
     except Exception:
         return []
 
