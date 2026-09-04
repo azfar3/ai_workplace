@@ -4,7 +4,7 @@
  "docstatus": 0,
  "doctype": "Page",
  "idx": 0,
- "modified": "2026-08-28 17:19:13.952513",
+ "modified": "2026-09-04 15:29:22.098656",
  "modified_by": "Administrator",
  "module": "Ai Workplace",
  "name": "whatsapp-hr-inbox",
@@ -26,5 +26,5 @@
  "standard": "Yes",
  "style": null,
  "system_page": 0,
- "title": "WhatsApp HR Inbox"
+ "title": "HR Inbox"
 }

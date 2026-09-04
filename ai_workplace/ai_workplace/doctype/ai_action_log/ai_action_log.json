@@ -1,8 +1,7 @@
 {
  "actions": [],
- "allow_rename": 0,
  "autoname": "format:AIACT-{YYYY}-{MM}-{DD}-{#####}",
- "creation": "2026-08-28 00:00:00.000000",
+ "creation": "2026-08-28 00:00:00",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -127,10 +126,8 @@
   }
  ],
  "icon": "fa fa-history",
- "index_web_pages_for_search": 0,
- "issingle": 0,
  "links": [],
- "modified": "2026-08-28 00:00:00.000000",
+ "modified": "2026-09-03 16:35:56.382812",
  "modified_by": "Administrator",
  "module": "Ai Workplace",
  "name": "AI Action Log",
@@ -138,19 +135,16 @@
  "permissions": [
   {
    "create": 1,
-   "delete": 0,
-   "email": 0,
+   "delete": 1,
    "export": 1,
-   "print": 0,
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 0,
    "write": 1
   }
  ],
  "search_fields": "trace_id,whatsapp_conversation,service,intent",
  "sort_field": "created_at",
  "sort_order": "DESC",
- "track_changes": 0
+ "states": []
 }

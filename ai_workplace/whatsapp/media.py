@@ -6,8 +6,11 @@ Download inbound WhatsApp media from Meta and store as Frappe Files.
 
 from __future__ import annotations
 
+import json
 import mimetypes
 import os
+import subprocess
+import tempfile
 import uuid
 from typing import Any, Optional
 
@@ -17,7 +20,7 @@ import requests
 from ai_workplace.whatsapp.sender import _DEFAULT_GRAPH_API_VERSION, _get_access_token
 
 _DOWNLOAD_TIMEOUT_SECONDS = 60
-_MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+_MAX_FILE_SIZE_BYTES = 16 * 1024 * 1024  # 16 MB (WhatsApp's actual limit)
 _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 _DOCUMENT_EXTENSIONS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv", ".zip", ".ppt", ".pptx", ".rar", ".7z"}
 ALLOWED_ATTACHMENT_EXTENSIONS = _IMAGE_EXTENSIONS | _DOCUMENT_EXTENSIONS
@@ -59,37 +62,62 @@ def fetch_inbound_media(parsed: dict[str, Any], settings: Optional[Any] = None) 
     if not access_token:
         return {"success": False, "file_url": "", "filename": "", "error": "Meta access token missing"}
 
-    headers = {"Authorization": f"Bearer {access_token}"}
     meta_url = f"https://graph.facebook.com/{api_version}/{media_id}"
 
     try:
-        meta_resp = requests.get(
-            meta_url,
-            headers=headers,
-            timeout=_DOWNLOAD_TIMEOUT_SECONDS,
-            proxies={"http": None, "https": None},
-        )
-        meta_resp.raise_for_status()
-        meta = meta_resp.json()
+        # Step 1: Get the download URL from Meta using curl (avoids Python SSL/gevent recursion bug)
+        meta_cmd = [
+            "curl", "-s",
+            "-H", f"Authorization: Bearer {access_token}",
+            meta_url
+        ]
+        meta_proc = subprocess.run(meta_cmd, capture_output=True, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
+        if meta_proc.returncode != 0:
+            err = f"curl failed getting media URL (code {meta_proc.returncode}): {meta_proc.stderr.decode()}"
+            return {"success": False, "file_url": "", "filename": "", "error": err}
+
+        try:
+            meta = json.loads(meta_proc.stdout)
+        except Exception:
+            return {"success": False, "file_url": "", "filename": "", "error": f"Invalid JSON from Meta: {meta_proc.stdout[:200]}"}
+
+        if "error" in meta:
+            return {"success": False, "file_url": "", "filename": "", "error": f"Meta API error: {meta['error']}"}
+
         download_url = meta.get("url") or ""
         mime_type = meta.get("mime_type") or ""
         if not download_url:
             return {"success": False, "file_url": "", "filename": "", "error": f"No download URL: {meta}"}
 
-        file_resp = requests.get(
-            download_url,
-            headers=headers,
-            timeout=_DOWNLOAD_TIMEOUT_SECONDS,
-            proxies={"http": None, "https": None},
-        )
-        file_resp.raise_for_status()
-        content = file_resp.content
+        # Step 2: Download the actual media file using curl
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp_path = tmp.name
+
+        try:
+            dl_cmd = [
+                "curl", "-s", "-L",
+                "-H", f"Authorization: Bearer {access_token}",
+                "-o", tmp_path,
+                download_url
+            ]
+            dl_proc = subprocess.run(dl_cmd, capture_output=True, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
+            if dl_proc.returncode != 0:
+                err = f"curl failed downloading media (code {dl_proc.returncode}): {dl_proc.stderr.decode()}"
+                return {"success": False, "file_url": "", "filename": "", "error": err}
+
+            with open(tmp_path, "rb") as f:
+                content = f.read()
+        finally:
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
 
         filename = _resolve_filename(parsed, mime_type)
-        
+
         # Security validation
         _validate_file_content(content, filename)
-        
+
     except Exception as exc:
         frappe.logger("ai_workplace").error(f"WhatsApp Media: download/validation failed for {media_id}: {exc}")
         return {"success": False, "file_url": "", "filename": "", "error": str(exc)}

@@ -1,8 +1,7 @@
 {
  "actions": [],
- "allow_rename": 0,
  "autoname": "format:WAMSG-{YYYY}-{MM}-{DD}-{#####}",
- "creation": "2026-08-27 00:00:00.000000",
+ "creation": "2026-08-27 00:00:00",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -37,12 +36,12 @@
  ],
  "fields": [
   {
+   "description": "WhatsApp message ID (wamid) from Meta. Used for idempotency.",
    "fieldname": "meta_message_id",
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Meta Message ID",
-   "description": "WhatsApp message ID (wamid) from Meta. Used for idempotency."
+   "label": "Meta Message ID"
   },
   {
    "fieldname": "direction",
@@ -81,16 +80,16 @@
    "fieldtype": "Column Break"
   },
   {
+   "description": "e.g. text, image, audio, status, unsupported",
    "fieldname": "message_type",
    "fieldtype": "Data",
-   "label": "Message Type",
-   "description": "e.g. text, image, audio, status, unsupported"
+   "label": "Message Type"
   },
   {
+   "description": "End-to-end processing time in milliseconds",
    "fieldname": "latency",
    "fieldtype": "Int",
-   "label": "Latency (ms)",
-   "description": "End-to-end processing time in milliseconds"
+   "label": "Latency (ms)"
   },
   {
    "fieldname": "section_parties",
@@ -112,11 +111,11 @@
    "fieldtype": "Column Break"
   },
   {
+   "description": "Sender's WhatsApp ID (wa_id)",
    "fieldname": "whatsapp_id",
    "fieldtype": "Data",
    "in_standard_filter": 1,
-   "label": "WhatsApp ID",
-   "description": "Sender's WhatsApp ID (wa_id)"
+   "label": "WhatsApp ID"
   },
   {
    "fieldname": "message",
@@ -171,19 +170,19 @@
    "options": "\nEmployee\nHR Agent\nSystem"
   },
   {
+   "description": "WhatsApp delivery lifecycle for outbound messages (sent \u2192 delivered \u2192 read).",
    "fieldname": "delivery_status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Delivery Status",
-   "description": "WhatsApp delivery lifecycle for outbound messages (sent → delivered → read).",
    "options": "\nSent\nDelivered\nRead\nFailed"
   },
   {
+   "description": "Attached image or document sent/received via WhatsApp.",
    "fieldname": "media_file",
    "fieldtype": "Attach",
-   "label": "Media File",
-   "description": "Attached image or document sent/received via WhatsApp."
+   "label": "Media File"
   },
   {
    "fieldname": "section_error",
@@ -197,12 +196,8 @@
   }
  ],
  "icon": "fa fa-comments",
- "in_create": 0,
- "index_web_pages_for_search": 0,
- "is_submittable": 0,
- "issingle": 0,
  "links": [],
- "modified": "2026-08-27 00:00:00.000000",
+ "modified": "2026-09-03 16:32:58.889737",
  "modified_by": "Administrator",
  "module": "Ai Workplace",
  "name": "WhatsApp Message Log",
@@ -210,31 +205,23 @@
  "permissions": [
   {
    "create": 1,
-   "delete": 0,
-   "email": 0,
+   "delete": 1,
    "export": 1,
-   "print": 0,
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 0,
    "write": 1
   },
   {
    "create": 1,
-   "delete": 0,
-   "email": 0,
    "export": 1,
-   "print": 0,
    "read": 1,
    "report": 1,
-   "role": "HR Workplace Agent",
-   "share": 0,
-   "write": 0
+   "role": "HR Workplace Agent"
   }
  ],
  "search_fields": "meta_message_id,whatsapp_id,trace_id",
  "sort_field": "timestamp",
  "sort_order": "DESC",
- "track_changes": 0
+ "states": []
 }
