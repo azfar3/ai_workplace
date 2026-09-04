@@ -38,6 +38,30 @@ FALLBACK_SERVICES: dict[str, dict[str, Any]] = {
         "description": "System help and language preference",
         "aliases": ["help", "language", "change language"],
     },
+    "pay_slip_1m": {
+        "key": "pay_slip_1m",
+        "title": "📄 Last Month",
+        "title_urdu": "📄 1 مہینہ",
+        "title_roman_urdu": "📄 Last Month",
+        "mode": "available",
+        "description": "Last month payslip",
+    },
+    "pay_slip_3m": {
+        "key": "pay_slip_3m",
+        "title": "📄 Last 3 Months",
+        "title_urdu": "📄 3 ماہ",
+        "title_roman_urdu": "📄 Last 3 Months",
+        "mode": "available",
+        "description": "Last 3 months payslips",
+    },
+    "pay_slip_6m": {
+        "key": "pay_slip_6m",
+        "title": "📄 Last 6 Months",
+        "title_urdu": "📄 6 ماہ",
+        "title_roman_urdu": "📄 Last 6 Months",
+        "mode": "available",
+        "description": "Last 6 months payslips",
+    },
 }
 
 BACK_TO_MAIN_MENU_ITEM: dict[str, Any] = FALLBACK_SERVICES["main_menu"]

@@ -848,7 +848,8 @@ def process_message(
                     result=_p13_fmt,
                     status="Success",
                 )
-                return OutboundMessage(body_text=_p13_fmt)
+                from ai_workplace.services.hr_agent import _build_feedback_message
+                return _build_feedback_message(_p13_fmt, context)
 
             if _p13_ok and _p13_mode == "workflow":
                 _p13_wf = _p13_meta.get("workflow_intent")
@@ -1081,7 +1082,8 @@ def process_message(
                     result=_formatted,
                     status="Success",
                 )
-                return OutboundMessage(body_text=_formatted)
+                from ai_workplace.services.hr_agent import _build_feedback_message
+                return _build_feedback_message(_formatted, context)
 
             # ── HYBRID: lightweight synthesis — tool data → LLM narration ──────
             # Phase 4: uses hybrid_handler (1 LLM call, no tool-loop) instead

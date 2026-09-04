@@ -34,6 +34,25 @@ def build_button_message(
                 "title": _truncate(btn.get("title", ""), 20),
             },
         })
+
+    # Meta WhatsApp API limits interactive button body.text to 1024 characters.
+    # If text is longer than 1000 chars, send full text first, then attach button menu as follow-up.
+    if len(body) > 1000:
+        btn_prompt = "Was this helpful? Tap below or type *menu*:"
+        follow_up_interactive: dict[str, Any] = {
+            "type": "button",
+            "body": {"text": btn_prompt},
+            "action": {"buttons": action_buttons},
+        }
+        if footer:
+            follow_up_interactive["footer"] = {"text": _truncate(footer, 60)}
+
+        main_msg = OutboundMessage(body_text=body)
+        main_msg.follow_up = [
+            OutboundMessage(body_text=btn_prompt, interactive=follow_up_interactive)
+        ]
+        return main_msg
+
     interactive: dict[str, Any] = {
         "type": "button",
         "body": {"text": body},

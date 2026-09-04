@@ -137,7 +137,14 @@ def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any]) -> Outbou
     except Exception:
         text = str(raw_data) if raw_data else "I could not retrieve that information right now."
 
-    return OutboundMessage(body_text=text)
+    return build_button_message(
+        text,
+        [
+            {"id": "fb_helpful", "title": "👍 Helpful"},
+            {"id": "fb_not_helpful", "title": "👎 Not Helpful"},
+            {"id": "svc_main_menu", "title": "Main Menu"},
+        ],
+    )
 
 
 def _log_hybrid(
