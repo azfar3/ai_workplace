@@ -38,7 +38,13 @@ def generate_embedding(text: str, provider: str = "", model: str = "") -> List[f
                 "Content-Type": "application/json",
             }
             payload = {"input": clean_text[:2000], "model": model_name}
-            resp = requests.post(url, headers=headers, json=payload, timeout=10)
+            resp = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=10,
+                proxies={"http": None, "https": None},
+            )
             if resp.status_code == 200:
                 data = resp.json()
                 vec = data["data"][0]["embedding"]
