@@ -384,7 +384,7 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
     filtered_chunks = []
     for chunk in chunks:
         # Effective Date filtering (if set)
-        if chunk.effective_date and chunk.effective_date > frappe.utils.today():
+        if chunk.effective_date and frappe.utils.getdate(chunk.effective_date) > frappe.utils.getdate(frappe.utils.today()):
             continue
             
         # Hard Scoping (if fields are set on chunk, user MUST match)
@@ -539,13 +539,8 @@ def reindex_stale_sources() -> None:
 
 def reindex_policies_on_notification_update(doc, method=None) -> None:
     """Re-index policy knowledge when a published System Notification changes."""
-    if doc.doctype != "System Notifications":
-        return
-    if (doc.get("notification_type") or "").lower() != "policy":
-        return
-    if not frappe.db.exists("AI Workplace Knowledge Source", "policies"):
-        return
+    from ai_workplace.services.policy_notifications import sync_policy_notification_to_chunks
     try:
-        reindex_source("policies")
+        sync_policy_notification_to_chunks(doc, method)
     except Exception:
         frappe.log_error(title="Policy knowledge reindex failed", message=frappe.get_traceback())

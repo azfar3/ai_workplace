@@ -133,6 +133,10 @@ doc_events = {
 	"Employee Profile Change Request": {
 		"on_update": "ai_workplace.services.profile_notifications.handle_epcr_update",
 	},
+	"System Notifications": {
+		"on_update": "ai_workplace.services.policy_notifications.sync_policy_notification_to_chunks",
+		"on_trash": "ai_workplace.services.policy_notifications.delete_policy_notification_chunks",
+	},
 }
 
 scheduler_events = {
