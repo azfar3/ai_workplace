@@ -315,7 +315,31 @@ from ai_workplace.whatsapp.outbound import OutboundMessage
 def build_today_attendance_outbound(context: dict[str, Any]) -> OutboundMessage:
     """Today's attendance with Check In / Check Out action buttons when eligible."""
     body = build_today_attendance_response(context)
-    buttons = [{"id": "svc_att_monthly", "title": "Monthly Attendance"}, {"id": "svc_main_menu", "title": "Main Menu"}]
+    lang = context.get("preferred_language", "English")
+
+    if lang == "Urdu":
+        b_monthly = "🗓️ ماہانہ حاضری"
+        b_menu = "🏠 اصلی مینو"
+        b_checkout = "🚪 چیک آؤٹ"
+        b_refresh = "🔄 تازہ کریں"
+        b_checkin = "✅ چیک ان"
+        b_monthly_short = "🗓️ ماہانہ"
+    elif lang == "Roman Urdu":
+        b_monthly = "🗓️ Monthly Attendance"
+        b_menu = "🏠 Main Menu"
+        b_checkout = "🚪 Check Out"
+        b_refresh = "🔄 Refresh"
+        b_checkin = "✅ Check In"
+        b_monthly_short = "🗓️ Monthly"
+    else:
+        b_monthly = "Monthly Attendance"
+        b_menu = "Main Menu"
+        b_checkout = "Check Out"
+        b_refresh = "Refresh"
+        b_checkin = "Check In"
+        b_monthly_short = "Monthly"
+
+    buttons = [{"id": "svc_att_monthly", "title": b_monthly}, {"id": "svc_main_menu", "title": b_menu}]
 
     employee = context.get("employee") or ""
     try:
@@ -329,15 +353,15 @@ def build_today_attendance_outbound(context: dict[str, Any]) -> OutboundMessage:
             state = get_today_checkin_state(employee)
             if state.get("checked_in_open"):
                 buttons = [
-                    {"id": "svc_att_checkout", "title": "Check Out"},
-                    {"id": "svc_att_today", "title": "Refresh"},
-                    {"id": "svc_main_menu", "title": "Main Menu"},
+                    {"id": "svc_att_checkout", "title": b_checkout},
+                    {"id": "svc_att_today", "title": b_refresh},
+                    {"id": "svc_main_menu", "title": b_menu},
                 ]
             elif not state.get("checked_out_today"):
                 buttons = [
-                    {"id": "svc_att_checkin", "title": "Check In"},
-                    {"id": "svc_att_monthly", "title": "Monthly"},
-                    {"id": "svc_main_menu", "title": "Main Menu"},
+                    {"id": "svc_att_checkin", "title": b_checkin},
+                    {"id": "svc_att_monthly", "title": b_monthly_short},
+                    {"id": "svc_main_menu", "title": b_menu},
                 ]
     except Exception:
         pass

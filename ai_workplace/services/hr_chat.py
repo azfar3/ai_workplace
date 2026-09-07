@@ -557,9 +557,8 @@ def handle_contact_hr_connect(
     else:
         publish_session_update(session, {"event": "queued"})
 
-    return OutboundMessage(
-        body_text=build_session_open_message(context, is_open=available)
-    )
+    from ai_workplace.services.office_hours import build_session_open_outbound
+    return build_session_open_outbound(context, is_open=available)
 
 
 def handle_live_hr_inbound(
@@ -1051,7 +1050,28 @@ def send_hr_reply(
     if not phone:
         frappe.throw(_("No WhatsApp phone number found for this session."))
 
-    result = send_text_message(phone, text)
+    from ai_workplace.whatsapp.interactive import build_button_message
+    from ai_workplace.whatsapp.sender import send_message
+
+    btn_title = "🔴 End HR Chat"
+    try:
+        from ai_workplace.conversation.manager import get_or_create_conversation
+        conv = get_or_create_conversation(session.whatsapp_identity)
+        lang = conv.preferred_language or "English"
+        if lang == "Urdu":
+            btn_title = "🔴 چیٹ ختم کریں"
+        elif lang == "Roman Urdu":
+            btn_title = "🔴 Chat Khatam Karein"
+    except Exception:
+        pass
+
+    outbound_msg = build_button_message(
+        body=text,
+        buttons=[
+            {"id": "svc_end_hr_chat", "title": btn_title[:20]},
+        ]
+    )
+    result = send_message(phone, outbound_msg)
     now = _now()
     session.last_hr_reply_at = now
     session.flags.ignore_links = True

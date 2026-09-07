@@ -61,12 +61,12 @@ def get_menu_seed_items() -> list[dict[str, Any]]:
             "description": "Travel requests, approvals, claims and DSA policy.",
             "submenus": [
                 {"menu_key": "trv_apply", "title": "➕ Request Travel Authorisation", "title_urdu": "➕ سفری منظوری کی درخواست", "title_roman_urdu": "➕ Request Travel Authorisation", "sequence": 0, "description": "Submit a new travel authorisation request.", "security_level": SEC_PIN},
-                {"menu_key": "trv_approved", "title": "✅ My Approved Travel", "sequence": 1, "description": "Approved travel itineraries.", "security_level": SEC_PIN},
-                {"menu_key": "trv_upcoming", "title": "🔜 Upcoming Travel", "sequence": 2, "description": "Scheduled upcoming visits.", "security_level": SEC_PIN},
-                {"menu_key": "trv_claim_status", "title": "🔄 Claim Status", "sequence": 3, "description": "Travel expense claim status.", "security_level": SEC_PIN},
-                {"menu_key": "trv_vehicle_info", "title": "🚙 Vehicle / Driver", "sequence": 4, "description": "Allocated vehicles and drivers.", "security_level": SEC_PIN},
-                {"menu_key": "trv_sop", "title": "📖 Travel & DSA Policy", "sequence": 5, "description": "Travel SOP and DSA rates.", "security_level": SEC_NONE},
-                {"menu_key": "trv_problem", "title": "🚨 Travel Support", "sequence": 6, "description": "Report a travel problem.", "security_level": SEC_NONE},
+                {"menu_key": "trv_approved", "title": "✅ My Approved Travel", "title_urdu": "✅ منظور شدہ سفر", "title_roman_urdu": "✅ Approved Travel", "sequence": 1, "description": "Approved travel itineraries.", "security_level": SEC_PIN},
+                {"menu_key": "trv_upcoming", "title": "🔜 Upcoming Travel", "title_urdu": "🔜 آنے والا سفر", "title_roman_urdu": "🔜 Upcoming Travel", "sequence": 2, "description": "Scheduled upcoming visits.", "security_level": SEC_PIN},
+                {"menu_key": "trv_claim_status", "title": "🔄 Claim Status", "title_urdu": "🔄 کلیم کی صورتحال", "title_roman_urdu": "🔄 Claim Status", "sequence": 3, "description": "Travel expense claim status.", "security_level": SEC_PIN},
+                {"menu_key": "trv_vehicle_info", "title": "🚙 Vehicle / Driver", "title_urdu": "🚙 گاڑی / ڈرائیور", "title_roman_urdu": "🚙 Vehicle / Driver", "sequence": 4, "description": "Allocated vehicles and drivers.", "security_level": SEC_PIN},
+                {"menu_key": "trv_sop", "title": "📖 Travel & DSA Policy", "title_urdu": "📖 سفر اور DSA پالیسی", "title_roman_urdu": "📖 Travel & DSA Policy", "sequence": 5, "description": "Travel SOP and DSA rates.", "security_level": SEC_NONE},
+                {"menu_key": "trv_problem", "title": "🚨 Travel Support", "title_urdu": "🚨 سفری معاونت", "title_roman_urdu": "🚨 Travel Support", "sequence": 6, "description": "Report a travel problem.", "security_level": SEC_NONE},
             ],
         },
         {
@@ -78,12 +78,12 @@ def get_menu_seed_items() -> list[dict[str, Any]]:
             "sequence": 4,
             "description": "Employment documents, contracts and HR letters.",
             "submenus": [
-                {"menu_key": "doc_contract", "title": "📃 Current Contract", "sequence": 1, "description": "View contract status and signing.", "security_level": SEC_PIN},
-                {"menu_key": "doc_salary_slip", "title": "📥 Salary Slip", "sequence": 2, "description": "Latest payslip.", "security_level": SEC_PIN},
-                {"menu_key": "doc_tax_cert", "title": "🧾 Tax Certificate", "sequence": 3, "description": "Tax deduction certificate.", "security_level": SEC_PIN},
-                {"menu_key": "doc_experience_letter", "title": "📄 Experience Letter", "sequence": 4, "description": "Service / experience certificate.", "security_level": SEC_PIN},
-                {"menu_key": "doc_bank_letter", "title": "🏦 Bank Letter", "sequence": 5, "description": "Bank verification letter.", "security_level": SEC_PIN},
-                {"menu_key": "doc_my_requests", "title": "📋 My Document Requests", "sequence": 6, "description": "Track HR document requests.", "security_level": SEC_PIN},
+                {"menu_key": "doc_contract", "title": "📃 Current Contract", "title_urdu": "📃 موجودہ معاہدہ", "title_roman_urdu": "📃 Current Contract", "sequence": 1, "description": "View contract status and signing.", "security_level": SEC_PIN},
+                {"menu_key": "doc_salary_slip", "title": "📥 Salary Slip", "title_urdu": "📥 سیلری سلپ", "title_roman_urdu": "📥 Salary Slip", "sequence": 2, "description": "Latest payslip.", "security_level": SEC_PIN},
+                {"menu_key": "doc_tax_cert", "title": "🧾 Tax Certificate", "title_urdu": "🧾 ٹیکس سرٹیفکیٹ", "title_roman_urdu": "🧾 Tax Certificate", "sequence": 3, "description": "Tax deduction certificate.", "security_level": SEC_PIN},
+                {"menu_key": "doc_experience_letter", "title": "📄 Experience Letter", "title_urdu": "📄 تجربہ سرٹیفکیٹ", "title_roman_urdu": "📄 Experience Letter", "sequence": 4, "description": "Service / experience certificate.", "security_level": SEC_PIN},
+                {"menu_key": "doc_bank_letter", "title": "🏦 Bank Letter", "title_urdu": "🏦 بینک لیٹر", "title_roman_urdu": "🏦 Bank Letter", "sequence": 5, "description": "Bank verification letter.", "security_level": SEC_PIN},
+                {"menu_key": "doc_my_requests", "title": "📋 My Document Requests", "title_urdu": "📋 میری دستاویزات کی درخواستیں", "title_roman_urdu": "📋 My Document Requests", "sequence": 6, "description": "Track HR document requests.", "security_level": SEC_PIN},
             ],
         },
         {
@@ -113,9 +113,9 @@ def get_menu_seed_items() -> list[dict[str, Any]]:
             "description": "Workplace guidance, safety and confidential matters.",
             "submenus": [
                 {"menu_key": "staff_hr_guidance", "title": "🤖 AI Policy Assistant", "title_urdu": "🤖 AI پالیسی اسسٹنٹ", "title_roman_urdu": "🤖 AI Policy Assistant", "sequence": 1, "description": "Ask AI any company policy or workplace question.", "security_level": SEC_NONE},
-                {"menu_key": "staff_supervisor", "title": "👨‍💼 Supervisor Support", "sequence": 2, "description": "Supervisor and reporting contact.", "security_level": SEC_PIN},
-                {"menu_key": "concerns", "title": "🔒 Confidential Concern", "sequence": 3, "description": "Report a confidential workplace concern.", "security_level": SEC_NONE},
-                {"menu_key": "staff_contact_hr", "title": "💬 Chat with HR", "sequence": 4, "description": "Speak with HR live on WhatsApp.", "security_level": SEC_NONE},
+                {"menu_key": "staff_supervisor", "title": "👨‍💼 Supervisor Support", "title_urdu": "👨‍💼 سپروائزر سپورٹ", "title_roman_urdu": "👨‍💼 Supervisor Support", "sequence": 2, "description": "Supervisor and reporting contact.", "security_level": SEC_PIN},
+                {"menu_key": "concerns", "title": "🔒 Confidential Concern", "title_urdu": "🔒 شکایت / خفیہ خدشات", "title_roman_urdu": "🔒 Confidential Concern", "sequence": 3, "description": "Report a confidential workplace concern.", "security_level": SEC_NONE},
+                {"menu_key": "staff_contact_hr", "title": "💬 Chat with HR", "title_urdu": "💬 HR سے بات کریں", "title_roman_urdu": "💬 Chat with HR", "sequence": 4, "description": "Speak with HR live on WhatsApp.", "security_level": SEC_NONE},
             ],
         },
         {
@@ -154,18 +154,18 @@ def get_menu_seed_items() -> list[dict[str, Any]]:
         },
         # Former Employee
         {"menu_key": "former_letter", "title": "📄 Experience / Service Letter", "title_urdu": "📄 تجربہ / سروس لیٹر", "title_roman_urdu": "📄 Experience Letter", "user_category": "Former Employee", "sequence": 1, "description": "Download experience / service certificate.", "security_level": SEC_PIN},
-        {"menu_key": "former_payslip", "title": "🧾 Payslip & Tax Documents", "title_urdu": "🧾 پے سلپ", "title_roman_urdu": "🧾 Payslip", "user_category": "Former Employee", "sequence": 2, "description": "Download salary slips (up to 6 months).", "security_level": SEC_PIN},
-        {"menu_key": "former_verification", "title": "🔍 Employment Verification", "user_category": "Former Employee", "sequence": 3, "description": "Employment verification request.", "security_level": SEC_NONE},
+        {"menu_key": "former_payslip", "title": "🧾 Payslip & Tax Documents", "title_urdu": "🧾 پے سلپ اور ٹیکس دستاویزات", "title_roman_urdu": "🧾 Payslip & Tax Documents", "user_category": "Former Employee", "sequence": 2, "description": "Download salary slips (up to 6 months).", "security_level": SEC_PIN},
+        {"menu_key": "former_verification", "title": "🔍 Employment Verification", "title_urdu": "🔍 روزگار کی تصدیق", "title_roman_urdu": "🔍 Employment Verification", "user_category": "Former Employee", "sequence": 3, "description": "Employment verification request.", "security_level": SEC_NONE},
         {"menu_key": "former_concern", "title": "🛡️ Report a Concern", "title_urdu": "🛡️ شکایت درج کریں", "title_roman_urdu": "🛡️ Report Concern", "user_category": "Former Employee", "sequence": 4, "description": "Confidential workplace concern.", "security_level": SEC_NONE},
-        {"menu_key": "former_careers", "title": "💼 Career Opportunities", "user_category": "Former Employee", "sequence": 5, "description": "Job vacancies.", "security_level": SEC_NONE},
+        {"menu_key": "former_careers", "title": "💼 Career Opportunities", "title_urdu": "💼 ملازمت کے مواقع", "title_roman_urdu": "💼 Career Opportunities", "user_category": "Former Employee", "sequence": 5, "description": "Job vacancies.", "security_level": SEC_NONE},
         # contact_hr (user_category All) covers former employees too
         # Guest
-        {"menu_key": "guest_careers", "title": "💼 Careers at MicroMerger", "user_category": "Guest", "sequence": 1, "description": "Browse job openings.", "security_level": SEC_NONE},
-        {"menu_key": "guest_job_status", "title": "📝 I Applied for a Job", "user_category": "Guest", "sequence": 2, "description": "Application status.", "security_level": SEC_NONE},
-        {"menu_key": "guest_verification", "title": "🔍 Employment Verification", "user_category": "Guest", "sequence": 3, "description": "Verify employee records.", "security_level": SEC_NONE},
-        {"menu_key": "guest_vendor", "title": "🤝 Vendor / Supplier Support", "user_category": "Guest", "sequence": 4, "description": "Vendor support.", "security_level": SEC_NONE},
+        {"menu_key": "guest_careers", "title": "💼 Careers at MicroMerger", "title_urdu": "💼 مائیکرو مرجر میں کیریئر", "title_roman_urdu": "💼 Careers at MicroMerger", "user_category": "Guest", "sequence": 1, "description": "Browse job openings.", "security_level": SEC_NONE},
+        {"menu_key": "guest_job_status", "title": "📝 I Applied for a Job", "title_urdu": "📝 جاب کی درخواست کی صورتحال", "title_roman_urdu": "📝 Job Application Status", "user_category": "Guest", "sequence": 2, "description": "Application status.", "security_level": SEC_NONE},
+        {"menu_key": "guest_verification", "title": "🔍 Employment Verification", "title_urdu": "🔍 روزگار کی تصدیق", "title_roman_urdu": "🔍 Employment Verification", "user_category": "Guest", "sequence": 3, "description": "Verify employee records.", "security_level": SEC_NONE},
+        {"menu_key": "guest_vendor", "title": "🤝 Vendor / Supplier Support", "title_urdu": "🤝 وینڈر / سپلائر سپورٹ", "title_roman_urdu": "🤝 Vendor Support", "user_category": "Guest", "sequence": 4, "description": "Vendor support.", "security_level": SEC_NONE},
         {"menu_key": "guest_concern", "title": "🛡️ Report a Concern", "title_urdu": "🛡️ شکایت درج کریں", "title_roman_urdu": "🛡️ Shikayat Darj Karein", "user_category": "Guest", "sequence": 5, "description": "Submit confidential reports on grievances, harassment, fraud, or safety issues.", "security_level": SEC_NONE},
-        {"menu_key": "guest_number_changed", "title": "🔐 My number has changed", "user_category": "Guest", "sequence": 7, "description": "Link new WhatsApp number.", "security_level": SEC_NONE},
+        {"menu_key": "guest_number_changed", "title": "🔐 My number has changed", "title_urdu": "🔐 میرا نمبر تبدیل ہو گیا ہے", "title_roman_urdu": "🔐 Number Changed", "user_category": "Guest", "sequence": 7, "description": "Link new WhatsApp number.", "security_level": SEC_NONE},
     ]
 
 

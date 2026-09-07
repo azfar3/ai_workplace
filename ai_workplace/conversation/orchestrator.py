@@ -265,12 +265,23 @@ def process_inbound_media(
 
         return handle_profile_flow_media(conv, context, file_url, filename=filename)
 
-    return OutboundMessage(
-        body_text=_(
-            "File received. To add a deliverable attachment, start *Add Deliverable* "
-            "from the Deliverables menu first.\n\nType *menu* to open the main menu."
+    lang = context.get("preferred_language", "English")
+    if lang == "Urdu":
+        msg = (
+            "فائل موصول ہوئی، لیکن دستاویز اپ لوڈ کرنے سے پہلے براہ کرم مینو سے کسی آپشن کا انتخاب کریں۔\n\n"
+            "دستیاب اختیارات دیکھنے کے لیے *menu* ٹائپ کریں۔"
         )
-    )
+    elif lang == "Roman Urdu":
+        msg = (
+            "File receive hui hai, lekin document upload karne se pehle barah-e-karam menu se koi option select karein.\n\n"
+            "Options dekhne ke liye *menu* type karein."
+        )
+    else:
+        msg = (
+            "File received. Please select an option from the menu before uploading any document.\n\n"
+            "Type *menu* to view available options."
+        )
+    return OutboundMessage(body_text=msg)
 
 
 def process_inbound_media_failure(
@@ -406,24 +417,55 @@ def process_message(
         from ai_workplace.services.hr_chat import handle_live_hr_inbound, get_session_doc, close_session
 
         # Explicit menu or exit command interception during active HR chat session or LIVE_HR_CHAT state
-        if cmd_lower in (
-            "menu",
-            "home",
-            "end chat",
-            "end_chat",
-            "close chat",
-            "close_chat",
-            "main menu",
-            "main_menu",
-            "btn_menu",
-            "svc_main_menu",
-            "svc_menu",
-            "exit",
-            "stop",
-            "quit",
-            "0",
-            "restart",
-            "start",
+        clean_cmd = clean_text.lower().replace("🔴", "").replace("📋", "").replace("💬", "").strip()
+        if (
+            cmd_lower in (
+                "menu",
+                "home",
+                "end chat",
+                "end_chat",
+                "end hr chat",
+                "end_hr_chat",
+                "end session",
+                "end_session",
+                "close chat",
+                "close_chat",
+                "close session",
+                "close_session",
+                "main menu",
+                "main_menu",
+                "btn_menu",
+                "btn_end_hr_chat",
+                "svc_end_hr_chat",
+                "end_hr_chat",
+                "svc_main_menu",
+                "svc_menu",
+                "exit",
+                "stop",
+                "quit",
+                "0",
+                "restart",
+                "start",
+                "chat khatam karein",
+                "chat khatam",
+                "khatam karein",
+                "چیٹ ختم کریں",
+            )
+            or clean_cmd in (
+                "end chat",
+                "end hr chat",
+                "end_hr_chat",
+                "end session",
+                "end_session",
+                "close chat",
+                "close session",
+                "main menu",
+                "menu",
+                "chat khatam karein",
+                "chat khatam",
+                "khatam karein",
+                "چیٹ ختم کریں",
+            )
         ):
             if session_to_use:
                 try:
@@ -683,7 +725,13 @@ def process_message(
             return menu_out
 
         if is_contact_hr_menu_resubmit(clean_text):
-            return build_contact_hr_options_message(context)
+            from ai_workplace.services.hr_chat import handle_contact_hr_connect
+            return handle_contact_hr_connect(
+                conv,
+                context,
+                trace_id=trace_id,
+                identity=identity,
+            )
 
         return handle_contact_hr_prompt_reply(
             conv,

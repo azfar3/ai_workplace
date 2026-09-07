@@ -41,12 +41,14 @@ def start_guest_intake(conv: Any, context: dict[str, Any]) -> OutboundMessage:
         draft_payload=json.dumps({"step": "awaiting_fullname"}),
         clear_active_hr_chat_session=True,
     )
-    return OutboundMessage(
-        body_text=_(
-            "You selected *Contact HR*.\n\n"
-            "Please enter your *full name* to continue:"
-        )
-    )
+    lang = context.get("preferred_language", "English")
+    if lang == "Urdu":
+        msg = "آپ نے *HR سے رابطہ* منتخب کیا ہے۔\n\nبراہ کرم جاری رکھنے کے لیے اپنا *مکمل نام* درج کریں:"
+    elif lang == "Roman Urdu":
+        msg = "Aap ne *Contact HR* select kiya hai.\n\nBaraaye meharbani aage barhne ke liye apna *full name* enter karein:"
+    else:
+        msg = "You selected *Contact HR*.\n\nPlease enter your *full name* to continue:"
+    return OutboundMessage(body_text=msg)
 
 
 def handle_guest_intake_message(
@@ -66,34 +68,67 @@ def handle_guest_intake_message(
 
     step = draft.get("step", "awaiting_fullname")
     text = (message_text or "").strip()
+    lang = context.get("preferred_language", "English")
 
     if step == "awaiting_fullname":
         if len(text) < 2:
-            return OutboundMessage(body_text=_("Please enter a valid full name (at least 2 characters)."))
+            if lang == "Urdu":
+                err = "براہ کرم درست نام درج کریں (کم از کم 2 حروف)۔"
+            elif lang == "Roman Urdu":
+                err = "Baraaye meharbani apna sahi full name enter karein (kam se kam 2 characters)."
+            else:
+                err = "Please enter a valid full name (at least 2 characters)."
+            return OutboundMessage(body_text=err)
+
         draft["full_name"] = text
         draft["step"] = "awaiting_email"
         update_conversation(conv, draft_payload=json.dumps(draft))
-        return OutboundMessage(
-            body_text=_("Thank you, *{0}*.\n\nPlease enter your *email address*:").format(text)
-        )
+
+        if lang == "Urdu":
+            resp = f"شکریہ، *{text}*۔\n\nبراہ کرم اپنا *ای میل ایڈریس* درج کریں:"
+        elif lang == "Roman Urdu":
+            resp = f"Shukriya, *{text}*.\n\nBaraaye meharbani apna *email address* enter karein:"
+        else:
+            resp = f"Thank you, *{text}*.\n\nPlease enter your *email address*:"
+        return OutboundMessage(body_text=resp)
 
     if step == "awaiting_email":
         if not _EMAIL_RE.match(text):
-            return OutboundMessage(body_text=_("Please enter a valid email address (e.g. name@example.com)."))
+            if lang == "Urdu":
+                err = "براہ کرم درست ای میل ایڈریس درج کریں (مثال: name@example.com)۔"
+            elif lang == "Roman Urdu":
+                err = "Baraaye meharbani sahi email address enter karein (e.g. name@example.com)."
+            else:
+                err = "Please enter a valid email address (e.g. name@example.com)."
+            return OutboundMessage(body_text=err)
+
         draft["email"] = text
         draft["step"] = "awaiting_query"
         update_conversation(conv, draft_payload=json.dumps(draft))
-        return OutboundMessage(
-            body_text=_("Got it.\n\nPlease type your *question or message* for HR:")
-        )
+
+        if lang == "Urdu":
+            resp = "بہت خوب۔\n\nبراہ کرم HR کے لیے اپنا *سوال یا پیغام* ٹائپ کریں:"
+        elif lang == "Roman Urdu":
+            resp = "Aacha ji.\n\nBaraaye meharbani HR ke liye apna *sawal ya paigham* type karein:"
+        else:
+            resp = "Got it.\n\nPlease type your *question or message* for HR:"
+        return OutboundMessage(body_text=resp)
 
     if step == "awaiting_query":
         if len(text) < 3:
-            return OutboundMessage(body_text=_("Please enter your question (at least 3 characters)."))
+            if lang == "Urdu":
+                err = "براہ کرم اپنا سوال تفصیل سے لکھیں (کم از کم 3 حروف)۔"
+            elif lang == "Roman Urdu":
+                err = "Baraaye meharbani apna sawal tafseel se likhein (kam se kam 3 characters)."
+            else:
+                err = "Please enter your question (at least 3 characters)."
+            return OutboundMessage(body_text=err)
+
         draft["query"] = text
         return _complete_guest_intake(conv, context, draft, meta_message_id=meta_message_id)
 
-    return OutboundMessage(body_text=_("Something went wrong. Type 'menu' to go back."))
+    fallback = "معذرت، کچھ غلط ہو گیا۔ مینو میں جانے کے لیے 'menu' ٹائپ کریں۔" if lang == "Urdu" else "Something went wrong. Type 'menu' to go back."
+    return OutboundMessage(body_text=fallback)
 
 
 def _complete_guest_intake(
@@ -106,6 +141,7 @@ def _complete_guest_intake(
     full_name = draft.get("full_name", "")
     email = draft.get("email", "")
     query = draft.get("query", "")
+    lang = context.get("preferred_language", "English")
 
     session = open_session(
         whatsapp_identity=conv.whatsapp_identity,
@@ -131,8 +167,17 @@ def _complete_guest_intake(
 
     append_inbound_message(session, query, meta_message_id=meta_message_id)
 
-    body = _(
-        "Thank you, *{0}*! Your message has been sent to HR.\n\n{1}"
-    ).format(full_name, build_session_open_message(context))
+    from ai_workplace.services.office_hours import build_session_open_outbound
+    outbound = build_session_open_outbound(context)
 
-    return OutboundMessage(body_text=body)
+    if lang == "Urdu":
+        header = f"شکریہ، *{full_name}*! آپ کا پیغام HR ٹیم کو ارسال کر دیا گیا ہے۔\n\n"
+    elif lang == "Roman Urdu":
+        header = f"Shukriya, *{full_name}*! Aap ka message HR team ko bhej diya gaya hai.\n\n"
+    else:
+        header = f"Thank you, *{full_name}*! Your message has been sent to HR.\n\n"
+
+    outbound.body_text = f"{header}{outbound.body_text}"
+    if outbound.interactive and outbound.interactive.get("body"):
+        outbound.interactive["body"]["text"] = outbound.body_text
+    return outbound

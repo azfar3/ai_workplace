@@ -108,7 +108,7 @@ class TestMenuSeedIntegrity(unittest.TestCase):
                 )
 
     def test_active_employee_top_level_services(self):
-        top = [i for i in get_menu_seed_items() if i.get("user_category") == "Active Employee" and "submenus" in i]
+        top = [i for i in get_menu_seed_items() if i.get("user_category") == "Active Employee"]
         keys = {i["menu_key"] for i in top}
         for expected in ("attendance_leave", "payroll", "travel", "documents", "hr", "staff_support", "policies"):
             self.assertIn(expected, keys)

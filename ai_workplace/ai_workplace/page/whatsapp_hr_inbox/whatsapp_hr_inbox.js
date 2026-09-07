@@ -78,7 +78,7 @@ frappe.whatsapp_hr_inbox = {
 						<span class="wa-live-dot"></span>${__("WhatsApp HR Inbox")}
 					</div>
 					<div class="wa-filters">
-						<button class="wa-filter-btn active" data-filter="mine">${__("My Chats")} <span class="wa-tab-badge wa-tab-badge-mine hidden"></span></button>
+						<button class="wa-filter-btn active" data-filter="mine">${__("Active")} <span class="wa-tab-badge wa-tab-badge-mine hidden"></span></button>
 						<button class="wa-filter-btn" data-filter="queue">${__("Queue")} <span class="wa-tab-badge wa-tab-badge-queue hidden"></span></button>
 						<button class="wa-filter-btn" data-filter="closed">${__("Closed")}</button>
 						<button class="wa-filter-btn" data-filter="all">${__("All")} <span class="wa-tab-badge wa-tab-badge-all hidden"></span></button>

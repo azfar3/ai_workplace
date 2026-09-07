@@ -27,6 +27,7 @@
   "hr_live_chat_enabled",
   "hr_live_chat_welcome_message",
   "hr_contact_phone",
+  "hr_contact_whatsapp",
   "hr_contact_email",
   "auto_close_inactive_hours",
   "section_hr_chat_agents",
@@ -167,6 +168,12 @@
    "fieldname": "hr_contact_phone",
    "fieldtype": "Data",
    "label": "HR Contact Phone"
+  },
+  {
+   "default": "03111123702",
+   "fieldname": "hr_contact_whatsapp",
+   "fieldtype": "Data",
+   "label": "HR Contact WhatsApp"
   },
   {
    "default": "hr@MicroMerger.com",

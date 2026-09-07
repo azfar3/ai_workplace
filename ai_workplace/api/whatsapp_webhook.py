@@ -55,6 +55,51 @@ from ai_workplace.whatsapp.outbound import OutboundMessage
 from ai_workplace.conversation.orchestrator import process_message
 
 
+def is_hr_session_exit_command(text: str) -> bool:
+    if not text:
+        return False
+    cmd_lower = text.strip().lower()
+    clean_cmd = cmd_lower.replace("🔴", "").replace("📋", "").replace("💬", "").strip()
+
+    exit_keywords = {
+        "menu",
+        "home",
+        "end",
+        "end chat",
+        "end_chat",
+        "end hr chat",
+        "end_hr_chat",
+        "end session",
+        "end_session",
+        "close",
+        "close chat",
+        "close_chat",
+        "close session",
+        "close_session",
+        "main menu",
+        "main_menu",
+        "btn_menu",
+        "btn_end_hr_chat",
+        "svc_end_hr_chat",
+        "svc_main_menu",
+        "svc_menu",
+        "exit",
+        "exit chat",
+        "cancel",
+        "stop",
+        "quit",
+        "0",
+        "restart",
+        "start",
+        "chat khatam karein",
+        "chat khatam",
+        "khatam karein",
+        "چیٹ ختم کریں",
+    }
+
+    return cmd_lower in exit_keywords or clean_cmd in exit_keywords
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Non-recursive Webhook Handlers
 # ──────────────────────────────────────────────────────────────────────────────
@@ -301,9 +346,7 @@ def _process_receive():
     if session_name:
         session = get_session_doc(session_name)
         if session.ready_for_hr and session.status in ("Queued", "Assigned", "Active"):
-            cmd_lower = (inbound_text or "").strip().lower()
-            end_chat_commands = ("end chat", "end", "close chat", "close", "exit chat", "exit", "cancel")
-            if cmd_lower not in end_chat_commands:
+            if not is_hr_session_exit_command(inbound_text):
                 _finalize_log(inbound_log, status="Received")
                 append_inbound_message(
                     session,
@@ -447,9 +490,7 @@ def process_async_whatsapp_message(
     if session_name:
         session = get_session_doc(session_name)
         if session.ready_for_hr and session.status in ("Queued", "Assigned", "Active"):
-            cmd_lower = (message_text or "").strip().lower()
-            end_chat_commands = ("end chat", "end", "close chat", "close", "exit chat", "exit", "cancel")
-            if cmd_lower not in end_chat_commands:
+            if not is_hr_session_exit_command(message_text):
                 _finalize_log(inbound_log, status="Received")
                 append_inbound_message(
                     session,

@@ -320,12 +320,23 @@ def handle_deliverable_add_attachment(
     step = draft.get("step", "")
 
     if step != "awaiting_line_attachment":
-        return OutboundMessage(
-            body_text=_(
-                "File received, but no deliverable line is waiting for an attachment.\n\n"
-                "Type *menu* to return to the main menu."
+        lang = context.get("preferred_language", "English")
+        if lang == "Urdu":
+            msg = (
+                "فائل موصول ہوئی، لیکن دستاویز اپ لوڈ کرنے سے پہلے براہ کرم مینو سے کسی آپشن کا انتخاب کریں۔\n\n"
+                "دستیاب اختیارات دیکھنے کے لیے *menu* ٹائپ کریں۔"
             )
-        )
+        elif lang == "Roman Urdu":
+            msg = (
+                "File receive hui hai, lekin document upload karne se pehle barah-e-karam menu se koi option select karein.\n\n"
+                "Options dekhne ke liye *menu* type karein."
+            )
+        else:
+            msg = (
+                "File received. Please select an option from the menu before uploading any document.\n\n"
+                "Type *menu* to view available options."
+            )
+        return OutboundMessage(body_text=msg)
 
     clean_url = (file_url or "").strip()
     if not clean_url:

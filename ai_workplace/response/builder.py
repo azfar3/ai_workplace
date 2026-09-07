@@ -374,29 +374,109 @@ def _get_generic_greeting(lang: str) -> str:
 
 
 
-def _translate_service_title(key: str, default_title: str, lang: str) -> str:
-    if key.lower() == "main_menu":
+def _translate_service_title(
+    key: str,
+    default_title: str,
+    lang: str,
+    title_urdu: str = "",
+    title_roman_urdu: str = "",
+) -> str:
+    key_clean = (key or "").strip().lower()
+    if key_clean in ("main_menu", "back_to_main", "svc_main_menu"):
         if lang == "Urdu":
-            return "🔙 اصلی مینو"
-        return "🔙 Main Menu"
+            return "🏠 اصلی مینو"
+        return "🏠 Main Menu"
+
     if lang == "Urdu":
+        if title_urdu and title_urdu != default_title:
+            return title_urdu
+        try:
+            from ai_workplace.services.registry import get_service_info
+            info = get_service_info(key)
+            if info and info.get("title_urdu") and info["title_urdu"] != default_title:
+                return info["title_urdu"]
+        except Exception:
+            pass
+
         translations = {
-            "hr": "مائی ایچ آر",
-            "policy": "پالیسیاں اور مدد",
-            "travel": "میرا سفر",
+            "attendance_leave": "🕒 حاضری اور رخصت",
+            "payroll": "💰 تنخواہ اور پے رول",
+            "travel": "🚗 سفر اور DSA",
+            "documents": "📄 دستاویزات اور معاہدہ",
+            "hr": "👤 میری پروفائل اور دستاویزات",
+            "staff_support": "💙 ملازمین کی معاونت",
+            "policies": "🤖 AI پالیسی اسسٹنٹ",
+            "deliverables": "📦 ڈیلیوریبلز",
+            "contact_hr": "💬 HR سے بات کریں",
             "help": "مدد / زبان",
-            "deliverables": "ڈیلیوریبلز",
-            "main_menu": "🔙 اصلی مینو",
+            "att_today": "📅 آج کی حاضری",
+            "att_checkin": "✅ چیک ان",
+            "att_checkout": "🚪 چیک آؤٹ",
+            "att_monthly": "🗓️ ماہانہ حاضری",
+            "att_missing": "⚠️ گمشدہ حاضری",
+            "leave_balance": "📊 رخصت کا بیلنس",
+            "leave_apply": "📝 رخصت کی درخواست",
+            "leave_requests": "📋 میری رخصت کی درخواستیں",
+            "pay_download_slip": "📥 سیلری سلپ",
+            "pay_tax_deduction": "🧾 ٹیکس سرٹیفکیٹ",
+            "pay_experience_letter": "📄 تجربہ سرٹیفکیٹ",
+            "pay_bank_letter": "🏦 بینک لیٹر",
+            "trv_apply": "➕ سفری منظوری کی درخواست",
+            "trv_approved": "✅ منظور شدہ سفر",
+            "trv_upcoming": "🔜 آنے والا سفر",
+            "trv_claim_status": "🔄 کلیم کی صورتحال",
+            "trv_vehicle_info": "🚙 گاڑی / ڈرائیور",
+            "trv_sop": "📖 سفر اور DSA پالیسی",
+            "trv_problem": "🚨 سفری معاونت",
+            "doc_contract": "📃 موجودہ معاہدہ",
+            "doc_salary_slip": "📥 سیلری سلپ",
+            "doc_tax_cert": "🧾 ٹیکس سرٹیفکیٹ",
+            "doc_experience_letter": "📄 تجربہ سرٹیفکیٹ",
+            "doc_bank_letter": "🏦 بینک لیٹر",
+            "doc_my_requests": "📋 میری دستاویزات کی درخواستیں",
+            "my_day": "☀️ میرا دن",
+            "my_profile": "👤 میری پروفائل",
+            "supervisor_reporting": "👨‍💼 سپروائزر اور رپورٹنگ",
+            "update_profile": "🛠️ اپنی تفصیلات اپ ڈیٹ",
+            "prof_my_requests": "📋 میری درخواستیں",
+            "hr_pin_help": "🔐 Support PIN مدد",
+            "staff_hr_guidance": "🤖 AI پالیسی اسسٹنٹ",
+            "staff_supervisor": "👨‍💼 سپروائزر سپورٹ",
+            "concerns": "🔒 شکایت / خفیہ خدشات",
+            "staff_contact_hr": "💬 HR سے بات کریں",
+            "dlv_add": "➕ ڈیلیوریبل شامل کریں",
+            "dlv_submit": "📤 منظوری کے لیے بھیجیں",
+            "dlv_status": "📋 میرے ڈیلیوریبلز",
+            "former_letter": "📄 تجربہ / سروس لیٹر",
+            "former_payslip": "🧾 پے سلپ اور ٹیکس دستاویزات",
+            "former_verification": "🔍 روزگار کی تصدیق",
+            "former_concern": "🛡️ شکایت درج کریں",
+            "former_careers": "💼 ملازمت کے مواقع",
+            "guest_careers": "💼 مائیکرو مرجر میں کیریئر",
+            "guest_job_status": "📝 جاب کی درخواست کی صورتحال",
+            "guest_verification": "🔍 روزگار کی تصدیق",
+            "guest_vendor": "🤝 وینڈر / سپلائر سپورٹ",
+            "guest_concern": "🛡️ شکایت درج کریں",
+            "guest_number_changed": "🔐 میرا نمبر تبدیل ہو گیا ہے",
+            "pay_slip_1m": "📄 1 مہینہ",
+            "pay_slip_3m": "📄 3 ماہ",
+            "pay_slip_6m": "📄 6 ماہ",
+            "pay_bank_faysal": "🏦 فیصل بینک",
+            "pay_bank_scb": "🏦 اسٹینڈرڈ چارٹرڈ",
+            "att_monthly_last7": "📋 7 دن",
+            "att_monthly_download": "📥 Excel",
         }
-        return translations.get(key.lower(), default_title)
+        return translations.get(key_clean, title_urdu or default_title)
+
     if lang == "Roman Urdu":
-        translations = {
-            "hr": "My HR",
-            "policy": "Policies & Help",
-            "travel": "My Travel",
-            "help": "Help / Language",
-            "deliverables": "Deliverables",
-            "main_menu": "🔙 Main Menu",
-        }
-        return translations.get(key.lower(), default_title)
+        if title_roman_urdu and title_roman_urdu != default_title:
+            return title_roman_urdu
+        try:
+            from ai_workplace.services.registry import get_service_info
+            info = get_service_info(key)
+            if info and info.get("title_roman_urdu") and info["title_roman_urdu"] != default_title:
+                return info["title_roman_urdu"]
+        except Exception:
+            pass
+
     return default_title

@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 import frappe
 from frappe.utils import get_system_timezone, now_datetime
+from ai_workplace.whatsapp.outbound import OutboundMessage
 
 _DEFAULT_TIMEZONE = "Asia/Karachi"
 _DEFAULT_START = "09:00:00"
@@ -366,6 +367,18 @@ def build_closed_hours_message(
             "and an HR representative will respond on the next working day."
         )
 
+    if lang == "Urdu":
+        return (
+            "🔴 *HR ٹیم اس وقت آف لائن ہے*\n\n"
+            "براہ کرم اپنا پیغام ٹائپ کریں، HR نمائندہ کام کے اوقات کے دوران جواب دے گا۔\n\n"
+            "پیر تا جمعہ | صبح 9:00 تا شام 6:00 (پاکستان وقت)"
+        )
+    if lang == "Roman Urdu":
+        return (
+            "🔴 *HR team is waqt offline hai*\n\n"
+            "Baraaye meharbani apna message chhor dein, HR representative working hours mein jawab dega.\n\n"
+            "Monday to Friday | 9:00 AM – 6:00 PM (Pakistan Time)"
+        )
     return _DEFAULT_OFF_HOURS_MESSAGE
 
 
@@ -439,3 +452,28 @@ def build_session_open_message(
             "A representative will respond when support reopens._"
         )
     return f"{base}\n\n{closed_note}{queue_note}"
+
+
+def build_session_open_outbound(
+    context: Optional[dict[str, Any]] = None,
+    is_open: Optional[bool] = None,
+) -> OutboundMessage:
+    """Build OutboundMessage with interactive End HR Chat button when session opens."""
+    text = build_session_open_message(context, is_open=is_open)
+    lang = (context or {}).get("preferred_language", "English")
+
+    if lang == "Urdu":
+        btn_title = "🔴 چیٹ ختم کریں"
+    elif lang == "Roman Urdu":
+        btn_title = "🔴 Chat Khatam Karein"
+    else:
+        btn_title = "🔴 End HR Chat"
+
+    from ai_workplace.whatsapp.interactive import build_button_message
+    return build_button_message(
+        body=text,
+        buttons=[
+            {"id": "svc_end_hr_chat", "title": btn_title}
+        ]
+    )
+

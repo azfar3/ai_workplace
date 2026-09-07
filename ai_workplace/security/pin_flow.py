@@ -76,11 +76,21 @@ def build_hrmis_portal_guide_message(context: dict[str, Any]) -> OutboundMessage
             "5. Set or reset your *4-digit Support PIN*\n\n"
             "When done, return here and tap *I Have Set My PIN* to continue."
         )
+    if lang == "Urdu":
+        b_set = "✅ میں نے PIN سیٹ کر لیا ہے"
+        b_menu = "🏠 اصلی مینو"
+    elif lang == "Roman Urdu":
+        b_set = "✅ Maine PIN Set Kar Liya Hai"
+        b_menu = "🏠 Main Menu"
+    else:
+        b_set = "I Have Set My PIN"
+        b_menu = "Main Menu"
+
     return build_button_message(
         body,
         [
-            {"id": "svc_pin_set_done", "title": "I Have Set My PIN"},
-            {"id": "svc_main_menu", "title": "Main Menu"},
+            {"id": "svc_pin_set_done", "title": b_set},
+            {"id": "svc_main_menu", "title": b_menu},
         ],
     )
 
@@ -95,6 +105,9 @@ def build_pin_not_configured_message(context: dict[str, Any], pending_service: s
             f"{PORTAL_URL} → login → *Settings* → *Security* tab\n\n"
             "مکمل ہونے کے بعد *I Have Set My PIN* دبائیں۔"
         )
+        b_open = "🌐 HRMIS پورٹل کھولیں"
+        b_set = "✅ میں نے PIN سیٹ کر لیا ہے"
+        b_menu = "🏠 اصلی مینو"
     elif lang == "Roman Urdu":
         body = (
             "🔐 *Secure Access Required*\n\n"
@@ -103,6 +116,9 @@ def build_pin_not_configured_message(context: dict[str, Any], pending_service: s
             f"{PORTAL_URL} → login → *Settings* → *Security* tab\n\n"
             "Complete hone ke baad *I Have Set My PIN* dabayein."
         )
+        b_open = "🌐 Open HRMIS Portal"
+        b_set = "✅ Maine PIN Set Kar Liya"
+        b_menu = "🏠 Main Menu"
     else:
         body = (
             "🔐 *Secure Access Required*\n\n"
@@ -110,12 +126,16 @@ def build_pin_not_configured_message(context: dict[str, Any], pending_service: s
             f"Go to {PORTAL_URL} → login → *Settings* → *Security* tab.\n\n"
             "Once completed, return here and tap *I Have Set My PIN*."
         )
+        b_open = "Open HRMIS Portal"
+        b_set = "I Have Set My PIN"
+        b_menu = "Main Menu"
+
     return build_button_message(
         body,
         [
-            {"id": "svc_open_hrmis", "title": "Open HRMIS Portal"},
-            {"id": "svc_pin_set_done", "title": "I Have Set My PIN"},
-            {"id": "svc_main_menu", "title": "Main Menu"},
+            {"id": "svc_open_hrmis", "title": b_open},
+            {"id": "svc_pin_set_done", "title": b_set},
+            {"id": "svc_main_menu", "title": b_menu},
         ],
     )
 
@@ -125,7 +145,7 @@ def build_pin_prompt_message(context: dict[str, Any]) -> OutboundMessage:
     if lang == "Urdu":
         body = (
             "🔐 *تصدیق درکار ہے*\n\n"
-            "براہ کرم اپنا *4-digit Support PIN* درج کریں۔\n\n"
+            "براہ کرم اپنا *4 ہندسوں کا Support PIN* درج کریں۔\n\n"
             "PIN بھول گئے؟ Portal → Settings → Security سے reset کریں۔"
         )
     elif lang == "Roman Urdu":
@@ -171,6 +191,19 @@ def build_forgot_pin_message(context: dict[str, Any]) -> OutboundMessage:
             "سیکیورٹی کے لیے PIN WhatsApp سے reset نہیں ہو سکتا۔\n"
             "HRMIS Portal → My Profile میں نیا PIN سیٹ کریں۔"
         )
+        b_open = "🌐 HRMIS پورٹل کھولیں"
+        b_retry = "🔄 دوبارہ کوشش کریں"
+        b_menu = "🏠 اصلی مینو"
+    elif lang == "Roman Urdu":
+        body = (
+            "🔐 *Forgot your Support PIN?*\n\n"
+            "For your security, Support PINs cannot be reset through WhatsApp.\n\n"
+            f"Go to {PORTAL_URL} → login → *Settings* → *Security* tab "
+            "to set a new Support PIN."
+        )
+        b_open = "🌐 Open HRMIS Portal"
+        b_retry = "🔄 Try Again"
+        b_menu = "🏠 Main Menu"
     else:
         body = (
             "🔐 *Forgot your Support PIN?*\n\n"
@@ -178,12 +211,16 @@ def build_forgot_pin_message(context: dict[str, Any]) -> OutboundMessage:
             f"Go to {PORTAL_URL} → login → *Settings* → *Security* tab "
             "to set a new Support PIN."
         )
+        b_open = "Open HRMIS Portal"
+        b_retry = "Try Again"
+        b_menu = "Main Menu"
+
     return build_button_message(
         body,
         [
-            {"id": "svc_open_hrmis", "title": "Open HRMIS Portal"},
-            {"id": "svc_pin_retry", "title": "Try Again"},
-            {"id": "svc_main_menu", "title": "Main Menu"},
+            {"id": "svc_open_hrmis", "title": b_open},
+            {"id": "svc_pin_retry", "title": b_retry},
+            {"id": "svc_main_menu", "title": b_menu},
         ],
     )
 

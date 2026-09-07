@@ -135,7 +135,7 @@ def _quick_action_prompt(lang: str) -> str:
 
 def _browse_all_prompt(lang: str) -> str:
     if lang == "Urdu":
-        return "📋 *تمام Staff Services*"
+        return "📋 *تمام سٹاف سروسز*"
     if lang == "Roman Urdu":
         return "📋 *Tamam Staff Services*"
     return "📋 *All Staff Services*"
@@ -194,10 +194,17 @@ def build_grouped_service_list_message(
     """Full service list grouped into sections (bank-style browse menu)."""
     lang = context.get("preferred_language", "English")
     browse = _browse_all_prompt(lang)
-    if header_prefix:
-        body = f"{header_prefix}\n\n{browse}\n\nFind the HR or operational support you need."
+    if lang == "Urdu":
+        subtitle = "اپنی مطلوبہ HR یا آپریشنل سروس منتخب کریں۔"
+    elif lang == "Roman Urdu":
+        subtitle = "Apni matlooba HR ya operational support talash karein."
     else:
-        body = f"{browse}\n\nFind the HR or operational support you need."
+        subtitle = "Find the HR or operational support you need."
+
+    if header_prefix:
+        body = f"{header_prefix}\n\n{browse}\n\n{subtitle}"
+    else:
+        body = f"{browse}\n\n{subtitle}"
 
     rows = rows_override or []
     if not rows:

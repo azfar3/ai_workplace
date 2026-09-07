@@ -17,6 +17,7 @@ from ai_workplace.whatsapp.outbound import OutboundMessage
 
 WAIT_BUTTON_ID = "hr_wait_connect"
 _DEFAULT_PHONE = "051 8444 777"
+_DEFAULT_WHATSAPP = "03111123702"
 _DEFAULT_EMAIL = "hr@MicroMerger.com"
 
 _WAIT_ALIASES = {
@@ -29,17 +30,22 @@ _WAIT_ALIASES = {
     "chat with hr",
     "hr connect",
     "leave message",
+    "پیغام چھوڑیں",
+    "پیغام چھوڑیں",
+    "message chhorin",
+    "hr سے بات کریں",
 }
 
 
-def get_hr_contact_details() -> tuple[str, str]:
+def get_hr_contact_details() -> tuple[str, str, str]:
     try:
         settings = frappe.get_single("AI Workplace Settings")
         phone = (settings.get("hr_contact_phone") or _DEFAULT_PHONE).strip()
+        whatsapp = (settings.get("hr_contact_whatsapp") or _DEFAULT_WHATSAPP).strip()
         email = (settings.get("hr_contact_email") or _DEFAULT_EMAIL).strip()
-        return phone or _DEFAULT_PHONE, email or _DEFAULT_EMAIL
+        return phone or _DEFAULT_PHONE, whatsapp or _DEFAULT_WHATSAPP, email or _DEFAULT_EMAIL
     except Exception:
-        return _DEFAULT_PHONE, _DEFAULT_EMAIL
+        return _DEFAULT_PHONE, _DEFAULT_WHATSAPP, _DEFAULT_EMAIL
 
 
 def is_wait_for_hr_selection(user_input: str) -> bool:
@@ -64,7 +70,7 @@ def _contact_hr_body(context: dict[str, Any]) -> str:
         get_hr_support_status,
     )
 
-    phone, email = get_hr_contact_details()
+    phone, whatsapp, email = get_hr_contact_details()
     lang = context.get("preferred_language", "English")
     employee = context.get("employee")
     status = get_hr_support_status(employee=employee)
@@ -74,11 +80,15 @@ def _contact_hr_body(context: dict[str, Any]) -> str:
     else:
         availability = build_closed_hours_message(context, employee=employee)
 
+    wa_line_ur = f"• واٹس ایپ: {whatsapp}\n" if whatsapp else ""
+    wa_line_en = f"• WhatsApp: {whatsapp}\n" if whatsapp else ""
+
     if lang == "Urdu":
         contact_block = (
             f"☎️ *HR سے رابطہ*\n\n"
             f"{availability}\n\n"
             f"• فون: {phone}\n"
+            f"{wa_line_ur}"
             f"• ای میل: {email}"
         )
     elif lang == "Roman Urdu":
@@ -86,6 +96,7 @@ def _contact_hr_body(context: dict[str, Any]) -> str:
             f"☎️ *Contact HR*\n\n"
             f"{availability}\n\n"
             f"• Call: {phone}\n"
+            f"{wa_line_en}"
             f"• Email: {email}"
         )
     else:
@@ -93,6 +104,7 @@ def _contact_hr_body(context: dict[str, Any]) -> str:
             f"💬 *Chat with HR*\n\n"
             f"{availability}\n\n"
             f"• Call: {phone}\n"
+            f"{wa_line_en}"
             f"• Email: {email}"
         )
     return contact_block
@@ -101,12 +113,14 @@ def _contact_hr_body(context: dict[str, Any]) -> str:
 def _wait_button_title(lang: str, *, is_open: bool) -> str:
     if is_open:
         if lang == "Urdu":
-            return "Chat with HR"
+            return "HR سے بات کریں"
+        if lang == "Roman Urdu":
+            return "HR Se Baat Karein"
         return "Chat with HR"
     if lang == "Urdu":
-        return "Leave Message"
+        return "پیغام چھوڑیں"
     if lang == "Roman Urdu":
-        return "Leave Message"
+        return "Message Chhorin"
     return "Leave Message"
 
 
@@ -182,6 +196,7 @@ def handle_contact_hr_intro(
         state=ConversationState.HR_CONTACT_PROMPT,
         current_intent="contact_hr",
         active_service=None,
+        draft_payload={},
         clear_active_hr_chat_session=True,
     )
     return build_contact_hr_options_message(context)
@@ -216,41 +231,87 @@ def handle_contact_hr_prompt_reply(
     if is_contact_hr_menu_resubmit(message_text):
         return build_contact_hr_options_message(context)
 
-    if not is_wait_for_hr_selection(message_text):
-        if _is_direct_hr_message(message_text):
-            from ai_workplace.services.hr_chat import (
-                handle_contact_hr_connect,
-                handle_live_hr_inbound,
-            )
+    import json
+    draft_raw = conv.draft_payload or "{}"
+    try:
+        draft = json.loads(draft_raw) if isinstance(draft_raw, str) else (draft_raw or {})
+    except Exception:
+        draft = {}
 
-            connect_out = handle_contact_hr_connect(
-                conv,
-                context,
-                trace_id=trace_id,
-                identity=identity,
-            )
-            handle_live_hr_inbound(
-                conv,
-                message_text,
-                meta_message_id=meta_message_id,
-                trace_id=trace_id,
-            )
-            return connect_out
+    awaiting = draft.get("awaiting_leave_message")
 
-        phone, email = get_hr_contact_details()
-        return OutboundMessage(
-            body_text=_(
-                "Tap the button below to message HR on WhatsApp.\n\n"
-                "Or call {phone} or email {email}."
-            ).format(phone=phone, email=email),
-            interactive=build_contact_hr_options_message(context).interactive,
+    if is_wait_for_hr_selection(message_text) and not awaiting:
+        update_conversation(
+            conv,
+            draft_payload=json.dumps({"awaiting_leave_message": True}),
         )
+        lang = context.get("preferred_language", "English")
+        if lang == "Urdu":
+            msg = (
+                "💬 *ایچ آر کے لیے پیغام تحریر کریں*\n\n"
+                "براہ کرم اپنا پیغام یا سوال نیچے ٹائپ کریں۔ ایچ آر نمائندہ ورکنگ آورز میں آپ کو جواب دے گا۔"
+            )
+        elif lang == "Roman Urdu":
+            msg = (
+                "💬 *Message for HR*\n\n"
+                "Barah-e-karam apna message ya sawal neeche type karein. HR representative working hours mein aap ko jawab dega."
+            )
+        else:
+            msg = (
+                "💬 *Message for HR*\n\n"
+                "Please type your message or question for HR below. An HR representative will respond during working hours."
+            )
+        return OutboundMessage(body_text=msg)
 
-    from ai_workplace.services.hr_chat import handle_contact_hr_connect
+    # Process message as the off-hours inquiry message
+    from ai_workplace.services.hr_chat import (
+        handle_contact_hr_connect,
+        handle_live_hr_inbound,
+    )
 
-    return handle_contact_hr_connect(
+    handle_contact_hr_connect(
         conv,
         context,
         trace_id=trace_id,
         identity=identity,
+    )
+    if message_text:
+        handle_live_hr_inbound(
+            conv,
+            message_text,
+            meta_message_id=meta_message_id,
+            trace_id=trace_id,
+        )
+
+    update_conversation(conv, draft_payload=None)
+
+    lang = context.get("preferred_language", "English")
+    if lang == "Urdu":
+        body = (
+            "🟢 *پیغام ایچ آر کو موصول ہو گیا ہے*\n\n"
+            "آپ کا پیغام ایچ آر ٹیم کو موصول ہو گیا ہے اور کیو (Queue) میں شامل کر دیا گیا ہے۔ نمائندہ ورکنگ آورز میں آپ کو جواب دے گا۔\n\n"
+            "💡 *اگر آپ مزید پیغامات بھیجنا چاہتے ہیں تو بھیج سکتے ہیں۔ سیشن ختم کرنے کے لیے نیچے '🔴 چیٹ ختم کریں' پر کلک کریں یا 'menu' لکھیں۔*"
+        )
+        btn_title = "🔴 چیٹ ختم کریں"
+    elif lang == "Roman Urdu":
+        body = (
+            "🟢 *Message HR Ko Recieve Ho Gaya Hai*\n\n"
+            "Aap ka message HR team ko mil gaya hai aur queue mein shamil kar diya gaya hai. HR representative working hours mein aap ko jawab dega.\n\n"
+            "💡 *Agar aap mazeed messages bhejna chahte hain toh bhej sakte hain. Session close karne ke liye neeche '🔴 Chat Khatam Karein' button dabayein ya 'menu' likhein.*"
+        )
+        btn_title = "🔴 Chat Khatam Karein"
+    else:
+        body = (
+            "🟢 *Message Queued for HR*\n\n"
+            "Your message has been queued for HR support. An HR representative will respond during working hours.\n\n"
+            "💡 *You can send more messages if needed. When finished, tap '🔴 End HR Chat' below or type 'menu' at any time to end the session.*"
+        )
+        btn_title = "🔴 End HR Chat"
+
+    from ai_workplace.whatsapp.interactive import build_button_message
+    return build_button_message(
+        body=body,
+        buttons=[
+            {"id": "svc_end_hr_chat", "title": btn_title[:20]},
+        ]
     )

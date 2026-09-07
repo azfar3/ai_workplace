@@ -177,3 +177,34 @@ class TestOrchestratorHRChat(unittest.TestCase):
         )
         self.assertIsInstance(resp, OutboundMessage)
         self.assertTrue(resp.is_interactive() or "menu" in resp.body_text.lower())
+
+    @patch("ai_workplace.services.hr_chat.is_hr_live_chat_enabled", return_value=True)
+    @patch("ai_workplace.services.hr_chat.is_hr_available", return_value=True)
+    def test_end_hr_chat_button_ends_session(self, _mock_hours, _mock_enabled):
+        self._complete_language_and_menu()
+        process_message(
+            "svc_contact_hr",
+            self.identity,
+            message_id="hr-9",
+            trace_id="hr-tr",
+            wa_id=self.wa_id,
+        )
+        open_resp = process_message(
+            "hr_wait_connect",
+            self.identity,
+            message_id="hr-9b",
+            trace_id="hr-tr",
+            wa_id=self.wa_id,
+        )
+        self.assertTrue(open_resp.is_interactive())
+
+        resp = process_message(
+            "svc_end_hr_chat",
+            self.identity,
+            message_id="hr-10",
+            trace_id="hr-tr",
+            wa_id=self.wa_id,
+        )
+        self.assertIsInstance(resp, OutboundMessage)
+        self.assertIn("hr live chat session ended", resp.body_text.lower())
+
