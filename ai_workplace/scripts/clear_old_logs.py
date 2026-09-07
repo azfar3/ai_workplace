@@ -15,7 +15,6 @@ from frappe.utils import add_days, today
 
 
 LOG_DOCTYPES_TO_PURGE = (
-    "WhatsApp Message Log",
     "AI Action Log",
     "AI Workplace Usage Log",
     "AI Security Event",
@@ -24,6 +23,7 @@ LOG_DOCTYPES_TO_PURGE = (
 )
 
 PRESERVED_DOCTYPES = (
+    "WhatsApp Message Log",
     "WhatsApp Conversation",
     "HR Live Chat Session",
     "AI Workplace Knowledge Source",

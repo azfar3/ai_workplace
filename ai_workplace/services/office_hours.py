@@ -393,20 +393,20 @@ def build_connecting_message(context: Optional[dict[str, Any]] = None) -> str:
     lang = (context or {}).get("preferred_language", "English")
     if lang == "Urdu":
         return (
-            "آپ HR سپورٹ سے منسلک ہیں۔ براہ کرم اپنا پیغام بھیجیں "
-            "اور HR نمائندہ جلد جواب دے گا۔\n\n"
-            "مین مینو پر واپس جانے کے لیے 'menu' لکھیں۔"
+            "🟢 *HR لائیو سپورٹ سے منسلک*\n\n"
+            "آپ HR سپورٹ ٹیم سے منسلک ہو چکے ہیں! اپنا سوال یا پیغام نیچے ٹائپ کریں، HR نمائندہ جلد آپ کو جواب دے گا۔ 💬\n\n"
+            "💡 *نوٹ: اس سیشن کو ختم کرنے اور مین مینو پر واپس جانے کے لیے کسی بھی وقت 'menu' لکھیں۔*"
         )
     if lang == "Roman Urdu":
         return (
-            "Aap HR support se connected hain. Apna message bhejein "
-            "aur HR representative jald jawab dega.\n\n"
-            "Main menu par wapas jane ke liye 'menu' likhein."
+            "🟢 *Connected to HR Live Support*\n\n"
+            "Aap HR Support team se connect ho chuke hain! Apna sawal ya message neeche type karein, HR representative jald aap ko jawab dega. 💬\n\n"
+            "💡 *Note: Is session ko khatam karne aur main menu par wapas jane ke liye kisi bhi waqt 'menu' likhein.*"
         )
     return (
-        "You are connected to HR support. Please type your message and "
-        "an HR representative will respond shortly.\n\n"
-        "Type 'menu' to return to the main menu."
+        "🟢 *Connected to HR Live Support*\n\n"
+        "You are now connected with our HR Support team! Please type your question or message below, and an HR representative will respond to you shortly. 💬\n\n"
+        "💡 *Note: Type 'menu' at any time to end this session and return to the main menu.*"
     )
 
 

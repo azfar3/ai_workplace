@@ -390,6 +390,113 @@ def process_message(
     cmd_lower = clean_text.lower()
     current_state = conv.current_state or ConversationState.NEW
 
+    # ── Live HR chat routing (prioritized when chat session is active) ───────
+    active_hr_session = conv.active_hr_chat_session
+    if not active_hr_session:
+        from ai_workplace.services.hr_chat import get_active_session_for_identity
+        active_hr_session = get_active_session_for_identity(
+            whatsapp_identity=conv.whatsapp_identity or "",
+            employee=conv.employee or "",
+            wa_id=getattr(identity, "normalized_phone", "") or getattr(identity, "wa_id", "") or wa_id or "",
+        )
+
+    session_to_use = active_hr_session or conv.active_hr_chat_session
+
+    if current_state == ConversationState.LIVE_HR_CHAT or session_to_use:
+        from ai_workplace.services.hr_chat import handle_live_hr_inbound, get_session_doc, close_session
+
+        # Explicit menu or exit command interception during active HR chat session or LIVE_HR_CHAT state
+        if cmd_lower in (
+            "menu",
+            "home",
+            "end chat",
+            "end_chat",
+            "close chat",
+            "close_chat",
+            "main menu",
+            "main_menu",
+            "btn_menu",
+            "svc_main_menu",
+            "svc_menu",
+            "exit",
+            "stop",
+            "quit",
+            "0",
+            "restart",
+            "start",
+        ):
+            if session_to_use:
+                try:
+                    close_session(session_to_use, reset_conversation=True, notify_user=False)
+                    conv.reload()
+                except Exception as close_err:
+                    frappe.logger("ai_workplace").error(f"Failed to close HR session {session_to_use}: {close_err}")
+            else:
+                update_conversation(
+                    conv,
+                    state=ConversationState.AWAITING_SELECTION,
+                    current_intent=None,
+                    active_service=None,
+                    clear_active_hr_chat_session=True,
+                )
+
+            log_ai_action(
+                trace_id=trace_id,
+                conversation_name=conv.name,
+                whatsapp_identity=conv.whatsapp_identity,
+                erp_user=conv.erp_user or "",
+                employee=conv.employee or "",
+                intent="menu",
+                action="end_hr_chat_session",
+                result="HR chat session ended by user typing menu",
+                status="Success",
+            )
+
+            lang = context.get("preferred_language", "English")
+            if lang == "Urdu":
+                close_text = (
+                    "💬 *HR لائیو چیٹ سیشن ختم ہو گیا*\n\n"
+                    "HR سپورٹ کے ساتھ آپ کا چیٹ سیشن مکمل ہو چکا ہے۔ امید ہے آپ کی مکمل رہنمائی ہوئی ہوگی! 🙏"
+                )
+            elif lang == "Roman Urdu":
+                close_text = (
+                    "💬 *HR Live Chat Session Khatam Ho Gaya*\n\n"
+                    "HR support ke sath aap ka chat session complete ho gaya hai. Umeed hai aap ki mukammal madad hui hogi! 🙏"
+                )
+            else:
+                close_text = (
+                    "💬 *HR Live Chat Session Ended*\n\n"
+                    "Your live chat session with HR support has been closed. We hope we were able to assist you effectively! 🙏"
+                )
+
+            menu_out, _ = build_menu(context)
+            return OutboundMessage(body_text=close_text, follow_up=[menu_out])
+
+        if session_to_use:
+            s_doc = get_session_doc(session_to_use)
+            if s_doc and s_doc.ready_for_hr and s_doc.status in ("Queued", "Assigned", "Active"):
+                if current_state != ConversationState.LIVE_HR_CHAT:
+                    update_conversation(
+                        conv,
+                        state=ConversationState.LIVE_HR_CHAT,
+                        active_hr_chat_session=session_to_use,
+                    )
+                return handle_live_hr_inbound(
+                    conv,
+                    clean_text,
+                    meta_message_id=message_id or "",
+                    trace_id=trace_id,
+                )
+
+        # If session is no longer active, fallback and reset conversation state
+        update_conversation(
+            conv,
+            state=ConversationState.AWAITING_SELECTION,
+            current_intent=None,
+            active_service=None,
+            clear_active_hr_chat_session=True,
+        )
+
     # ── Global: cancel ────────────────────────────────────────────────────────
     if cmd_lower == "cancel":
         if current_state == ConversationState.LIVE_HR_CHAT and conv.active_hr_chat_session:
@@ -617,45 +724,7 @@ def process_message(
             meta_message_id=message_id or "",
         )
 
-    # ── Live HR chat routing ──────────────────────────────────────────────────
-    active_hr_session = conv.active_hr_chat_session
-    if not active_hr_session and conv.whatsapp_identity:
-        from ai_workplace.services.hr_chat import get_active_session_for_identity
-        active_hr_session = get_active_session_for_identity(conv.whatsapp_identity)
 
-    if current_state == ConversationState.LIVE_HR_CHAT or active_hr_session:
-        from ai_workplace.services.hr_chat import close_session, handle_live_hr_inbound, get_session_doc
-
-        session_to_use = active_hr_session or conv.active_hr_chat_session
-        if session_to_use:
-            s_doc = get_session_doc(session_to_use)
-            if s_doc.ready_for_hr and s_doc.status in ("Queued", "Assigned", "Active"):
-                if current_state != ConversationState.LIVE_HR_CHAT:
-                    update_conversation(
-                        conv,
-                        state=ConversationState.LIVE_HR_CHAT,
-                        active_hr_chat_session=session_to_use,
-                    )
-                end_chat_commands = (
-                    "end chat",
-                    "end",
-                    "close chat",
-                    "close",
-                    "exit chat",
-                    "exit",
-                )
-                if cmd_lower in end_chat_commands:
-                    close_session(session_to_use)
-                    menu_out, _unused = build_menu(context)
-                    menu_out.body_text = frappe._("Chat ended.\n\n") + menu_out.body_text
-                    return menu_out
-
-                return handle_live_hr_inbound(
-                    conv,
-                    clean_text,
-                    meta_message_id=message_id or "",
-                    trace_id=trace_id,
-                )
 
     # ── Support PIN verification ─────────────────────────────────────────────
     if current_state == ConversationState.WAITING_FOR_SUPPORT_PIN:

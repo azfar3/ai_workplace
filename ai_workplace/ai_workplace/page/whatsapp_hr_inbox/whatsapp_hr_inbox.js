@@ -92,7 +92,9 @@ frappe.whatsapp_hr_inbox = {
 						</button>
 						<div class="wa-avatar hr-inbox-avatar">?</div>
 						<div class="wa-chat-header-info">
-							<div class="wa-chat-header-name hr-inbox-title">${__("Select a chat")}</div>
+							<div class="wa-chat-header-name-row">
+								<div class="wa-chat-header-name hr-inbox-title">${__("Select a chat")}</div>
+							</div>
 							<div class="wa-chat-header-sub hr-inbox-subtitle">${__("Pick a conversation from the list")}</div>
 						</div>
 						<div class="wa-chat-header-actions"></div>
@@ -821,15 +823,19 @@ frappe.whatsapp_hr_inbox = {
 
 		const emp_name = data.employee_name || (data.employee ? data.employee : null);
 		let emp_html = "";
-		if (data.employee && emp_name) {
-			emp_html = `<a class="wa-emp-link" data-employee="${frappe.utils.escape_html(data.employee)}" title="${__("Click to open Employee form")}" style="color: var(--text-color, #1f272e); font-weight: 600; text-decoration: underline; cursor: pointer;">${frappe.utils.escape_html(emp_name)}</a>`;
+		if (emp_name) {
+			if (data.employee) {
+				emp_html = `EMP: <a class="wa-emp-link" data-employee="${frappe.utils.escape_html(data.employee)}" title="${__("Click to open Employee form")}" style="color: inherit; font-weight: 700; text-decoration: none; cursor: pointer;">${frappe.utils.escape_html(emp_name)}</a>`;
+			} else {
+				emp_html = `EMP: <strong style="font-weight: 700; color: inherit;">${frappe.utils.escape_html(emp_name)}</strong>`;
+			}
 		}
 
 		const status_items = [phone, data.status];
 		if (emp_html) {
 			status_items.push(emp_html);
 		} else if (data.assigned_to_name) {
-			status_items.push(`${__("HR")}: ${data.assigned_to_name}`);
+			status_items.push(`${__("HR")}: <strong style="font-weight: 700; color: inherit;">${frappe.utils.escape_html(data.assigned_to_name)}</strong>`);
 		}
 
 		if (data.employee) {

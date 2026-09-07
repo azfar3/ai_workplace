@@ -40,7 +40,9 @@ HR_AGENT_ROLES = ("HR Workplace Agent", "HR Manager", "System Manager")
 REALTIME_EVENT = "hr_chat_update"
 CONTACT_HR_SERVICE_KEYS = ("contact_hr", "guest_contact")
 IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".gif", ".webp"})
-DOCUMENT_EXTENSIONS = frozenset({".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv", ".zip"})
+DOCUMENT_EXTENSIONS = frozenset(
+    {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv", ".zip"}
+)
 MAX_ATTACHMENT_BYTES = 16 * 1024 * 1024
 
 
@@ -122,7 +124,9 @@ def _session_payload(session: Any) -> dict[str, Any]:
     }
 
 
-def publish_session_update(session: Any, extra: Optional[dict[str, Any]] = None) -> None:
+def publish_session_update(
+    session: Any, extra: Optional[dict[str, Any]] = None
+) -> None:
     payload = _session_payload(session)
     if extra:
         payload.update(extra)
@@ -197,7 +201,10 @@ def get_hr_agent_role_access(user: Optional[str] = None) -> str:
         settings = frappe.get_single("AI Workplace Settings")
         for row in settings.get("hr_chat_agents") or []:
             if row.user == user and row.is_active:
-                return getattr(row, "agent_role", None) or "Main HR User (View & Reply All)"
+                return (
+                    getattr(row, "agent_role", None)
+                    or "Main HR User (View & Reply All)"
+                )
     except Exception:
         pass
 
@@ -214,7 +221,9 @@ def evaluate_reply_permission(
     if session.status == "Queued":
         access_role = get_hr_agent_role_access(user)
         if access_role == "Assigned HR User (View & Reply Assigned Only)":
-            return False, _("Access Restricted: Assigned HR users can only respond to chats assigned to them.")
+            return False, _(
+                "Access Restricted: Assigned HR users can only respond to chats assigned to them."
+            )
         return False, _("Please click *Take Chat* to start responding.")
 
     if session.status not in ("Assigned", "Active"):
@@ -226,7 +235,9 @@ def evaluate_reply_permission(
     if session.assigned_to != user:
         access_role = get_hr_agent_role_access(user)
         if access_role == "Assigned HR User (View & Reply Assigned Only)":
-            return False, _("Access Restricted: You can only view and reply to chats assigned to you.")
+            return False, _(
+                "Access Restricted: You can only view and reply to chats assigned to you."
+            )
         if not user_is_hr_manager(user):
             return False, _("This chat is assigned to another HR agent.")
 
@@ -383,7 +394,9 @@ def open_session(
     session.display_name = resolved_name or None
     session.guest_email = guest_email or None
     session.initial_query = initial_query or None
-    session.person_type = normalize_session_person_type(person_type) if person_type else None
+    session.person_type = (
+        normalize_session_person_type(person_type) if person_type else None
+    )
     session.contact_hr_selected = 1 if contact_hr_selected else 0
     session.ready_for_hr = 1 if ready_for_hr else 0
     session.status = "Queued" if ready_for_hr else "Pending Intake"
@@ -431,15 +444,22 @@ def append_inbound_message(
     message_type: str = "text",
     media_file: str = "",
 ) -> None:
-    from ai_workplace.security.credential_redaction import redact_message_for_log, is_pin_shaped_text
+    from ai_workplace.security.credential_redaction import (
+        redact_message_for_log,
+        is_pin_shaped_text,
+    )
 
-    safe_text = redact_message_for_log(message_text, force=is_pin_shaped_text(message_text))
+    safe_text = redact_message_for_log(
+        message_text, force=is_pin_shaped_text(message_text)
+    )
     now = _now()
     refresh_session_window(session, now=now)
     session.flags.ignore_links = True
     session.save(ignore_permissions=True)
     frappe.db.commit()
-    link_message_to_session(session.name, meta_message_id=meta_message_id, sender_type="Employee")
+    link_message_to_session(
+        session.name, meta_message_id=meta_message_id, sender_type="Employee"
+    )
     publish_session_update(
         session,
         {
@@ -466,7 +486,9 @@ def handle_contact_hr_request(
 
     if not is_hr_live_chat_enabled():
         return OutboundMessage(
-            body_text=_("HR live chat is currently unavailable. Please try again later.")
+            body_text=_(
+                "HR live chat is currently unavailable. Please try again later."
+            )
         )
 
     return handle_contact_hr_intro(conv, context)
@@ -481,15 +503,22 @@ def handle_contact_hr_connect(
     """Start HR live chat after user chooses to wait for HR."""
     if not is_hr_live_chat_enabled():
         return OutboundMessage(
-            body_text=_("HR live chat is currently unavailable. Please try again later.")
+            body_text=_(
+                "HR live chat is currently unavailable. Please try again later."
+            )
         )
 
-    from ai_workplace.services.hr_guest_intake import is_guest_context, start_guest_intake
+    from ai_workplace.services.hr_guest_intake import (
+        is_guest_context,
+        start_guest_intake,
+    )
 
     if is_guest_context(context):
         return start_guest_intake(conv, context)
 
-    person_type = normalize_session_person_type(context.get("person_type") or "Employee")
+    person_type = normalize_session_person_type(
+        context.get("person_type") or "Employee"
+    )
     display_name = resolve_display_name(
         context=context,
         employee=conv.employee or context.get("employee") or "",
@@ -528,7 +557,9 @@ def handle_contact_hr_connect(
     else:
         publish_session_update(session, {"event": "queued"})
 
-    return OutboundMessage(body_text=build_session_open_message(context, is_open=available))
+    return OutboundMessage(
+        body_text=build_session_open_message(context, is_open=available)
+    )
 
 
 def handle_live_hr_inbound(
@@ -544,7 +575,9 @@ def handle_live_hr_inbound(
     )
     if not session_name:
         return OutboundMessage(
-            body_text=_("Please select *Contact HR* from the menu to start a chat with HR."),
+            body_text=_(
+                "Please select *Contact HR* from the menu to start a chat with HR."
+            ),
         )
 
     session = get_session_doc(session_name)
@@ -560,6 +593,7 @@ def close_session(
     user: Optional[str] = None,
     *,
     reset_conversation: bool = True,
+    notify_user: bool = True,
 ) -> Any:
     user = user or frappe.session.user
     session = get_session_doc(session_name)
@@ -580,6 +614,70 @@ def close_session(
             clear_active_fields=False,
         )
 
+    menu_out = None
+    if notify_user:
+        try:
+            phone = session.wa_id or (
+                frappe.db.get_value(
+                    "WhatsApp Identity", session.whatsapp_identity, "normalized_phone"
+                )
+                if session.whatsapp_identity
+                else None
+            )
+            if phone:
+                lang = "English"
+                if session.whatsapp_conversation:
+                    lang = (
+                        frappe.db.get_value(
+                            "WhatsApp Conversation",
+                            session.whatsapp_conversation,
+                            "preferred_language",
+                        )
+                        or "English"
+                    )
+
+                if lang == "Urdu":
+                    close_msg = (
+                        "💬 *HR لائیو چیٹ سیشن ختم ہو گیا*\n\n"
+                        "HR سپورٹ کے ساتھ آپ کا چیٹ سیشن مکمل ہو چکا ہے۔ امید ہے آپ کی مکمل رہنمائی ہوئی ہوگی! 🙏\n\n"
+                        "اگر آپ کو مزید کسی مدد کی ضرورت ہے، تو نیچے دیے گئے مینو سے انتخاب کریں یا پیغام بھیجیں۔"
+                    )
+                elif lang == "Roman Urdu":
+                    close_msg = (
+                        "💬 *HR Live Chat Session Khatam Ho Gaya*\n\n"
+                        "HR support ke sath aap ka chat session complete ho gaya hai. Umeed hai aap ki mukammal madad hui hogi! 🙏\n\n"
+                        "Agar aap ko mazeed kisi madad ki zarurat hai, toh neeche diye gaye menu se intikhab karein ya message bhejein."
+                    )
+                else:
+                    close_msg = (
+                        "💬 *HR Live Chat Session Ended*\n\n"
+                        "Your live chat session with HR support has been closed. We hope we were able to assist you effectively! 🙏\n\n"
+                        "If you need further assistance, please select an option from the menu below or reply anytime."
+                    )
+
+                send_text_message(phone, close_msg)
+
+                # Send interactive/text menu right after session end message
+                try:
+                    from ai_workplace.identity.resolver import resolve_identity
+                    from ai_workplace.context.resolver import get_user_context
+                    from ai_workplace.conversation.menu import build_menu
+                    from ai_workplace.whatsapp.sender import send_message
+
+                    identity = resolve_identity(phone)
+                    context = get_user_context(identity)
+                    context["preferred_language"] = lang
+                    menu_out, _ = build_menu(context)
+                    send_message(phone, menu_out)
+                except Exception as menu_err:
+                    frappe.logger("ai_workplace").error(
+                        f"Failed to send menu after session close for {session_name}: {menu_err}"
+                    )
+        except Exception as err:
+            frappe.logger("ai_workplace").error(
+                f"Failed to send session close message for {session_name}: {err}"
+            )
+
     frappe.db.commit()
     publish_session_update(session, {"event": "session_closed"})
     return session
@@ -588,11 +686,16 @@ def close_session(
 def take_session(session_name: str, user: Optional[str] = None) -> Any:
     user = user or frappe.session.user
     if not user_is_hr_agent(user):
-        frappe.throw(_("You do not have permission to take HR chats."), frappe.PermissionError)
+        frappe.throw(
+            _("You do not have permission to take HR chats."), frappe.PermissionError
+        )
 
     access_role = get_hr_agent_role_access(user)
     if access_role == "Assigned HR User (View & Reply Assigned Only)":
-        frappe.throw(_("Access Restricted: Assigned HR users cannot take queued chats."), frappe.PermissionError)
+        frappe.throw(
+            _("Access Restricted: Assigned HR users cannot take queued chats."),
+            frappe.PermissionError,
+        )
 
     session = get_session_doc(session_name)
     if session.status != "Queued":
@@ -604,7 +707,11 @@ def take_session(session_name: str, user: Optional[str] = None) -> Any:
         session.flags.ignore_links = True
         session.save(ignore_permissions=True)
         frappe.db.commit()
-        frappe.throw(_("This chat window has expired. Wait for the employee to message again on WhatsApp."))
+        frappe.throw(
+            _(
+                "This chat window has expired. Wait for the employee to message again on WhatsApp."
+            )
+        )
 
     session.assigned_to = user
     session.status = "Active"
@@ -615,24 +722,40 @@ def take_session(session_name: str, user: Optional[str] = None) -> Any:
     return session
 
 
-def assign_session(session_name: str, assign_to: str, user: Optional[str] = None) -> Any:
+def assign_session(
+    session_name: str, assign_to: str, user: Optional[str] = None
+) -> Any:
     user = user or frappe.session.user
     if not user_is_hr_agent(user):
-        frappe.throw(_("You do not have permission to assign HR chats."), frappe.PermissionError)
+        frappe.throw(
+            _("You do not have permission to assign HR chats."), frappe.PermissionError
+        )
 
     access_role = get_hr_agent_role_access(user)
     if access_role == "Assigned HR User (View & Reply Assigned Only)":
-        frappe.throw(_("Access Restricted: Assigned HR users cannot assign or reassign chats."), frappe.PermissionError)
+        frappe.throw(
+            _("Access Restricted: Assigned HR users cannot assign or reassign chats."),
+            frappe.PermissionError,
+        )
 
     session = get_session_doc(session_name)
-    if session.assigned_to and session.assigned_to != user and not user_is_hr_manager(user):
-        frappe.throw(_("Only HR Managers can reassign chats owned by another agent."), frappe.PermissionError)
+    if (
+        session.assigned_to
+        and session.assigned_to != user
+        and not user_is_hr_manager(user)
+    ):
+        frappe.throw(
+            _("Only HR Managers can reassign chats owned by another agent."),
+            frappe.PermissionError,
+        )
 
     if not frappe.db.exists("User", assign_to):
         frappe.throw(_("User {0} does not exist.").format(assign_to))
     if not user_is_hr_agent(assign_to):
         frappe.throw(
-            _("Assignee must be configured as an HR chat agent in AI Workplace Settings.")
+            _(
+                "Assignee must be configured as an HR chat agent in AI Workplace Settings."
+            )
         )
 
     session.assigned_to = assign_to
@@ -654,7 +777,15 @@ def consolidate_duplicate_sessions() -> int:
     """
     all_sessions = frappe.get_all(
         "HR Live Chat Session",
-        fields=["name", "status", "employee", "whatsapp_identity", "wa_id", "modified", "creation"],
+        fields=[
+            "name",
+            "status",
+            "employee",
+            "whatsapp_identity",
+            "wa_id",
+            "modified",
+            "creation",
+        ],
         order_by="creation desc",
     )
     if not all_sessions:
@@ -700,7 +831,9 @@ def consolidate_duplicate_sessions() -> int:
         )
 
         for dup in duplicate_names:
-            frappe.delete_doc("HR Live Chat Session", dup, force=1, ignore_permissions=True)
+            frappe.delete_doc(
+                "HR Live Chat Session", dup, force=1, ignore_permissions=True
+            )
             deleted_count += 1
 
     if deleted_count > 0:
@@ -784,7 +917,9 @@ def _resolve_attachment_file(file_url: str) -> tuple[Any, bytes, str, str]:
 
     ext = os.path.splitext(filename or file_doc.file_name or "")[1].lower()
     if ext not in IMAGE_EXTENSIONS and ext not in DOCUMENT_EXTENSIONS:
-        frappe.throw(_("Unsupported file type. Send images or common document formats."))
+        frappe.throw(
+            _("Unsupported file type. Send images or common document formats.")
+        )
 
     return file_doc, content, filename, mime_type
 
@@ -798,14 +933,19 @@ def send_hr_attachment(
 ) -> dict[str, Any]:
     user = user or frappe.session.user
     if not user_is_hr_agent(user):
-        frappe.throw(_("You do not have permission to reply to HR chats."), frappe.PermissionError)
+        frappe.throw(
+            _("You do not have permission to reply to HR chats."),
+            frappe.PermissionError,
+        )
 
     session = get_session_doc(session_name)
     can_reply, reason = evaluate_reply_permission(session, user=user)
     if not can_reply:
         frappe.throw(reason)
 
-    phone = frappe.db.get_value("WhatsApp Identity", session.whatsapp_identity, "normalized_phone")
+    phone = frappe.db.get_value(
+        "WhatsApp Identity", session.whatsapp_identity, "normalized_phone"
+    )
     if not phone:
         frappe.throw(_("No WhatsApp phone number found for this session."))
 
@@ -813,9 +953,13 @@ def send_hr_attachment(
     ext = os.path.splitext(filename or file_doc.file_name or "")[1].lower()
     is_image = ext in IMAGE_EXTENSIONS
 
-    upload_result = upload_media_bytes(content, mime_type, filename or file_doc.file_name)
+    upload_result = upload_media_bytes(
+        content, mime_type, filename or file_doc.file_name
+    )
     if not upload_result.get("success"):
-        frappe.throw(upload_result.get("error") or _("Failed to upload file to WhatsApp."))
+        frappe.throw(
+            upload_result.get("error") or _("Failed to upload file to WhatsApp.")
+        )
 
     media_id = upload_result.get("media_id")
     caption_text = (caption or "").strip()
@@ -887,7 +1031,10 @@ def send_hr_reply(
 ) -> dict[str, Any]:
     user = user or frappe.session.user
     if not user_is_hr_agent(user):
-        frappe.throw(_("You do not have permission to reply to HR chats."), frappe.PermissionError)
+        frappe.throw(
+            _("You do not have permission to reply to HR chats."),
+            frappe.PermissionError,
+        )
 
     text = (message or "").strip()
     if not text:
@@ -898,7 +1045,9 @@ def send_hr_reply(
     if not can_reply:
         frappe.throw(reason)
 
-    phone = frappe.db.get_value("WhatsApp Identity", session.whatsapp_identity, "normalized_phone")
+    phone = frappe.db.get_value(
+        "WhatsApp Identity", session.whatsapp_identity, "normalized_phone"
+    )
     if not phone:
         frappe.throw(_("No WhatsApp phone number found for this session."))
 
@@ -946,7 +1095,18 @@ def send_hr_reply(
     }
 
 
-def get_session_thread(session_name: str, limit: int = 15, start: int = 0) -> list[dict[str, Any]]:
+def is_admin_or_system_manager(user: Optional[str] = None) -> bool:
+    """Return True if user has HR Workplace Admin or System Manager role."""
+    user = user or frappe.session.user
+    if not user:
+        return False
+    user_roles = set(frappe.get_roles(user))
+    return bool(user_roles & {"HR Workplace Admin", "System Manager"})
+
+
+def get_session_thread(
+    session_name: str, limit: int = 15, start: int = 0
+) -> list[dict[str, Any]]:
     session = get_session_doc(session_name)
 
     related_session_names = {session_name}
@@ -966,41 +1126,72 @@ def get_session_thread(session_name: str, limit: int = 15, start: int = 0) -> li
         )
         related_session_names.update(all_related)
 
-    log_or_filters = [{"hr_live_chat_session": ["in", list(related_session_names)]}]
-    if session.wa_id:
-        log_or_filters.append({"recipient": session.wa_id})
-        log_or_filters.append({"whatsapp_id": session.wa_id})
-    if session.employee:
-        log_or_filters.append({"employee": session.employee})
+    show_all = is_admin_or_system_manager()
 
-    raw_rows = frappe.get_all(
-        "WhatsApp Message Log",
-        or_filters=log_or_filters,
-        fields=[
-            "name",
-            "direction",
-            "message",
-            "timestamp",
-            "sender_type",
-            "sender",
-            "status",
-            "delivery_status",
-            "meta_message_id",
-            "message_type",
-            "media_file",
-        ],
-        order_by="timestamp desc",
-        start=start,
-        page_length=limit,
-    )
+    if show_all:
+        log_or_filters = [{"hr_live_chat_session": ["in", list(related_session_names)]}]
+        if session.wa_id:
+            log_or_filters.append({"recipient": session.wa_id})
+            log_or_filters.append({"whatsapp_id": session.wa_id})
+        if session.employee:
+            log_or_filters.append({"employee": session.employee})
+
+        raw_rows = frappe.get_all(
+            "WhatsApp Message Log",
+            or_filters=log_or_filters,
+            fields=[
+                "name",
+                "direction",
+                "message",
+                "timestamp",
+                "sender_type",
+                "sender",
+                "status",
+                "delivery_status",
+                "meta_message_id",
+                "message_type",
+                "media_file",
+            ],
+            order_by="timestamp desc",
+            start=start,
+            page_length=limit,
+        )
+    else:
+        raw_rows = frappe.get_all(
+            "WhatsApp Message Log",
+            filters={
+                "hr_live_chat_session": ["in", list(related_session_names)],
+            },
+            fields=[
+                "name",
+                "direction",
+                "message",
+                "timestamp",
+                "sender_type",
+                "sender",
+                "status",
+                "delivery_status",
+                "meta_message_id",
+                "message_type",
+                "media_file",
+            ],
+            order_by="timestamp desc",
+            start=start,
+            page_length=limit,
+        )
 
     # Reverse to ascending chronological order for display
     raw_rows.reverse()
 
     seen_names = set()
     rows = []
+    payload_keys = {"svc_contact_hr", "contact_hr", "hr_wait_connect", "hr_call", "guest_contact", "main_menu", "btn_menu", "menu"}
     for row in raw_rows:
         if row["name"] not in seen_names:
+            if not show_all:
+                msg_clean = (row.get("message") or "").strip().lower()
+                if msg_clean in payload_keys or msg_clean.startswith("svc_") or msg_clean.startswith("btn_"):
+                    continue
             seen_names.add(row["name"])
             rows.append(row)
 
@@ -1011,7 +1202,9 @@ def get_session_thread(session_name: str, limit: int = 15, start: int = 0) -> li
             )
 
     if start == 0:
-        if session.initial_query and not any(r.get("message") == session.initial_query for r in rows):
+        if session.initial_query and not any(
+            r.get("message") == session.initial_query for r in rows
+        ):
             rows.insert(
                 0,
                 {
@@ -1072,7 +1265,9 @@ def get_session_identity_key(session_row: dict[str, Any]) -> str:
     return f"session:{session_row['name']}"
 
 
-def get_inbox_sessions(status_filter: str = "queue", start: int = 0, limit: int = 15) -> list[dict[str, Any]]:
+def get_inbox_sessions(
+    status_filter: str = "queue", start: int = 0, limit: int = 15
+) -> list[dict[str, Any]]:
     user = frappe.session.user
     filters: dict[str, Any] = _inbox_base_filters()
 
@@ -1143,13 +1338,21 @@ def get_inbox_sessions(status_filter: str = "queue", start: int = 0, limit: int 
     merged_sessions = list(grouped_sessions.values())
 
     for row in merged_sessions:
-        row["display_title"] = row.get("display_name") or row.get("employee") or row.get("wa_id") or row["name"]
+        row["display_title"] = (
+            row.get("display_name")
+            or row.get("employee")
+            or row.get("wa_id")
+            or row["name"]
+        )
         if not row.get("display_name") and row.get("employee"):
             row["display_title"] = (
-                frappe.db.get_value("Employee", row["employee"], "employee_name") or row["display_title"]
+                frappe.db.get_value("Employee", row["employee"], "employee_name")
+                or row["display_title"]
             )
         if row.get("assigned_to"):
-            row["assigned_to_name"] = frappe.db.get_value("User", row["assigned_to"], "full_name")
+            row["assigned_to_name"] = frappe.db.get_value(
+                "User", row["assigned_to"], "full_name"
+            )
         can_reply = False
         reason = ""
         if row["name"]:
@@ -1176,26 +1379,53 @@ def get_inbox_sessions(status_filter: str = "queue", start: int = 0, limit: int 
             )
             related_session_names.update(all_related)
 
-        log_or_filters = [{"hr_live_chat_session": ["in", list(related_session_names)]}]
-        if row.get("wa_id"):
-            log_or_filters.append({"recipient": row["wa_id"]})
-            log_or_filters.append({"whatsapp_id": row["wa_id"]})
-        if row.get("employee"):
-            log_or_filters.append({"employee": row["employee"]})
+        if is_admin_or_system_manager(user):
+            log_or_filters = [{"hr_live_chat_session": ["in", list(related_session_names)]}]
+            if row.get("wa_id"):
+                log_or_filters.append({"recipient": row["wa_id"]})
+                log_or_filters.append({"whatsapp_id": row["wa_id"]})
+            if row.get("employee"):
+                log_or_filters.append({"employee": row["employee"]})
 
-        last_logs = frappe.get_all(
-            "WhatsApp Message Log",
-            or_filters=log_or_filters,
-            fields=["message", "media_file", "message_type", "direction", "timestamp", "creation"],
-            order_by="timestamp desc, creation desc",
-            limit_page_length=1,
-        )
+            last_logs = frappe.get_all(
+                "WhatsApp Message Log",
+                or_filters=log_or_filters,
+                fields=[
+                    "message",
+                    "media_file",
+                    "message_type",
+                    "direction",
+                    "timestamp",
+                    "creation",
+                ],
+                order_by="timestamp desc, creation desc",
+                limit_page_length=1,
+            )
+        else:
+            last_logs = frappe.get_all(
+                "WhatsApp Message Log",
+                filters={
+                    "hr_live_chat_session": ["in", list(related_session_names)],
+                },
+                fields=[
+                    "message",
+                    "media_file",
+                    "message_type",
+                    "direction",
+                    "timestamp",
+                    "creation",
+                ],
+                order_by="timestamp desc, creation desc",
+                limit_page_length=1,
+            )
         if last_logs:
             msg_obj = last_logs[0]
             if msg_obj.get("message"):
                 row["last_message"] = msg_obj["message"]
             elif msg_obj.get("media_file"):
-                row["last_message"] = f"📎 Media ({msg_obj.get('message_type') or 'file'})"
+                row["last_message"] = (
+                    f"📎 Media ({msg_obj.get('message_type') or 'file'})"
+                )
             else:
                 row["last_message"] = row.get("initial_query") or ""
             if msg_obj.get("timestamp"):

@@ -38,9 +38,24 @@ class TestOrchestratorHRChat(unittest.TestCase):
         process_message("Hi", self.identity, message_id="hr-1", trace_id="hr-tr", wa_id=self.wa_id)
         process_message("lang_en", self.identity, message_id="hr-2", trace_id="hr-tr", wa_id=self.wa_id)
 
+    @patch(
+        "ai_workplace.services.office_hours.get_hr_support_status",
+        return_value={
+            "status": "Open",
+            "is_open": True,
+            "closed_reason": None,
+            "is_holiday": False,
+            "is_working_day": True,
+            "timezone": "Asia/Karachi",
+            "local_time": "10:00 AM",
+            "local_date": "Monday",
+            "local_datetime": "2026-09-07T10:00:00",
+        },
+    )
+    @patch("ai_workplace.services.office_hours.is_hr_available", return_value=True)
     @patch("ai_workplace.services.hr_chat.is_hr_live_chat_enabled", return_value=True)
     @patch("ai_workplace.services.hr_chat.is_hr_available", return_value=True)
-    def test_contact_hr_opens_live_chat(self, _mock_hours, _mock_enabled):
+    def test_contact_hr_opens_live_chat(self, _mock_hours, _mock_enabled, _mock_oh_avail=None, _mock_status=None):
         self._complete_language_and_menu()
         resp = process_message(
             "svc_contact_hr",
@@ -50,18 +65,7 @@ class TestOrchestratorHRChat(unittest.TestCase):
             wa_id=self.wa_id,
         )
         self.assertIsInstance(resp, OutboundMessage)
-        self.assertTrue(resp.is_interactive())
-        self.assertIn("051 8444 777", resp.body_text)
-        self.assertIn("hr@micromerger.com", resp.body_text.lower())
-
-        resp2 = process_message(
-            "hr_wait_connect",
-            self.identity,
-            message_id="hr-3b",
-            trace_id="hr-tr",
-            wa_id=self.wa_id,
-        )
-        self.assertIn("connected to hr", resp2.body_text.lower())
+        self.assertIn("connected to hr", resp.body_text.lower())
 
         conv_name = frappe.db.get_value(
             "WhatsApp Conversation",
@@ -82,9 +86,24 @@ class TestOrchestratorHRChat(unittest.TestCase):
         )
         self.assertGreaterEqual(session_count, 1)
 
+    @patch(
+        "ai_workplace.services.office_hours.get_hr_support_status",
+        return_value={
+            "status": "Closed",
+            "is_open": False,
+            "closed_reason": "outside_hours",
+            "is_holiday": False,
+            "is_working_day": True,
+            "timezone": "Asia/Karachi",
+            "local_time": "08:00 PM",
+            "local_date": "Monday",
+            "local_datetime": "2026-09-07T20:00:00",
+        },
+    )
+    @patch("ai_workplace.services.office_hours.is_hr_available", return_value=False)
     @patch("ai_workplace.services.hr_chat.is_hr_live_chat_enabled", return_value=True)
     @patch("ai_workplace.services.hr_chat.is_hr_available", return_value=False)
-    def test_contact_hr_off_hours_still_connects(self, _mock_hours, _mock_enabled):
+    def test_contact_hr_off_hours_still_connects(self, _mock_hours, _mock_enabled, _mock_oh_avail=None, _mock_status=None):
         self._complete_language_and_menu()
         process_message(
             "svc_contact_hr",

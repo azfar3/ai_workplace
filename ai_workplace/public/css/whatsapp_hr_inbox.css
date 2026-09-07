@@ -248,9 +248,16 @@
 	min-width: 0;
 }
 
+.wa-chat-header-name-row {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
 .wa-chat-header-name {
 	font-size: 16px;
-	font-weight: 500;
+	font-weight: 600;
 	color: #111b21;
 }
 
