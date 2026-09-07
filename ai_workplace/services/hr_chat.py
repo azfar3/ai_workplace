@@ -593,6 +593,7 @@ def close_session(
     *,
     reset_conversation: bool = True,
     notify_user: bool = True,
+    reason: str = "manual",
 ) -> Any:
     user = user or frappe.session.user
     session = get_session_doc(session_name)
@@ -635,24 +636,44 @@ def close_session(
                         or "English"
                     )
 
-                if lang == "Urdu":
-                    close_msg = (
-                        "💬 *HR لائیو چیٹ سیشن ختم ہو گیا*\n\n"
-                        "HR سپورٹ کے ساتھ آپ کا چیٹ سیشن مکمل ہو چکا ہے۔ امید ہے آپ کی مکمل رہنمائی ہوئی ہوگی! 🙏\n\n"
-                        "اگر آپ کو مزید کسی مدد کی ضرورت ہے، تو نیچے دیے گئے مینو سے انتخاب کریں یا پیغام بھیجیں۔"
-                    )
-                elif lang == "Roman Urdu":
-                    close_msg = (
-                        "💬 *HR Live Chat Session Khatam Ho Gaya*\n\n"
-                        "HR support ke sath aap ka chat session complete ho gaya hai. Umeed hai aap ki mukammal madad hui hogi! 🙏\n\n"
-                        "Agar aap ko mazeed kisi madad ki zarurat hai, toh neeche diye gaye menu se intikhab karein ya message bhejein."
-                    )
+                if reason == "inactivity":
+                    if lang == "Urdu":
+                        close_msg = (
+                            "💬 *HR لائیو چیٹ سیشن ختم ہو گیا*\n\n"
+                            "12 گھنٹے تک کوئی پیغام نہ ہونے کی وجہ سے آپ کا HR چیٹ سیشن خودکار طور پر بند کر دیا گیا ہے۔ ⌛\n\n"
+                            "اگر آپ کو مزید کسی مدد کی ضرورت ہے، تو نیچے دیے گئے مینو سے انتخاب کریں یا پیغام بھیجیں۔"
+                        )
+                    elif lang == "Roman Urdu":
+                        close_msg = (
+                            "💬 *HR Live Chat Session Closed*\n\n"
+                            "12 ghante tak koi activity na hone ki wajah se aap ka HR chat session auto close ho gaya hai. ⌛\n\n"
+                            "Agar aap ko mazeed kisi madad ki zarurat hai, toh neeche diye gaye menu se intikhab karein ya message bhejein."
+                        )
+                    else:
+                        close_msg = (
+                            "💬 *HR Live Chat Session Closed*\n\n"
+                            "Your live chat session with HR support was automatically closed due to 12 hours of inactivity. ⌛\n\n"
+                            "If you need further assistance, please select an option from the menu below or reply anytime."
+                        )
                 else:
-                    close_msg = (
-                        "💬 *HR Live Chat Session Ended*\n\n"
-                        "Your live chat session with HR support has been closed. We hope we were able to assist you effectively! 🙏\n\n"
-                        "If you need further assistance, please select an option from the menu below or reply anytime."
-                    )
+                    if lang == "Urdu":
+                        close_msg = (
+                            "💬 *HR لائیو چیٹ سیشن ختم ہو گیا*\n\n"
+                            "HR سپورٹ کے ساتھ آپ کا چیٹ سیشن مکمل ہو چکا ہے۔ امید ہے آپ کی مکمل رہنمائی ہوئی ہوگی! 🙏\n\n"
+                            "اگر آپ کو مزید کسی مدد کی ضرورت ہے، تو نیچے دیے گئے مینو سے انتخاب کریں یا پیغام بھیجیں۔"
+                        )
+                    elif lang == "Roman Urdu":
+                        close_msg = (
+                            "💬 *HR Live Chat Session Khatam Ho Gaya*\n\n"
+                            "HR support ke sath aap ka chat session complete ho gaya hai. Umeed hai aap ki mukammal madad hui hogi! 🙏\n\n"
+                            "Agar aap ko mazeed kisi madad ki zarurat hai, toh neeche diye gaye menu se intikhab karein ya message bhejein."
+                        )
+                    else:
+                        close_msg = (
+                            "💬 *HR Live Chat Session Ended*\n\n"
+                            "Your live chat session with HR support has been closed. We hope we were able to assist you effectively! 🙏\n\n"
+                            "If you need further assistance, please select an option from the menu below or reply anytime."
+                        )
 
                 send_text_message(phone, close_msg)
 
@@ -841,12 +862,68 @@ def consolidate_duplicate_sessions() -> int:
     return deleted_count
 
 
+def close_inactive_hr_chat_sessions(inactivity_hours: int = 12) -> dict[str, Any]:
+    """
+    Auto-close active HR Live Chat Sessions ('Queued', 'Assigned', 'Active')
+    where no messages have been exchanged between HR and user for `inactivity_hours` (default 12).
+    """
+    now = _now()
+    threshold = now - timedelta(hours=inactivity_hours)
+
+    active_sessions = frappe.get_all(
+        "HR Live Chat Session",
+        filters={"status": ["in", list(OPEN_STATUSES)]},
+        fields=[
+            "name",
+            "opened_at",
+            "last_user_message_at",
+            "last_hr_reply_at",
+            "creation",
+        ],
+    )
+
+    closed_count = 0
+    for s in active_sessions:
+        msg_timestamps = [
+            get_datetime(s.get("last_user_message_at")),
+            get_datetime(s.get("last_hr_reply_at")),
+        ]
+        valid_msg = [t for t in msg_timestamps if t]
+        if valid_msg:
+            latest_activity = max(valid_msg)
+        else:
+            latest_activity = get_datetime(s.get("opened_at")) or get_datetime(s.get("creation"))
+
+        if latest_activity and latest_activity <= threshold:
+            try:
+                close_session(
+                    s["name"],
+                    user="Administrator",
+                    reset_conversation=True,
+                    notify_user=True,
+                    reason="inactivity",
+                )
+                closed_count += 1
+            except Exception as exc:
+                frappe.logger("ai_workplace").error(
+                    f"Failed to auto-close 12-hour inactive HR session {s['name']}: {exc}"
+                )
+
+    return {"status": "success", "closed_count": closed_count}
+
+
 def expire_stale_sessions() -> None:
-    """Mark open sessions as Expired when the 24-hour window has passed."""
+    """Mark open sessions as Expired when the 24-hour window has passed, and auto-close 12h inactive sessions."""
     try:
         consolidate_duplicate_sessions()
     except Exception as e:
         frappe.log_error(f"Error in consolidate_duplicate_sessions: {e}")
+
+    try:
+        close_inactive_hr_chat_sessions(inactivity_hours=12)
+    except Exception as e:
+        frappe.log_error(f"Error in close_inactive_hr_chat_sessions: {e}")
+
     now = _now()
     stale = frappe.get_all(
         "HR Live Chat Session",

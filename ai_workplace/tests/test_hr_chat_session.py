@@ -200,4 +200,25 @@ class TestHRChatSession(unittest.TestCase):
         matching = [s for s in inbox if s.get("whatsapp_identity") == self.wa_identity or s.get("wa_id") == self.wa_id]
         self.assertEqual(len(matching), 1)
 
+    @patch("ai_workplace.services.hr_chat.send_text_message")
+    def test_close_inactive_hr_chat_sessions_after_12_hours(self, mock_send):
+        from ai_workplace.services.hr_chat import close_inactive_hr_chat_sessions
+        session = self._open_test_session()
+        stale_time = frappe.utils.now_datetime() - timedelta(hours=13)
+        frappe.db.set_value(
+            "HR Live Chat Session",
+            session.name,
+            {
+                "last_user_message_at": stale_time,
+                "last_hr_reply_at": stale_time,
+                "opened_at": stale_time,
+            },
+        )
+        session.reload()
+        result = close_inactive_hr_chat_sessions(inactivity_hours=12)
+        self.assertGreaterEqual(result["closed_count"], 1)
+        session.reload()
+        self.assertEqual(session.status, "Closed")
+        mock_send.assert_called()
+
 

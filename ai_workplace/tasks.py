@@ -22,7 +22,11 @@ def cleanup_temporary_media():
 
 @frappe.whitelist()
 def close_inactive_sessions_task():
-    """Scheduled task to close inactive WhatsApp conversations and send Bye message."""
+    """Scheduled task to close inactive WhatsApp conversations and 12h inactive HR chat sessions."""
     from ai_workplace.conversation.manager import close_inactive_sessions
-    return close_inactive_sessions()
+    from ai_workplace.services.hr_chat import close_inactive_hr_chat_sessions
+
+    res1 = close_inactive_sessions()
+    res2 = close_inactive_hr_chat_sessions(inactivity_hours=12)
+    return {"conversations": res1, "hr_chats": res2}
 
