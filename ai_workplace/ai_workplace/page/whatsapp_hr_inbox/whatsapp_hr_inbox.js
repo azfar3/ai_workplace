@@ -256,9 +256,11 @@ frappe.whatsapp_hr_inbox = {
 					this.wrapper.find('.wa-filter-btn[data-filter="mine"]').addClass("active");
 				}
 				this.load_inbox();
+				this.start_live_poll();
 			},
 			error: () => {
 				this.load_inbox();
+				this.start_live_poll();
 			},
 		});
 	},
@@ -577,6 +579,14 @@ frappe.whatsapp_hr_inbox = {
 
 	start_live_poll() {
 		this.stop_live_poll();
+		this._poll_timer = setInterval(() => {
+			if (!document.hidden) {
+				this.load_inbox(true);
+				if (this.current_session) {
+					this.refresh_session(true);
+				}
+			}
+		}, 3000);
 	},
 
 	stop_live_poll() {

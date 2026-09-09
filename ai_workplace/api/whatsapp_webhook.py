@@ -486,7 +486,9 @@ def process_async_whatsapp_message(
         append_inbound_message,
     )
 
-    session_name = get_active_session_for_identity(wa_identity_name)
+    session_name = get_active_session_for_identity(
+        wa_identity_name, employee=identity.employee or "", wa_id=wa_id or ""
+    )
     if session_name:
         session = get_session_doc(session_name)
         if session.ready_for_hr and session.status in ("Queued", "Assigned", "Active"):

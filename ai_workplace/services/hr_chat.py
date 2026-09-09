@@ -483,6 +483,7 @@ def link_message_to_session(
             "sender_type": sender_type,
         },
     )
+    frappe.db.commit()
 
 
 def append_inbound_message(
@@ -509,6 +510,7 @@ def append_inbound_message(
     link_message_to_session(
         session.name, meta_message_id=meta_message_id, sender_type="Employee"
     )
+    frappe.db.commit()
     publish_session_update(
         session,
         {

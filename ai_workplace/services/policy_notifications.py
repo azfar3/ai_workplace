@@ -233,3 +233,4 @@ def _cleanup_legacy_policy_knowledge_sources() -> None:
         frappe.db.delete("AI Workplace Knowledge Source", {"name": s.name})
 
     frappe.db.commit()
+
