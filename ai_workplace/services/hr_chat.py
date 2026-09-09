@@ -101,17 +101,65 @@ def _compute_window_expires(last_user_message_at: Any) -> Any:
 def _session_payload(session: Any) -> dict[str, Any]:
     can_reply, reason = evaluate_reply_permission(session)
     office = get_office_hours_info()
+
+    display_title = session.display_name or ""
+    if not display_title and session.employee:
+        display_title = frappe.db.get_value("Employee", session.employee, "employee_name") or ""
+    if not display_title:
+        display_title = session.wa_id or session.name
+
+    assigned_to_name = ""
+    if session.assigned_to:
+        assigned_to_name = frappe.db.get_value("User", session.assigned_to, "full_name") or session.assigned_to
+
+    last_user = get_datetime(session.last_user_message_at)
+    last_hr = get_datetime(session.last_hr_reply_at)
+    unread_count = 0
+    if last_user and (not last_hr or last_user > last_hr):
+        cnt_filters = {"hr_live_chat_session": session.name, "direction": "Inbound"}
+        if last_hr:
+            cnt_filters["timestamp"] = [">", last_hr]
+        unread_count = frappe.db.count("WhatsApp Message Log", cnt_filters)
+
+    last_message = session.initial_query or ""
+    last_logs = frappe.get_all(
+        "WhatsApp Message Log",
+        filters={"hr_live_chat_session": session.name},
+        fields=["message", "media_file", "message_type"],
+        order_by="timestamp desc, creation desc",
+        limit_page_length=1,
+    )
+    if last_logs:
+        msg_obj = last_logs[0]
+        if msg_obj.get("message"):
+            last_message = msg_obj["message"]
+        elif msg_obj.get("media_file"):
+            last_message = f"📎 Media ({msg_obj.get('message_type') or 'file'})"
+
+    tab_counts = get_inbox_tab_counts()
+
     return {
         "name": session.name,
+        "session_name": session.name,
         "status": session.status,
         "assigned_to": session.assigned_to,
+        "assigned_to_name": assigned_to_name,
+        "display_name": session.display_name or "",
+        "display_title": display_title,
         "employee": session.employee,
+        "employee_name": frappe.db.get_value("Employee", session.employee, "employee_name") if session.employee else None,
         "erp_user": session.erp_user,
         "wa_id": session.wa_id,
+        "phone": session.wa_id or "",
         "whatsapp_identity": session.whatsapp_identity,
-        "last_user_message_at": session.last_user_message_at,
-        "last_hr_reply_at": getattr(session, "last_hr_reply_at", None),
-        "session_window_expires_at": session.session_window_expires_at,
+        "last_user_message_at": str(session.last_user_message_at) if session.last_user_message_at else None,
+        "last_hr_reply_at": str(session.last_hr_reply_at) if session.last_hr_reply_at else None,
+        "session_window_expires_at": str(session.session_window_expires_at) if session.session_window_expires_at else None,
+        "last_message": last_message,
+        "last_message_preview": last_message,
+        "unread_count": unread_count,
+        "unread": bool(unread_count > 0),
+        "tab_counts": tab_counts,
         "can_reply": can_reply,
         "can_reply_reason": reason,
         "is_office_hours": office["is_office_hours"],
@@ -122,6 +170,7 @@ def _session_payload(session: Any) -> dict[str, Any]:
         "office_local_time": office["local_time"],
         "office_local_date": office["local_date"],
     }
+
 
 
 def publish_session_update(
@@ -701,6 +750,25 @@ def close_session(
     frappe.db.commit()
     publish_session_update(session, {"event": "session_closed"})
     return session
+
+
+def mark_session_read(session_name: str, user: Optional[str] = None) -> Any:
+    user = user or frappe.session.user
+    if not user_is_hr_agent(user):
+        frappe.throw(
+            _("You do not have permission to access HR chats."), frappe.PermissionError
+        )
+
+    session = get_session_doc(session_name)
+    now = _now()
+    session.last_hr_reply_at = now
+    session.flags.ignore_links = True
+    session.save(ignore_permissions=True)
+    frappe.db.commit()
+
+    publish_session_update(session, {"event": "session_read", "read_by": user})
+    return session
+
 
 
 def take_session(session_name: str, user: Optional[str] = None) -> Any:

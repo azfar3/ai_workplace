@@ -80,7 +80,7 @@ frappe.whatsapp_hr_inbox = {
 					<div class="wa-filters">
 						<button class="wa-filter-btn active" data-filter="mine">${__("Active")} <span class="wa-tab-badge wa-tab-badge-mine hidden"></span></button>
 						<button class="wa-filter-btn" data-filter="queue">${__("Queue")} <span class="wa-tab-badge wa-tab-badge-queue hidden"></span></button>
-						<button class="wa-filter-btn" data-filter="closed">${__("Closed")}</button>
+						<button class="wa-filter-btn" data-filter="closed">${__("Closed")} <span class="wa-tab-badge wa-tab-badge-closed hidden"></span></button>
 						<button class="wa-filter-btn" data-filter="all">${__("All")} <span class="wa-tab-badge wa-tab-badge-all hidden"></span></button>
 					</div>
 					<div class="wa-chat-list"></div>
@@ -335,8 +335,14 @@ frappe.whatsapp_hr_inbox = {
 		if (frappe.realtime?.socket) {
 			bind();
 			try {
-				frappe.realtime.socket.on("connect", bind);
-				frappe.realtime.socket.on("reconnect", bind);
+				frappe.realtime.socket.on("connect", () => {
+					bind();
+					this.load_inbox(true);
+				});
+				frappe.realtime.socket.on("reconnect", () => {
+					bind();
+					this.load_inbox(true);
+				});
 			} catch (e) { }
 		} else {
 			if (typeof frappe.realtime.init === "function") {
@@ -350,39 +356,23 @@ frappe.whatsapp_hr_inbox = {
 		if (!payload || typeof payload !== "object") return;
 
 		const target_session = payload.name || payload.session_name || (payload.doc ? payload.doc.name : null);
-		const msg_text = payload.message || (payload.media_file ? `📎 Media (${payload.message_type || "file"})` : "");
+		if (!target_session) return;
 
-		// 1. Instantly update preview, timestamp, and unread badge for the affected session in the sidebar
-		if (target_session && msg_text) {
-			let item = this.list_el.find(`.wa-chat-item[data-name="${frappe.utils.escape_html(target_session)}"]`);
-			if (item.length) {
-				item.find(".wa-chat-item-preview").text(msg_text).attr("title", msg_text);
-				const time_str = this.format_msg_time(payload.timestamp || frappe.datetime.now_datetime());
-				item.find(".wa-chat-item-time").text(time_str);
-
-				if (payload.event === "inbound_message") {
-					let badge = item.find(".wa-chat-item-unread-count");
-					let current_cnt = parseInt(badge.text() || "0", 10);
-					current_cnt += 1;
-					if (badge.length) {
-						badge.text(current_cnt);
-					} else {
-						item.find(".wa-chat-item-bottom").append(`<span class="wa-chat-item-unread-count" title="${current_cnt} unread message(s)">${current_cnt}</span>`);
-					}
-					item.addClass("has-unread");
-				}
-
-				// Move the session item to top of the sidebar list
-				this.list_el.prepend(item);
-			}
+		// 1. Update tab indicators using tab_counts snapshot if provided
+		if (payload.tab_counts) {
+			this.update_tab_indicators(payload.tab_counts);
+		} else {
+			this.update_tab_indicators();
 		}
 
-		// 2. Refresh top tab indicators
-		this.update_tab_indicators();
+		// 2. Incremental update/re-ordering for sidebar conversation list
+		this.sync_sidebar_item(payload);
 
 		// 3. Handle live update for currently open active session
 		if (this.current_session && target_session === this.current_session) {
-			if (payload.event === "inbound_message" && (payload.message || payload.media_file)) {
+			if (payload.event === "session_read") {
+				this.clear_current_session_unread();
+			} else if (payload.event === "inbound_message" && (payload.message || payload.media_file)) {
 				this.append_thread_message({
 					direction: "Inbound",
 					message: payload.message,
@@ -394,15 +384,10 @@ frappe.whatsapp_hr_inbox = {
 				});
 				this._update_compose_from_payload(payload);
 				this.play_notify();
-				return;
-			}
 
-			if (payload.event === "delivery_status_update") {
-				this.update_message_delivery(payload);
-				return;
-			}
-
-			if (payload.event === "outbound_message" && payload.message) {
+				// Automatically mark session read since agent is viewing this chat
+				this.mark_session_read_remote(this.current_session);
+			} else if (payload.event === "outbound_message" && (payload.message || payload.media_file)) {
 				this.append_thread_message({
 					direction: "Outbound",
 					message: payload.message,
@@ -415,19 +400,124 @@ frappe.whatsapp_hr_inbox = {
 					message_type: payload.message_type || "text",
 					media_file: payload.media_file || "",
 				});
-				return;
+			} else if (payload.event === "delivery_status_update") {
+				this.update_message_delivery(payload);
+			}
+
+			// Handle status & header/action updates for open chat view
+			if (payload.status) {
+				if (!this._session_data) this._session_data = {};
+				this._session_data.status = payload.status;
+				if (payload.assigned_to !== undefined) this._session_data.assigned_to = payload.assigned_to;
+				if (payload.assigned_to_name !== undefined) this._session_data.assigned_to_name = payload.assigned_to_name;
+				if (payload.can_reply !== undefined) this._session_data.can_reply = payload.can_reply;
+				if (payload.can_reply_reason !== undefined) this._session_data.can_reply_reason = payload.can_reply_reason;
+				this.render_actions(this._session_data);
+				this.render_banner(this._session_data);
+				this._update_compose(this._session_data);
 			}
 		} else if (payload.event === "inbound_message") {
-			// Play notification chime for background message
+			// Play notification chime for background incoming message
 			this.play_notify();
 		}
+	},
 
-		const lifecycle_events = ["session_opened", "session_taken", "session_assigned", "session_closed", "off_hours_queue", "queued"];
-		if (payload.event && lifecycle_events.includes(payload.event)) {
-			this.load_inbox(true);
-			this.refresh_session(true);
+	matches_current_filter(s) {
+		const status = s.status;
+		const assigned = s.assigned_to;
+		const user = frappe.session.user;
+
+		if (this.current_filter === "mine") {
+			return (status === "Assigned" || status === "Active") && assigned === user;
+		}
+		if (this.current_filter === "queue") {
+			return status === "Queued";
+		}
+		if (this.current_filter === "closed") {
+			return status === "Closed";
+		}
+		if (this.current_filter === "all") {
+			return ["Queued", "Assigned", "Active", "Closed", "Expired"].includes(status);
+		}
+		return true;
+	},
+
+	sync_sidebar_item(payload) {
+		const session_name = payload.name || payload.session_name;
+		if (!session_name) return;
+
+		let item = this.list_el.find(`.wa-chat-item[data-name="${frappe.utils.escape_html(session_name)}"]`);
+		const matches = this.matches_current_filter(payload);
+
+		if (!matches) {
+			if (item.length) {
+				item.remove();
+				if (!this.list_el.children(".wa-chat-item").length) {
+					this.list_el.append(`
+						<div class="wa-empty" style="height:200px;padding:24px;">
+							<div class="wa-empty-sub">${__("No chats in this view.")}</div>
+						</div>
+					`);
+				}
+			}
+			return;
+		}
+
+		this.list_el.find(".wa-empty").remove();
+
+		const title = payload.display_title || payload.display_name || payload.employee_name || payload.wa_id || payload.phone || session_name;
+		const initial = (title || "?").charAt(0).toUpperCase();
+		const msg_text = (payload.last_message || payload.last_message_preview || payload.message || "").trim();
+		const unread_cnt = payload.unread_count !== undefined ? payload.unread_count : 0;
+		const status = payload.status || "Queued";
+		const ts = payload.last_user_message_at || payload.timestamp || frappe.datetime.now_datetime();
+		const time_str = this.format_msg_time(ts);
+
+		const unread_badge_html = unread_cnt > 0
+			? `<span class="wa-chat-item-unread-count" title="${unread_cnt} ${__("unread message(s)")}">${unread_cnt}</span>`
+			: "";
+
+		if (item.length) {
+			item.find(".wa-avatar").text(initial);
+			item.find(".wa-chat-item-name").text(title);
+			item.find(".wa-chat-item-time").text(time_str);
+			if (msg_text) {
+				item.find(".wa-chat-item-preview").text(msg_text).attr("title", msg_text);
+			}
+			item.find(".wa-chat-item-unread-count").remove();
+			if (unread_cnt > 0) {
+				item.find(".wa-chat-item-bottom").append(unread_badge_html);
+				item.addClass("has-unread");
+			} else {
+				item.removeClass("has-unread");
+			}
+			item.find(".wa-badge")
+				.attr("class", `wa-badge ${frappe.utils.escape_html(status)}`)
+				.text(status);
+
+			// Reorder item to top of the sidebar list
+			this.list_el.prepend(item);
 		} else {
-			this.load_inbox(true);
+			const has_unread_cls = unread_cnt > 0 ? "has-unread" : "";
+			item = $(`
+				<div class="wa-chat-item ${has_unread_cls}" data-name="${frappe.utils.escape_html(session_name)}">
+					<div class="wa-avatar">${frappe.utils.escape_html(initial)}</div>
+					<div class="wa-chat-item-body">
+						<div class="wa-chat-item-top">
+							<span class="wa-chat-item-name">${frappe.utils.escape_html(title)}</span>
+							<span class="wa-chat-item-time">${frappe.utils.escape_html(time_str)}</span>
+						</div>
+						<div class="wa-chat-item-bottom">
+							<div class="wa-chat-item-preview" title="${frappe.utils.escape_html(msg_text)}">${frappe.utils.escape_html(msg_text)}</div>
+							${unread_badge_html}
+						</div>
+						<span class="wa-badge ${frappe.utils.escape_html(status)}">${frappe.utils.escape_html(status)}</span>
+					</div>
+				</div>
+			`);
+			if (this.current_session === session_name) item.addClass("active");
+			item.on("click", () => this.load_session(session_name));
+			this.list_el.prepend(item);
 		}
 	},
 
@@ -487,11 +577,6 @@ frappe.whatsapp_hr_inbox = {
 
 	start_live_poll() {
 		this.stop_live_poll();
-		this._poll_timer = setInterval(() => {
-			if (this.current_session) {
-				this.refresh_session(true);
-			}
-		}, 4000);
 	},
 
 	stop_live_poll() {
@@ -548,35 +633,51 @@ frappe.whatsapp_hr_inbox = {
 		});
 	},
 
-	update_tab_indicators() {
+	update_tab_indicators(tab_counts) {
+		if (tab_counts) {
+			this._apply_tab_counts(tab_counts);
+			return;
+		}
 		frappe.call({
 			method: "ai_workplace.api.hr_chat.get_inbox_counts",
 			callback: (res) => {
-				if (!res.message) return;
-				const counts = res.message;
-
-				const queue_badge = this.wrapper.find('.wa-filter-btn[data-filter="queue"] .wa-tab-badge-queue');
-				if (counts.queue > 0) {
-					queue_badge.text(counts.queue).removeClass("hidden");
-				} else {
-					queue_badge.addClass("hidden");
-				}
-
-				const mine_badge = this.wrapper.find('.wa-filter-btn[data-filter="mine"] .wa-tab-badge-mine');
-				if (counts.mine_unread > 0) {
-					mine_badge.text(counts.mine_unread).removeClass("hidden");
-				} else {
-					mine_badge.addClass("hidden");
-				}
-
-				const all_badge = this.wrapper.find('.wa-filter-btn[data-filter="all"] .wa-tab-badge-all');
-				if (counts.all_unread > 0) {
-					all_badge.text(counts.all_unread).removeClass("hidden");
-				} else {
-					all_badge.addClass("hidden");
+				if (res.message) {
+					this._apply_tab_counts(res.message);
 				}
 			},
 		});
+	},
+
+	_apply_tab_counts(counts) {
+		if (!counts) return;
+
+		const queue_badge = this.wrapper.find('.wa-filter-btn[data-filter="queue"] .wa-tab-badge-queue');
+		if (counts.queue > 0) {
+			queue_badge.text(counts.queue).removeClass("hidden");
+		} else {
+			queue_badge.addClass("hidden");
+		}
+
+		const mine_badge = this.wrapper.find('.wa-filter-btn[data-filter="mine"] .wa-tab-badge-mine');
+		if (counts.mine_unread > 0) {
+			mine_badge.text(counts.mine_unread).removeClass("hidden");
+		} else {
+			mine_badge.addClass("hidden");
+		}
+
+		const closed_badge = this.wrapper.find('.wa-filter-btn[data-filter="closed"] .wa-tab-badge-closed');
+		if (counts.closed > 0) {
+			closed_badge.text(counts.closed).removeClass("hidden");
+		} else {
+			closed_badge.addClass("hidden");
+		}
+
+		const all_badge = this.wrapper.find('.wa-filter-btn[data-filter="all"] .wa-tab-badge-all');
+		if (counts.all_unread > 0) {
+			all_badge.text(counts.all_unread).removeClass("hidden");
+		} else {
+			all_badge.addClass("hidden");
+		}
 	},
 
 	clear_current_session_unread() {
@@ -672,11 +773,28 @@ frappe.whatsapp_hr_inbox = {
 			if ($(this).attr("data-name") === name) {
 				$(this).addClass("active");
 				$(this).find(".wa-chat-item-unread-count").remove();
+				$(this).removeClass("has-unread");
 			}
 		});
-		this.start_live_poll();
+		this.mark_session_read_remote(name);
 		this.refresh_session(silent);
 		this.show_mobile_chat();
+	},
+
+	mark_session_read_remote(session_name) {
+		if (!session_name) return;
+		frappe.call({
+			method: "ai_workplace.api.hr_chat.mark_session_read",
+			args: { session_name },
+			callback: (r) => {
+				if (r.message) {
+					this.clear_current_session_unread();
+					if (r.message.tab_counts) {
+						this.update_tab_indicators(r.message.tab_counts);
+					}
+				}
+			},
+		});
 	},
 
 	_refreshing_session: false,

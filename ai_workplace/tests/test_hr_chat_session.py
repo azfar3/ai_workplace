@@ -136,7 +136,7 @@ class TestHRChatSession(unittest.TestCase):
         self.assertEqual(self.conv.current_state, ConversationState.AWAITING_SELECTION)
         self.assertFalse(self.conv.active_hr_chat_session)
 
-    @patch("ai_workplace.services.hr_chat.send_text_message")
+    @patch("ai_workplace.whatsapp.sender.send_message")
     def test_send_hr_reply_success(self, mock_send):
         mock_send.return_value = {"success": True, "message_id": "wamid-out-1"}
         session = self._open_test_session()
@@ -220,5 +220,80 @@ class TestHRChatSession(unittest.TestCase):
         session.reload()
         self.assertEqual(session.status, "Closed")
         mock_send.assert_called()
+
+    @patch("frappe.publish_realtime")
+    def test_realtime_payload_and_mark_session_read(self, mock_publish):
+        from ai_workplace.services.hr_chat import (
+            _session_payload,
+            mark_session_read,
+            publish_session_update,
+        )
+
+        session = self._open_test_session()
+        payload = _session_payload(session)
+
+        self.assertIn("tab_counts", payload)
+        self.assertIn("unread_count", payload)
+        self.assertIn("display_title", payload)
+        self.assertIn("last_message", payload)
+
+        publish_session_update(session, {"event": "test_event"})
+        mock_publish.assert_called_with("hr_chat_update", unittest.mock.ANY, room="all", after_commit=False)
+
+        # Create an unread inbound message log with explicit timestamps with 10-second separation
+        past_time = frappe.utils.now_datetime() - timedelta(seconds=10)
+        frappe.db.sql(
+            "UPDATE `tabHR Live Chat Session` SET last_hr_reply_at = %s, last_user_message_at = %s WHERE name = %s",
+            (past_time, past_time, session.name),
+        )
+        now = frappe.utils.now_datetime()
+        frappe.db.set_value("HR Live Chat Session", session.name, "last_user_message_at", now)
+
+        log = frappe.new_doc("WhatsApp Message Log")
+        log.meta_message_id = "msg-unread-1"
+        log.direction = "Inbound"
+        log.sender = self.phone
+        log.whatsapp_id = self.wa_id
+        log.message = "Unread message test"
+        log.hr_live_chat_session = session.name
+        log.timestamp = now
+        log.insert(ignore_permissions=True)
+        frappe.db.commit()
+        session.reload()
+
+        payload_unread = _session_payload(session)
+        self.assertGreater(payload_unread["unread_count"], 0)
+        self.assertTrue(payload_unread["unread"])
+
+        # Mark session as read
+        mark_session_read(session.name, user="Administrator")
+        session.reload()
+        payload_read = _session_payload(session)
+        self.assertEqual(payload_read["unread_count"], 0)
+        self.assertFalse(payload_read["unread"])
+
+    def test_delete_session_cascades_to_linked_message_logs(self):
+        session = self._open_test_session()
+        log = frappe.new_doc("WhatsApp Message Log")
+        log.meta_message_id = "msg-cascade-delete-1"
+        log.direction = "Inbound"
+        log.sender = self.phone
+        log.whatsapp_id = self.wa_id
+        log.message = "Cascade delete test message"
+        log.hr_live_chat_session = session.name
+        log.timestamp = frappe.utils.now_datetime()
+        log.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        log_name = log.name
+        self.assertTrue(frappe.db.exists("WhatsApp Message Log", log_name))
+
+        # Delete the session
+        frappe.delete_doc("HR Live Chat Session", session.name, ignore_permissions=True)
+        frappe.db.commit()
+
+        # Verify linked message log was automatically cascade-deleted
+        self.assertFalse(frappe.db.exists("WhatsApp Message Log", log_name))
+
 
 

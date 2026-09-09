@@ -46,6 +46,16 @@ def get_inbox_counts() -> dict[str, int]:
 
 
 @frappe.whitelist()
+def mark_session_read(session_name: str) -> dict:
+    _ensure_hr_agent()
+    from ai_workplace.services.hr_chat import mark_session_read as _mark_read
+    session = _mark_read(session_name)
+    from ai_workplace.services.hr_chat import _session_payload
+    return _session_payload(session)
+
+
+
+@frappe.whitelist()
 def get_session_detail(session_name: str, start: int = 0, limit: int = 15) -> dict:
     _ensure_hr_agent()
     session = get_session_doc(session_name)

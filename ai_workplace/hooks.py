@@ -137,6 +137,9 @@ doc_events = {
 		"on_update": "ai_workplace.services.policy_notifications.sync_policy_notification_to_chunks",
 		"on_trash": "ai_workplace.services.policy_notifications.delete_policy_notification_chunks",
 	},
+	"HR Live Chat Session": {
+		"on_trash": "ai_workplace.services.cascade_delete.handle_cascade_delete",
+	},
 }
 
 scheduler_events = {

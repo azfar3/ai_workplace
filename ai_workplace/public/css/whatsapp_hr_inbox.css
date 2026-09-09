@@ -107,6 +107,16 @@
 	color: #dc2626;
 }
 
+.wa-tab-badge-closed {
+	background-color: #667781;
+	color: #ffffff;
+}
+
+.wa-filter-btn.active .wa-tab-badge-closed {
+	background-color: #ffffff;
+	color: #667781;
+}
+
 @keyframes wa-badge-pulse {
 	0% { transform: scale(1); }
 	50% { transform: scale(1.15); }
