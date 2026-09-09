@@ -1649,10 +1649,7 @@ def get_inbox_tab_counts() -> dict[str, int]:
         last_u = get_datetime(s.get("last_user_message_at"))
         last_h = get_datetime(s.get("last_hr_reply_at"))
         if last_u and (not last_h or last_u > last_h):
-            cnt_flt = {"hr_live_chat_session": s["name"], "direction": "Inbound"}
-            if last_h:
-                cnt_flt["timestamp"] = [">", last_h]
-            mine_unread += frappe.db.count("WhatsApp Message Log", cnt_flt)
+            mine_unread += 1
 
     # All unread count
     all_filters = _inbox_base_filters()
@@ -1669,10 +1666,7 @@ def get_inbox_tab_counts() -> dict[str, int]:
         last_u = get_datetime(s.get("last_user_message_at"))
         last_h = get_datetime(s.get("last_hr_reply_at"))
         if last_u and (not last_h or last_u > last_h):
-            cnt_flt = {"hr_live_chat_session": s["name"], "direction": "Inbound"}
-            if last_h:
-                cnt_flt["timestamp"] = [">", last_h]
-            all_unread += frappe.db.count("WhatsApp Message Log", cnt_flt)
+            all_unread += 1
 
     return {
         "queue": queue_count,
