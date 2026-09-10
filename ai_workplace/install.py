@@ -26,6 +26,12 @@ def after_migrate():
     _ensure_default_menu_items()
     _ensure_security_policies()
     _ensure_knowledge_and_onboarding()
+    
+    try:
+        from ai_workplace.services.policy_notifications import sync_all_policy_notifications
+        sync_all_policy_notifications()
+    except Exception:
+        pass
 
 
 def setup_hr_live_chat():

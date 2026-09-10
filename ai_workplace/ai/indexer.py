@@ -139,7 +139,13 @@ def reindex_source(source_name: str) -> int:
         if c.content_hash
     }
 
-    frappe.db.delete("AI Workplace Knowledge Chunk", {"knowledge_source": source_name})
+    frappe.db.delete(
+        "AI Workplace Knowledge Chunk", 
+        {
+            "knowledge_source": source_name,
+            "document_type": ["!=", "System Notifications"]
+        }
+    )
 
     emb_model = _get_setting("embedding_model", "text-embedding-3-small")
 
