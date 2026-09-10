@@ -17,7 +17,7 @@ from frappe.utils import formatdate, getdate, today
 from ai_workplace.conversation.manager import update_conversation
 from ai_workplace.conversation.state import ConversationState
 from ai_workplace.services.attendance_leave import get_leave_balance_data
-from ai_workplace.services.response_helpers import wrap_with_menu_again
+from ai_workplace.services.response_helpers import wrap_with_menu_again, wrap_with_parent_menu
 from ai_workplace.whatsapp.interactive import (
     build_leave_type_list_message,
     build_yes_no_buttons,
@@ -34,7 +34,7 @@ def start_leave_application(conv: Any, context: dict[str, Any]) -> OutboundMessa
     employee_id = context.get("employee") or conv.employee or ""
     if not employee_id:
         err = "معذرت، چھٹی کی درخواست صرف رجسٹرڈ ملازمین کے لیے دستیاب ہے۔" if lang == "Urdu" else "Leave application is only available for linked employees."
-        return wrap_with_menu_again(err, context)
+        return wrap_with_parent_menu(err, context, "attendance_leave")
 
     leave_types = get_leave_balance_data(employee_id)
     if not leave_types:
@@ -44,7 +44,7 @@ def start_leave_application(conv: Any, context: dict[str, Any]) -> OutboundMessa
             err = "Aap ke account mein koi active leave allocation nahi mila.\n\nAgar yeh ghalat hai toh HR se rabta karein."
         else:
             err = "No active leave allocation was found for your account.\n\nPlease contact HR if you believe this is incorrect."
-        return wrap_with_menu_again(err, context)
+        return wrap_with_parent_menu(err, context, "attendance_leave")
 
     draft = {
         "step": "awaiting_leave_type",
@@ -112,7 +112,7 @@ def handle_leave_apply_message(
 
     lang = context.get("preferred_language", "English")
     err = "کچھ غلط ہو گیا۔ دوبارہ شروع کرنے کے لیے 'menu' ٹائپ کریں۔" if lang == "Urdu" else "Something went wrong. Type 'menu' to start again."
-    return wrap_with_menu_again(err, context)
+    return wrap_with_parent_menu(err, context, "attendance_leave")
 
 
 def _load_draft(conv: Any) -> dict[str, Any]:
@@ -138,7 +138,7 @@ def _cancel_flow(conv: Any, context: dict[str, Any]) -> OutboundMessage:
     )
     lang = context.get("preferred_language", "English")
     msg = "چھٹی کی درخواست منسوخ کر دی گئی ہے۔" if lang == "Urdu" else "Leave application cancelled."
-    return wrap_with_menu_again(msg, context)
+    return wrap_with_parent_menu(msg, context, "attendance_leave")
 
 
 def _build_leave_type_buttons(header: str, leave_types: list[dict[str, Any]]) -> OutboundMessage:
@@ -439,7 +439,7 @@ def _handle_confirm(conv: Any, context: dict[str, Any], draft: dict, text: str) 
             draft_payload=None,
         )
         err = f"معذرت، چھٹی کی درخواست جمع نہیں ہو سکی:\n\n{str(exc)}" if lang == "Urdu" else f"Could not submit leave application:\n\n{str(exc)}"
-        return wrap_with_menu_again(err, context)
+        return wrap_with_parent_menu(err, context, "attendance_leave")
 
     update_conversation(
         conv,
@@ -471,7 +471,7 @@ def _handle_confirm(conv: Any, context: dict[str, Any], draft: dict, text: str) 
             f"Your supervisor will be notified."
         )
 
-    return wrap_with_menu_again(msg, context)
+    return wrap_with_parent_menu(msg, context, "attendance_leave")
 
 
 def _create_leave_application(draft: dict[str, Any], context: dict[str, Any]) -> str:

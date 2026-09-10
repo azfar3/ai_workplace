@@ -13,9 +13,13 @@ from ai_workplace.whatsapp.outbound import OutboundMessage
 
 def _truncate(text: str, max_len: int) -> str:
     text = (text or "").strip()
-    if len(text) <= max_len:
+    # Meta WhatsApp API calculates string lengths using UTF-16 code units
+    if len(text.encode('utf-16-le')) // 2 <= max_len:
         return text
-    return text[: max_len - 1] + "…"
+        
+    while len(text.encode('utf-16-le')) // 2 > (max_len - 1):
+        text = text[:-1]
+    return text + "…"
 
 
 def build_button_message(
@@ -323,6 +327,42 @@ def build_show_menu_again_button(context: dict[str, Any]) -> OutboundMessage:
             "buttons": [{
                 "type": "reply",
                 "reply": {"id": "svc_main_menu", "title": _truncate(title, 20)},
+            }],
+        },
+    }
+    return OutboundMessage(body_text=body, interactive=interactive)
+
+
+def build_return_to_parent_button(context: dict[str, Any], parent_key: str) -> OutboundMessage:
+    """Single button to return to a parent menu."""
+    from ai_workplace.services.registry import get_service_info
+    
+    lang = context.get("preferred_language", "English")
+    parent_info = get_service_info(parent_key)
+    
+    title = "Back"
+    if parent_info:
+        if lang == "Urdu":
+            title = parent_info.get("title_urdu") or parent_info.get("title")
+        elif lang == "Roman Urdu":
+            title = parent_info.get("title_roman_urdu") or parent_info.get("title")
+        else:
+            title = parent_info.get("title")
+            
+    if lang == "Urdu":
+        body = "مزید اختیارات کے لیے پچھلے مینو پر واپس جائیں:"
+    elif lang == "Roman Urdu":
+        body = "Aur options ke liye pichle menu par wapas jayen:"
+    else:
+        body = "Need something else? Tap below to open the previous menu:"
+
+    interactive = {
+        "type": "button",
+        "body": {"text": body},
+        "action": {
+            "buttons": [{
+                "type": "reply",
+                "reply": {"id": f"svc_{parent_key}", "title": _truncate(title, 20)},
             }],
         },
     }

@@ -244,6 +244,16 @@ def get_available_services_for_context(
             if db_items:
                 filtered = _filter_submenu_items(db_items, allowed, parent_key)
                 results = _menu_records_to_services(filtered)
+                
+                # Dynamic checkin/checkout permission check
+                if parent_key == "attendance_leave" or any(r["key"] in ("att_checkin", "att_checkout") for r in results):
+                    try:
+                        from ai_workplace.services.attendance_location import employee_can_mark_checkin
+                        if not employee_can_mark_checkin(context.get("user")):
+                            results = [r for r in results if r["key"] not in ("att_checkin", "att_checkout")]
+                    except Exception:
+                        pass
+                
                 if not any(r["key"] == "main_menu" for r in results):
                     results.append(BACK_TO_MAIN_MENU_ITEM)
                 return results

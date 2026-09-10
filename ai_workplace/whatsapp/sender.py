@@ -232,7 +232,7 @@ def send_message(
 
     last_result = result
     for extra in outbound.follow_up or []:
-        follow_result = _send_single_message(phone_number, extra, settings=settings)
+        follow_result = send_message(phone_number, extra, settings=settings)
         if follow_result.get("success"):
             last_result = follow_result
         else:

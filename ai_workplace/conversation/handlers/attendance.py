@@ -5,8 +5,7 @@ from ai_workplace.conversation.manager import update_conversation, ConversationS
 from ai_workplace.conversation.orchestrator import log_ai_action
 from ai_workplace.services.response_helpers import (
     wrap_with_menu_again,
-    wrap_monthly_attendance_summary,
-    wrap_monthly_attendance_detail,
+    wrap_with_parent_menu,
 )
 
 class AttendanceHandler:
@@ -27,35 +26,59 @@ class AttendanceHandler:
             from ai_workplace.services.attendance_leave import build_today_attendance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_today_attendance_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_today_attendance"
             
         elif clean_intent in ("att_monthly", "att_summary"):
-            from ai_workplace.services.attendance_leave import build_monthly_attendance_response
+            from ai_workplace.services.attendance_leave import build_monthly_attendance_response, generate_monthly_attendance_excel
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_monthly_attendance_response(context)
-            outbound = wrap_monthly_attendance_summary(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
+            
+            try:
+                emp_id = context.get("employee")
+                if emp_id:
+                    file_bytes, file_name = generate_monthly_attendance_excel(emp_id, context.get("full_name", ""))
+                    outbound.document_bytes = file_bytes
+                    outbound.document_filename = file_name
+                    outbound.document_mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            except Exception as e:
+                import frappe
+                frappe.log_error(title="AI Workplace Attendance Excel Error", message=str(e))
+                
             action = "view_monthly_attendance"
             
         elif clean_intent == "att_monthly_last7":
             from ai_workplace.services.attendance_leave import build_last7_attendance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_last7_attendance_response(context)
-            outbound = wrap_monthly_attendance_detail(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_last_7_days_attendance"
             
         elif clean_intent == "att_monthly_download":
-            from ai_workplace.services.attendance_leave import build_monthly_download_caption
+            from ai_workplace.services.attendance_leave import build_monthly_download_caption, generate_monthly_attendance_excel
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_monthly_download_caption(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
+            
+            try:
+                emp_id = context.get("employee")
+                if emp_id:
+                    file_bytes, file_name = generate_monthly_attendance_excel(emp_id, context.get("full_name", ""))
+                    outbound.document_bytes = file_bytes
+                    outbound.document_filename = file_name
+                    outbound.document_mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            except Exception as e:
+                import frappe
+                frappe.log_error(title="AI Workplace Attendance Excel Error", message=str(e))
+                
             action = "download_monthly_attendance"
             
         elif clean_intent == "att_missing":
             from ai_workplace.services.attendance_leave import build_missing_attendance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_missing_attendance_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_missing_attendance"
 
         if outbound:

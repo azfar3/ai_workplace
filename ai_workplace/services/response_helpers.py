@@ -10,6 +10,7 @@ from typing import Any
 
 from ai_workplace.whatsapp.interactive import (
     build_show_menu_again_button,
+    build_return_to_parent_button,
     build_monthly_attendance_options_message,
     build_salary_slip_period_options_message,
 )
@@ -20,6 +21,15 @@ def wrap_with_menu_again(body_text: str, context: dict[str, Any]) -> OutboundMes
     """Attach a 'Show Menu' button message after a plain-text service response."""
     msg = OutboundMessage(body_text=body_text)
     menu_btn = build_show_menu_again_button(context)
+    if menu_btn:
+        msg.follow_up = [menu_btn]
+    return msg
+
+
+def wrap_with_parent_menu(body_text: str, context: dict[str, Any], parent_key: str) -> OutboundMessage:
+    """Attach a button to return to a specific parent menu after a service response."""
+    msg = OutboundMessage(body_text=body_text)
+    menu_btn = build_return_to_parent_button(context, parent_key)
     if menu_btn:
         msg.follow_up = [menu_btn]
     return msg

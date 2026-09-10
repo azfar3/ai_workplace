@@ -271,8 +271,8 @@ def get_flow_menu_seed_items() -> list[dict[str, Any]]:
 FLOW_GROUP_SPECS: dict[str, list[str]] = {
     "salary_slip_period": ["pay_slip_1m", "pay_slip_3m", "pay_slip_6m"],
     "bank_letter_select": ["pay_bank_faysal", "pay_bank_scb"],
-    "att_monthly_summary": ["att_monthly_last7", "att_monthly_download", "main_menu"],
-    "att_monthly_detail": ["att_monthly_download", "att_monthly", "main_menu"],
+    "att_monthly_summary": ["att_monthly_last7", "att_monthly_download", "attendance_leave"],
+    "att_monthly_detail": ["att_monthly_download", "att_monthly", "attendance_leave"],
     "main_nav": ["main_menu"],
 }
 

@@ -41,7 +41,7 @@ def get_today_attendance_data(employee_id: Optional[str]) -> dict[str, Any]:
         att_list = frappe.db.get_all(
             "Attendance",
             filters={"employee": employee_id, "attendance_date": curr_date, "docstatus": ["!=", 2]},
-            fields=["status", "in_time", "out_time", "working_hours", "late_entry", "early_exit", "leave_type"],
+            fields=["status", "in_time", "out_time", "hours_worked", "late_entry", "early_exit", "leave_type"],
             limit=1,
         )
 
@@ -52,7 +52,7 @@ def get_today_attendance_data(employee_id: Optional[str]) -> dict[str, Any]:
                 res["status"] = f"On Leave ({att['leave_type']})"
             res["late_entry"] = bool(att.get("late_entry"))
             res["early_exit"] = bool(att.get("early_exit"))
-            res["working_hours"] = f"{flt(att.get('working_hours', 0)):.2f}"
+            res["working_hours"] = f"{flt(att.get('hours_worked', 0)):.2f}"
             if att.get("in_time"):
                 res["in_time"] = format_time(att["in_time"])
             if att.get("out_time"):
@@ -83,12 +83,22 @@ def get_today_attendance_data(employee_id: Optional[str]) -> dict[str, Any]:
 
 def get_monthly_attendance_data(employee_id: Optional[str]) -> dict[str, Any]:
     """Fetch monthly attendance statistics for the current month."""
-    curr_today = today()
-    first_day = str(get_first_day(curr_today))
-    last_day = curr_today
+    curr_today_str = today()
+    curr_today_dt = getdate(curr_today_str)
+    
+    if curr_today_dt.day <= 25:
+        prev_month = add_months(curr_today_dt, -1)
+        first_day = f"{prev_month.year}-{prev_month.month:02d}-26"
+        res_month_name = formatdate(curr_today_str, "MMMM YYYY")
+    else:
+        next_month = add_months(curr_today_dt, 1)
+        first_day = f"{curr_today_dt.year}-{curr_today_dt.month:02d}-26"
+        res_month_name = formatdate(next_month, "MMMM YYYY")
+
+    last_day = curr_today_str
 
     res: dict[str, Any] = {
-        "month_name": formatdate(curr_today, "MMMM YYYY"),
+        "month_name": f"{res_month_name} (Cycle)",
         "total_days": 0,
         "present": 0,
         "absent": 0,
@@ -105,14 +115,14 @@ def get_monthly_attendance_data(employee_id: Optional[str]) -> dict[str, Any]:
         att_records = frappe.db.get_all(
             "Attendance",
             filters={"employee": employee_id, "attendance_date": ["between", [first_day, last_day]], "docstatus": ["!=", 2]},
-            fields=["attendance_date", "status", "working_hours", "late_entry"],
+            fields=["attendance_date", "status", "hours_worked", "late_entry"],
         )
 
         att_dates = {str(rec.get("attendance_date")) for rec in att_records if rec.get("attendance_date")}
 
         for rec in att_records:
             st = rec.get("status")
-            res["total_hours"] += flt(rec.get("working_hours", 0))
+            res["total_hours"] += flt(rec.get("hours_worked", 0))
             if rec.get("late_entry"):
                 res["late_entries"] += 1
 
@@ -151,32 +161,64 @@ def get_monthly_attendance_data(employee_id: Optional[str]) -> dict[str, Any]:
 
 
 def get_missing_attendance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
-    """Identify missing punches or unrecorded attendance in the last 30 days."""
+    """Identify missing punches or unrecorded attendance using the Day Wise In Out Report for the current cycle."""
     missing: list[dict[str, Any]] = []
     try:
+        import frappe
         if not employee_id or not getattr(frappe, "db", None) or not frappe.db.exists("Employee", employee_id):
             return missing
 
-        curr_today = today()
-        start_date = str(add_months(curr_today, -1))
+        import dateutil.relativedelta
+        from frappe.utils import getdate, nowdate
+        
+        today_date = getdate(nowdate())
+        if today_date.day > 25:
+            to_date = today_date
+            from_date = today_date.replace(day=26)
+        else:
+            to_date = today_date
+            from_date = today_date.replace(day=26) - dateutil.relativedelta.relativedelta(months=1)
 
-        # Check days marked Absent without leave application
-        absents = frappe.db.get_all(
-            "Attendance",
-            filters={"employee": employee_id, "attendance_date": ["between", [start_date, curr_today]], "status": "Absent", "docstatus": ["!=", 2]},
-            fields=["attendance_date", "status"],
-            order_by="attendance_date desc",
-            limit=5,
-        )
-
-        for ab in absents:
-            missing.append({
-                "date": formatdate(ab["attendance_date"], "dd MMM YYYY"),
-                "reason": "Marked Absent (No punch / no leave logged)",
-            })
+        emp = frappe.get_doc("Employee", employee_id)
+        
+        filters = {
+            "from_date": from_date.strftime("%Y-%m-%d"),
+            "to_date": to_date.strftime("%Y-%m-%d"),
+            "company": emp.company,
+            "employee": employee_id
+        }
+        
+        from mm_app.mm_hr.report.day_wise_in_out_report.day_wise_in_out_report import execute
+        columns, data, message = execute(filters)
+        
+        if not data:
+            return missing
+            
+        # Find the "In" row for this employee (usually the first row in their block, index 0)
+        row = data[0]
+        
+        # Columns 15 onward are the date columns
+        date_strs = []
+        for col in columns[15:]:
+            if isinstance(col, dict):
+                col_label = col.get("label", "")
+            else:
+                col_label = col.split("::")[0] if "::" in col else col
+            date_strs.append(col_label)
+            
+        for i, date_label in enumerate(date_strs):
+            if (15 + i) < len(row):
+                val = row[15 + i]
+                if isinstance(val, str) and ("<b>A</b>" in val or ">A<" in val):
+                    missing.append({
+                        "date": date_label,
+                        "reason": "Marked Absent (No punch / no leave logged)"
+                    })
 
         return missing
-    except Exception:
+    except Exception as e:
+        import frappe
+        frappe.log_error("AI Missing Att Error", str(e))
         return missing
 
 
@@ -462,7 +504,7 @@ def _attendance_detail_fields() -> list[str]:
         "status",
         "in_time",
         "out_time",
-        "working_hours",
+        "hours_worked",
         "leave_type",
     ]
     for col in ("check_in", "check_out", "task_description", "total_worked_time"):
@@ -531,7 +573,7 @@ def get_day_attendance_detail(employee_id: str, att_date: date) -> dict[str, Any
         if out_raw:
             detail["out_time"] = format_time(out_raw)
 
-        hours = rec.get("working_hours")
+        hours = rec.get("hours_worked")
         if hours is None and rec.get("total_worked_time"):
             hours = rec.get("total_worked_time")
         if flt(hours):
@@ -647,29 +689,47 @@ def build_last7_attendance_response(context: dict[str, Any]) -> str:
 
 def generate_monthly_attendance_excel(employee_id: str, employee_name: str = "") -> tuple[bytes, str]:
     """Generate Excel bytes for current month attendance (weekdays only)."""
+    import frappe
     from frappe.utils.xlsxutils import make_xlsx
-
-    curr = getdate(today())
-    month_label = formatdate(curr, "MMMM_YYYY")
-    days = get_month_to_date_attendance(employee_id)
-
-    rows: list[list[Any]] = [
-        ["Date", "Day", "Status", "Check In", "Check Out", "Hours", "Task"],
-    ]
-    for day in days:
-        rows.append([
-            formatdate(day["date"], "yyyy-MM-dd"),
-            formatdate(day["date"], "EEEE"),
-            day.get("status") or "",
-            day.get("in_time") or "",
-            day.get("out_time") or "",
-            day.get("hours") or "",
-            day.get("task") or "",
-        ])
-
+    import dateutil.relativedelta
+    from frappe.utils import getdate, nowdate
+    
+    today = getdate(nowdate())
+    if today.day > 25:
+        to_date = today.replace(day=25)
+        from_date = today.replace(day=26) - dateutil.relativedelta.relativedelta(months=1)
+    else:
+        to_date = today.replace(day=25) - dateutil.relativedelta.relativedelta(months=1)
+        from_date = today.replace(day=26) - dateutil.relativedelta.relativedelta(months=2)
+        
+    emp = frappe.get_doc("Employee", employee_id)
+    
+    filters = {
+        "from_date": from_date.strftime("%Y-%m-%d"),
+        "to_date": to_date.strftime("%Y-%m-%d"),
+        "company": emp.company,
+        "employee": employee_id
+    }
+    
+    try:
+        from mm_app.mm_hr.report.day_wise_in_out_report.day_wise_in_out_report import execute
+        columns, data, message = execute(filters)
+        
+        xlsx_columns = []
+        for col in columns:
+            if isinstance(col, dict):
+                xlsx_columns.append(col.get("label", ""))
+            else:
+                xlsx_columns.append(col.split(":")[0] if ":" in col else col)
+                
+        xlsx_data = [xlsx_columns] + data
+        xlsx = make_xlsx(xlsx_data, "Monthly Attendance")
+    except Exception as e:
+        frappe.log_error(title="AI Workplace Excel Error", message=str(e))
+        xlsx = make_xlsx([["Error generating report"]], "Error")
+        
     safe_name = (employee_name or employee_id or "Employee").replace("/", "-").replace(" ", "_")
-    filename = f"Attendance_{safe_name}_{month_label}.xlsx"
-    xlsx = make_xlsx(rows, "Attendance")
+    filename = f"Monthly_Attendance_{safe_name}_{from_date.strftime('%b%Y')}.xlsx"
     content = xlsx.getvalue() if hasattr(xlsx, "getvalue") else bytes(xlsx)
     return content, filename
 

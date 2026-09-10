@@ -3,7 +3,7 @@ from ai_workplace.conversation.handlers.base import ServiceHandler
 from ai_workplace.whatsapp.outbound import OutboundMessage
 from ai_workplace.conversation.manager import update_conversation, ConversationState
 from ai_workplace.conversation.orchestrator import log_ai_action
-from ai_workplace.services.response_helpers import wrap_with_menu_again
+from ai_workplace.services.response_helpers import wrap_with_menu_again, wrap_with_parent_menu
 
 class LeaveHandler:
     def can_handle(self, intent: str, state: str) -> bool:
@@ -23,21 +23,19 @@ class LeaveHandler:
             from ai_workplace.services.attendance_leave import build_leave_balance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_leave_balance_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_leave_balance"
             
         elif clean_intent in ("leave_apply", "att_leave_apply"):
-            from ai_workplace.services.attendance_leave import build_apply_leave_response
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_apply_leave_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            from ai_workplace.services.leave_apply import start_leave_application
+            outbound = start_leave_application(conv, context)
             action = "start_leave_application"
             
         elif clean_intent in ("leave_requests", "leave_history", "att_leave_history", "att_leave_requests"):
             from ai_workplace.services.attendance_leave import build_leave_requests_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_leave_requests_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_leave_requests"
 
         if outbound:
