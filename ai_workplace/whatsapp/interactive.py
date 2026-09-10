@@ -509,6 +509,27 @@ def build_flow_group_message(context: dict[str, Any], flow_group: str) -> Outbou
     lang = context.get("preferred_language", "English")
     prompt = get_flow_group_prompt(flow_group, context)
     items = get_flow_menu_items(flow_group, context)
+    
+    if len(items) > 3:
+        rows = []
+        for item in items[:10]:
+            title = _translate_service_title(item["key"], item["title"], lang)
+            desc = item.get("description") or title
+            rows.append({
+                "id": f"svc_{item['key']}",
+                "title": _truncate(title, 24),
+                "description": _truncate(desc, 72),
+            })
+        interactive = {
+            "type": "list",
+            "body": {"text": prompt},
+            "action": {
+                "button": _truncate("Select Option", 20),
+                "sections": [{"title": _truncate("Options", 24), "rows": rows}],
+            },
+        }
+        return OutboundMessage(body_text=prompt, interactive=interactive)
+
     buttons = [
         {
             "type": "reply",
@@ -545,3 +566,7 @@ def build_salary_slip_period_options_message(context: dict[str, Any]) -> Outboun
 def build_bank_letter_options_message(context: dict[str, Any]) -> OutboundMessage:
     """Bank selection buttons for bank letter download."""
     return build_flow_group_message(context, "bank_letter_select")
+
+def build_tax_certificate_period_options_message(context: dict[str, Any]) -> OutboundMessage:
+    """Three-button period picker for tax certificate download."""
+    return build_flow_group_message(context, "tax_certificate_period")

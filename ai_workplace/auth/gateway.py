@@ -18,6 +18,10 @@ import frappe
 PAYROLL_DOCUMENT_KEYS = frozenset(
     {
         "pay_tax_deduction",
+        "tax_certificate",
+        "tax_cert_current",
+        "tax_cert_previous",
+        "tax_cert_latest",
         "pay_bank_letter",
         "pay_bank_faysal",
         "pay_bank_scb",
@@ -29,6 +33,7 @@ PAYROLL_SALARY_SLIP_KEYS = frozenset(
         "pay_slip_1m",
         "pay_slip_3m",
         "pay_slip_6m",
+        "pay_slip_latest",
         "pay_download_slip",
         "pay_previous_slips",
     }

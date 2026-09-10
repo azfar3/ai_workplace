@@ -202,9 +202,10 @@ def build_letter_download_outbound(
     pdf_bytes: bytes,
     filename: str,
     caption: str,
+    parent_key: str = "main_menu",
 ) -> "OutboundMessage":
     from ai_workplace.whatsapp.outbound import OutboundMessage
-    from ai_workplace.services.response_helpers import wrap_with_menu_again
+    from ai_workplace.whatsapp.interactive import build_return_to_parent_button
 
     outbound = OutboundMessage(
         body_text=caption,
@@ -213,7 +214,7 @@ def build_letter_download_outbound(
         document_filename=filename,
         document_mimetype="application/pdf",
     )
-    menu = wrap_with_menu_again("", context)
-    if menu.follow_up:
-        outbound.follow_up = menu.follow_up
+    parent_btn = build_return_to_parent_button(context, parent_key)
+    if parent_btn:
+        outbound.follow_up = [parent_btn]
     return outbound

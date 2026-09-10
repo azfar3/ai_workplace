@@ -18,22 +18,42 @@ from frappe.utils.pdf import get_pdf
 REPORT_NAME = "CNIC Wise Salary Slip & Certificate of Deduction"
 
 
-def resolve_tax_certificate_fiscal_year() -> str:
-    """Resolve fiscal year the same way as the Portal download endpoint."""
-    current_fy = frappe.db.get_value(
+def resolve_tax_certificate_fiscal_year(period: str = "current", employee_id: str | None = None) -> str:
+    """Resolve fiscal year based on the requested period."""
+    if period == "latest" and employee_id:
+        latest_slip = frappe.db.get_all(
+            "Salary Slip",
+            filters={"employee": employee_id, "docstatus": 1},
+            fields=["start_date"],
+            order_by="start_date desc",
+            limit=1,
+        )
+        if latest_slip:
+            from erpnext.accounts.utils import get_fiscal_year
+            fy = get_fiscal_year(latest_slip[0].start_date)
+            if fy and fy[0]:
+                return fy[0]
+        # Fallback to current if no salary slip found
+        period = "current"
+
+    fiscal_years = frappe.db.get_all(
         "Fiscal Year",
         {"disabled": 0},
-        "name",
+        ["name", "year_start_date"],
         order_by="year_start_date desc",
     )
-    if not current_fy:
+    if not fiscal_years:
         frappe.throw(_("No Fiscal Year defined"))
 
-    fy_parts = current_fy.split("-")
+    selected_fy = fiscal_years[0].name
+    if period == "previous" and len(fiscal_years) > 1:
+        selected_fy = fiscal_years[1].name
+
+    fy_parts = selected_fy.split("-")
     if len(fy_parts) == 2 and fy_parts[0].isdigit() and fy_parts[1].isdigit():
         return f"{int(fy_parts[0])}-{int(fy_parts[1])}"
 
-    frappe.throw(_("Unexpected Fiscal Year format: {0}").format(current_fy))
+    return selected_fy
 
 
 def generate_tax_certificate_pdf(employee_id: str, fiscal_year: str | None = None) -> tuple[bytes, str]:
@@ -46,7 +66,7 @@ def generate_tax_certificate_pdf(employee_id: str, fiscal_year: str | None = Non
     if not company:
         frappe.throw(_("Employee company is not set."))
 
-    fy = fiscal_year or resolve_tax_certificate_fiscal_year()
+    fy = fiscal_year or resolve_tax_certificate_fiscal_year(employee_id=employee_id)
     report = frappe.get_doc("Report", REPORT_NAME)
     _columns, data = report.get_data(
         limit=100,
@@ -104,17 +124,27 @@ def build_tax_certificate_error(context: dict[str, Any]) -> str:
     )
 
 
-def build_tax_certificate_download_outbound(context: dict[str, Any]) -> "OutboundMessage":
+def build_tax_certificate_intro(context: dict[str, Any]) -> str:
+    lang = context.get("preferred_language", "English")
+    if lang == "Urdu":
+        return "🧾 *ٹیکس سرٹیفکیٹ*\n\nبراہ کرم مالی سال منتخب کریں۔"
+    if lang == "Roman Urdu":
+        return "🧾 *Tax Certificate*\n\nBarah karam fiscal year select karein."
+    return "🧾 *Tax Certificate*\n\nPlease select the fiscal year."
+
+
+def build_tax_certificate_download_outbound(context: dict[str, Any], period: str = "current") -> "OutboundMessage":
     """Build WhatsApp outbound message with Tax Certificate PDF attachment."""
     from ai_workplace.services.employee_letters import build_letter_download_outbound
-    from ai_workplace.services.response_helpers import wrap_with_menu_again
+    from ai_workplace.services.response_helpers import wrap_with_parent_menu
     from ai_workplace.whatsapp.outbound import OutboundMessage
 
     employee_id = context.get("employee") or ""
     if not employee_id:
-        return wrap_with_menu_again(
+        return wrap_with_parent_menu(
             _("Tax certificate download is only available for linked employees."),
             context,
+            "payroll",
         )
 
     erp_user = context.get("user")
@@ -125,12 +155,13 @@ def build_tax_certificate_download_outbound(context: dict[str, Any]) -> "Outboun
         elif prev_user == "Guest":
             frappe.set_user("Administrator")
 
-        fiscal_year = resolve_tax_certificate_fiscal_year()
+        fiscal_year = resolve_tax_certificate_fiscal_year(period, employee_id)
         pdf_bytes, filename = generate_tax_certificate_pdf(employee_id, fiscal_year)
         caption = build_tax_certificate_caption(context, fiscal_year)
-        return build_letter_download_outbound(context, pdf_bytes, filename, caption)
+        return build_letter_download_outbound(context, pdf_bytes, filename, caption, parent_key="payroll")
     except Exception:
         frappe.log_error(title="WhatsApp tax certificate PDF failed", message=frappe.get_traceback())
-        return wrap_with_menu_again(build_tax_certificate_error(context), context)
+        from ai_workplace.services.response_helpers import wrap_with_parent_menu
+        return wrap_with_parent_menu(build_tax_certificate_error(context), context, "payroll")
     finally:
         frappe.set_user(prev_user)

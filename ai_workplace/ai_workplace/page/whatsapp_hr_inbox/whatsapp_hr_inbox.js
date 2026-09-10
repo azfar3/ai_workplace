@@ -76,6 +76,7 @@ frappe.whatsapp_hr_inbox = {
 				<aside class="wa-sidebar">
 					<div class="wa-sidebar-header">
 						<span class="wa-live-dot"></span>${__("WhatsApp HR Inbox")}
+						<button class="wa-push-btn hidden p-0" title="${__('Enable Desktop Notifications')}" style="background: none; border: none; cursor: pointer; float: right; font-size: 16px;">🔔</button>
 					</div>
 					<div class="wa-filters">
 						<button class="wa-filter-btn active" data-filter="mine">${__("Active")} <span class="wa-tab-badge wa-tab-badge-mine hidden"></span></button>
@@ -164,9 +165,11 @@ frappe.whatsapp_hr_inbox = {
 		this.avatar_el = this.wrapper.find(".hr-inbox-avatar");
 		this.actions_el = this.wrapper.find(".wa-chat-header-actions");
 		this.back_btn = this.wrapper.find(".wa-back-btn");
+		this.push_btn = this.wrapper.find(".wa-push-btn");
 		this.inbox_el = this.wrapper;
 
 		this.init_mobile_nav();
+		this.init_push_notifications();
 
 		this.wrapper.find(".wa-filter-btn").on("click", (e) => {
 			this.current_filter = $(e.currentTarget).data("filter");
@@ -320,6 +323,136 @@ frappe.whatsapp_hr_inbox = {
 		this.handle_viewport_change();
 	},
 
+	init_push_notifications() {
+		if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+			return;
+		}
+		this.push_btn.removeClass("hidden");
+
+		navigator.serviceWorker.register('/assets/ai_workplace/js/sw.js')
+			.then(swReg => {
+				this.swRegistration = swReg;
+				return swReg.pushManager.getSubscription();
+			})
+			.then(subscription => {
+				this.isSubscribed = !(subscription === null);
+				this.update_push_btn_ui();
+			})
+			.catch(err => console.error("Service Worker Error", err));
+
+		this.push_btn.on("click", () => this.toggle_push_subscription());
+	},
+
+	update_push_btn_ui() {
+		if (this.isSubscribed) {
+			this.push_btn.css("opacity", "1");
+			this.push_btn.attr("title", __("Disable Desktop Notifications"));
+		} else {
+			this.push_btn.css("opacity", "0.5");
+			this.push_btn.attr("title", __("Enable Desktop Notifications"));
+		}
+	},
+
+	base64_url_to_uint8_array(base64UrlData) {
+		const padding = '='.repeat((4 - base64UrlData.length % 4) % 4);
+		const base64 = (base64UrlData + padding).replace(/\-/g, '+').replace(/_/g, '/');
+		const rawData = window.atob(base64);
+		const outputArray = new Uint8Array(rawData.length);
+		for (let i = 0; i < rawData.length; ++i) {
+			outputArray[i] = rawData.charCodeAt(i);
+		}
+		return outputArray;
+	},
+
+	toggle_push_subscription() {
+		if (this.isSubscribed) {
+			this.swRegistration.pushManager.getSubscription()
+				.then(subscription => {
+					if (subscription) {
+						return subscription.unsubscribe().then(() => {
+							frappe.call({
+								method: "ai_workplace.api.notifications.unsubscribe",
+								args: { endpoint: subscription.endpoint },
+								callback: () => {
+									this.isSubscribed = false;
+									this.update_push_btn_ui();
+									frappe.show_alert({ message: __("Desktop notifications disabled"), indicator: "blue" });
+								}
+							});
+						});
+					}
+				});
+		} else {
+			frappe.call({
+				method: "ai_workplace.api.notifications.get_vapid_public_key",
+				callback: (r) => {
+					if (!r.message) {
+						frappe.msgprint(__("Push notifications are not configured on the server."));
+						return;
+					}
+					const applicationServerKey = this.base64_url_to_uint8_array(r.message);
+					this.swRegistration.pushManager.subscribe({
+						userVisibleOnly: true,
+						applicationServerKey: applicationServerKey
+					})
+						.then(subscription => {
+							const sub = JSON.parse(JSON.stringify(subscription));
+							frappe.call({
+								method: "ai_workplace.api.notifications.subscribe",
+								args: {
+									endpoint: sub.endpoint,
+									p256dh: sub.keys.p256dh,
+									auth: sub.keys.auth,
+									user_agent: navigator.userAgent
+								},
+								callback: () => {
+									this.isSubscribed = true;
+									this.update_push_btn_ui();
+									frappe.show_alert({ message: __("Desktop notifications enabled"), indicator: "green" });
+								}
+							});
+						})
+						.catch(err => {
+							console.error("Failed to subscribe", err);
+							if (Notification.permission === 'denied') {
+								frappe.msgprint(__("Notification permission was denied."));
+							}
+						});
+				}
+			});
+		}
+	},
+
+	show_notification(payload, target_session) {
+		const title = payload.display_title || payload.display_name || payload.wa_id || "WhatsApp Message";
+		const body = payload.message || "📎 Media";
+		const notif_id = `wa_notif_${payload.meta_message_id || Date.now()}`;
+
+		if (localStorage.getItem(notif_id)) return;
+		localStorage.setItem(notif_id, "1");
+		setTimeout(() => localStorage.removeItem(notif_id), 10000);
+
+		if (!document.hidden) {
+			frappe.show_alert({
+				message: `🟢 <b>${title}</b><br>${body}`,
+				indicator: "green"
+			}, 5);
+		} else if (!this.isSubscribed && Notification.permission === "granted") {
+			const text = body || "";
+			const n_title = text ? `${title}: ${text}` : title;
+			const n = new Notification(n_title, {
+				body: `WhatsApp HR Inbox`,
+				icon: "/assets/frappe/images/frappe-framework-logo.svg",
+				tag: notif_id
+			});
+			n.onclick = () => {
+				window.focus();
+				this.load_session(target_session);
+				n.close();
+			};
+		}
+	},
+
 	_setup_realtime() {
 		const bind = () => {
 			try {
@@ -385,7 +518,9 @@ frappe.whatsapp_hr_inbox = {
 					media_file: payload.media_file || "",
 				});
 				this._update_compose_from_payload(payload);
-				this.play_notify();
+				if (document.hidden) {
+					this.play_notify();
+				}
 
 				// Automatically mark session read since agent is viewing this chat
 				this.mark_session_read_remote(this.current_session);
@@ -418,9 +553,14 @@ frappe.whatsapp_hr_inbox = {
 				this.render_banner(this._session_data);
 				this._update_compose(this._session_data);
 			}
+
+			if (payload.event === "inbound_message" && document.hidden) {
+				this.show_notification(payload, target_session);
+			}
 		} else if (payload.event === "inbound_message") {
 			// Play notification chime for background incoming message
 			this.play_notify();
+			this.show_notification(payload, target_session);
 		}
 	},
 

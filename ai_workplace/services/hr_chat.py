@@ -179,10 +179,43 @@ def publish_session_update(
     payload = _session_payload(session)
     if extra:
         payload.update(extra)
+        
     try:
-        # Emit immediately — callers commit before publishing. Using after_commit=True
-        # after an explicit commit drops events until a later unrelated transaction.
-        frappe.publish_realtime(REALTIME_EVENT, payload, room="all", after_commit=False)
+        users = set()
+        users.add("Administrator")
+        
+        # Add configured HR agents
+        configured = get_configured_hr_chat_agents(active_only=True)
+        users.update(configured)
+        
+        # Add HR Managers and System Managers
+        roles = ("HR Manager", "System Manager")
+        has_role = frappe.get_all("Has Role", filters={"role": ["in", roles]}, pluck="parent")
+        users.update(has_role)
+        
+        # Verify enabled
+        enabled_users = frappe.get_all("User", filters={"enabled": 1, "name": ["in", list(users)]}, pluck="name")
+        
+        # Publish privately
+        for u in enabled_users:
+            frappe.publish_realtime(REALTIME_EVENT, payload, user=u, after_commit=False)
+            
+            # Send Web Push for inbound messages
+            if extra and extra.get("event") == "inbound_message":
+                try:
+                    from ai_workplace.api.notifications import send_push_notification
+                    push_payload = {
+                        "conversation": session.name,
+                        "sender_name": session.display_name or session.wa_id,
+                        "message_preview": extra.get("message") or "📎 Media",
+                        "message_type": extra.get("message_type") or "text",
+                        "timestamp": str(extra.get("timestamp")),
+                        "url": f"/app/ai-workplace-admin?conversation={session.name}"
+                    }
+                    send_push_notification(u, push_payload)
+                except Exception as push_err:
+                    frappe.logger("ai_workplace").warning(f"Failed to send Web Push to {u}: {push_err}")
+                    
     except Exception as exc:
         frappe.logger("ai_workplace").warning(
             f"AI Workplace: Failed to publish hr_chat_update: {exc}"

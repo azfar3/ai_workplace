@@ -15,24 +15,20 @@ from ai_workplace.whatsapp.interactive import build_salary_slip_period_options_m
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
 
-def get_salary_slips_for_months(employee_id: str | None, months: int) -> list[dict[str, Any]]:
-    """Return submitted salary slips for the last N calendar months (excludes current month)."""
-    if not employee_id or months < 1:
+def get_latest_salary_slips(employee_id: str | None, limit: int = 1) -> list[dict[str, Any]]:
+    """Return the most recently submitted salary slips for the employee."""
+    if not employee_id or limit < 1:
         return []
-
-    today_date = getdate(today())
-    period_end = get_last_day(add_months(today_date, -1))
-    period_start = get_first_day(add_months(period_end, -(months - 1)))
 
     return frappe.db.get_all(
         "Salary Slip",
         filters={
             "employee": employee_id,
             "docstatus": 1,
-            "start_date": ["between", [period_start, period_end]],
         },
         fields=["name", "start_date", "end_date", "posting_date", "gross_pay", "net_pay"],
-        order_by="start_date asc",
+        order_by="start_date desc",
+        limit=limit,
     )
 
 
@@ -170,14 +166,21 @@ def build_salary_slip_download_outbound(
     )
 
     employee_id = context.get("employee") or ""
-    slips = get_salary_slips_for_months(employee_id, months)
+    limit = 1 if months == 0 else months
+    slips = get_latest_salary_slips(employee_id, limit)
+    if slips:
+        slips.reverse()
 
     def _wrap_error(body: str) -> OutboundMessage:
         if show_period_options_after:
+            from ai_workplace.services.response_helpers import wrap_salary_slip_period_options
             return wrap_salary_slip_period_options(body, context)
-        return wrap_with_menu_again(body, context)
+        from ai_workplace.services.response_helpers import wrap_with_parent_menu
+        return wrap_with_parent_menu(body, context, "payroll")
 
     if not slips:
+        if months == 0:
+            return _wrap_error(build_salary_slip_not_found(context, 1)) # Reuse 1 month error or customize
         return _wrap_error(build_salary_slip_not_found(context, months))
 
     documents: list[OutboundMessage] = []
@@ -200,13 +203,16 @@ def build_salary_slip_download_outbound(
             )
         )
 
-    from ai_workplace.whatsapp.interactive import build_show_menu_again_button
+    from ai_workplace.whatsapp.interactive import build_show_menu_again_button, build_return_to_parent_button
 
     if show_period_options_after:
-        tail = [build_salary_slip_period_options_message(context)]
+        tail = [
+            build_salary_slip_period_options_message(context),
+            build_return_to_parent_button(context, "payroll")
+        ]
     else:
-        menu_btn = build_show_menu_again_button(context)
-        tail = [menu_btn] if menu_btn else []
+        parent_btn = build_return_to_parent_button(context, "payroll")
+        tail = [parent_btn] if parent_btn else []
 
     if len(documents) == 1:
         documents[0].follow_up = tail

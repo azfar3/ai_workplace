@@ -38,13 +38,13 @@ FALLBACK_SERVICES: dict[str, dict[str, Any]] = {
         "description": "System help and language preference",
         "aliases": ["help", "language", "change language"],
     },
-    "pay_slip_1m": {
-        "key": "pay_slip_1m",
-        "title": "📄 Last Month",
-        "title_urdu": "📄 1 مہینہ",
-        "title_roman_urdu": "📄 Last Month",
+    "pay_slip_latest": {
+        "key": "pay_slip_latest",
+        "title": "📄 Latest Generated",
+        "title_urdu": "📄 تازہ ترین",
+        "title_roman_urdu": "📄 Latest Generated",
         "mode": "available",
-        "description": "Last month payslip",
+        "description": "Latest generated payslip",
     },
     "pay_slip_3m": {
         "key": "pay_slip_3m",
@@ -61,6 +61,32 @@ FALLBACK_SERVICES: dict[str, dict[str, Any]] = {
         "title_roman_urdu": "📄 Last 6 Months",
         "mode": "available",
         "description": "Last 6 months payslips",
+    },
+    "tax_cert_current": {
+        "key": "tax_cert_current",
+        "title": "🧾 Current Year",
+        "mode": "available",
+        "description": "Current fiscal year",
+    },
+    "tax_cert_previous": {
+        "key": "tax_cert_previous",
+        "title": "🧾 Previous Year",
+        "mode": "available",
+        "description": "Previous fiscal year",
+    },
+    "tax_cert_latest": {
+        "key": "tax_cert_latest",
+        "title": "🧾 Last Generated",
+        "mode": "available",
+        "description": "Latest salary slip year",
+    },
+    "pay_slip_latest": {
+        "key": "pay_slip_latest",
+        "title": "📄 Last",
+        "title_urdu": "📄 پچھلی",
+        "title_roman_urdu": "📄 Last",
+        "mode": "available",
+        "description": "Latest generated payslip",
     },
 }
 

@@ -63,3 +63,15 @@ def wrap_bank_letter_options(body_text: str, context: dict[str, Any]) -> Outboun
     msg = OutboundMessage(body_text=body_text)
     msg.follow_up = [build_bank_letter_options_message(context)]
     return msg
+
+
+def wrap_tax_certificate_period_options(body_text: str, context: dict[str, Any]) -> OutboundMessage:
+    """Attach tax certificate period buttons after intro or error."""
+    from ai_workplace.whatsapp.interactive import build_tax_certificate_period_options_message
+    from ai_workplace.whatsapp.interactive import build_return_to_parent_button
+    msg = OutboundMessage(body_text=body_text)
+    msg.follow_up = [
+        build_tax_certificate_period_options_message(context),
+        build_return_to_parent_button(context, "payroll")
+    ]
+    return msg
