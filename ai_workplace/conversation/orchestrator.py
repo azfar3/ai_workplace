@@ -1184,6 +1184,27 @@ def process_message(
                 if _intent_key in ("get_menu_help", "main_menu", "menu_help") or _tool_name == "get_menu_help":
                     menu_out, _ = build_menu(context)
                     return menu_out
+
+                _svc_key = "my_profile" if _intent_key in ("my_profile", "my_designation", "my_department", "my_branch") or _tool_name == "get_employee_profile" else _intent_key
+                from ai_workplace.security.authorization import requires_pin
+                if not skip_pin_check and requires_pin(_svc_key):
+                    from ai_workplace.security.pin_flow import maybe_gate_service
+                    pin_gate = maybe_gate_service(conv, context, _svc_key)
+                    if pin_gate:
+                        log_ai_action(
+                            trace_id=trace_id,
+                            conversation_name=conv.name,
+                            whatsapp_identity=conv.whatsapp_identity,
+                            erp_user=conv.erp_user or "",
+                            employee=conv.employee or "",
+                            intent=_intent_key,
+                            service=_svc_key,
+                            action="pin_gate",
+                            result=pin_gate.log_text(),
+                            status="Success",
+                        )
+                        return pin_gate
+
                 from ai_workplace.ai.entity_extractor import EntityExtractor
                 _entities = EntityExtractor.extract(_intent_key, clean_text)
                 _raw_data = run_tool(_tool_name, context, **_entities)

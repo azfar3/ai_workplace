@@ -24,7 +24,7 @@ def get_latest_salary_slip(employee: str) -> dict[str, Any]:
     slips = frappe.db.get_all(
         "Salary Slip",
         filters={"employee": employee, "docstatus": ["!=", 2]},
-        fields=["name", "start_date", "end_date", "net_pay", "rounded_total", "gross_pay"],
+        fields=["name", "start_date", "end_date", "net_pay", "rounded_total", "gross_pay", "currency"],
         order_by="creation desc",
         limit=1,
     )
@@ -32,11 +32,13 @@ def get_latest_salary_slip(employee: str) -> dict[str, Any]:
         return {}
     s = slips[0]
     pay = s.get("rounded_total") or s.get("net_pay") or s.get("gross_pay") or 0.0
+    curr = s.get("currency") or (frappe.db.get_default("currency") if getattr(frappe, "db", None) else None) or "PKR"
     return {
         "salary_slip_name": s.get("name"),
         "start_date": str(s.get("start_date")),
         "end_date": str(s.get("end_date")),
-        "net_pay": f"{pay:,.2f}" if isinstance(pay, (int, float)) else str(pay)
+        "currency": curr,
+        "net_pay": f"{curr} {pay:,.2f}" if isinstance(pay, (int, float)) else f"{curr} {pay}"
     }
 
 def get_tax_details(employee: str) -> dict[str, Any]:
@@ -45,7 +47,7 @@ def get_tax_details(employee: str) -> dict[str, Any]:
     slips = frappe.db.get_all(
         "Salary Slip",
         filters={"employee": employee, "docstatus": ["!=", 2]},
-        fields=["name", "start_date", "end_date", "total_deduction"],
+        fields=["name", "start_date", "end_date", "total_deduction", "currency"],
         order_by="creation desc",
         limit=1,
     )
@@ -53,11 +55,13 @@ def get_tax_details(employee: str) -> dict[str, Any]:
         return {}
     s = slips[0]
     ded = s.get("total_deduction") or 0.0
+    curr = s.get("currency") or (frappe.db.get_default("currency") if getattr(frappe, "db", None) else None) or "PKR"
     return {
         "salary_slip_name": s.get("name"),
         "start_date": str(s.get("start_date")),
         "end_date": str(s.get("end_date")),
-        "total_deductions": f"{ded:,.2f}" if isinstance(ded, (int, float)) else str(ded)
+        "currency": curr,
+        "total_deductions": f"{curr} {ded:,.2f}" if isinstance(ded, (int, float)) else f"{curr} {ded}"
     }
 
 def get_office_timings(employee: Optional[str] = None) -> dict[str, Any]:

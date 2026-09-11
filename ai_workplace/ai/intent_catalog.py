@@ -305,6 +305,36 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
     # EMPLOYEE PROFILE
     # ══════════════════════════════════════════════════════════════════════════
 
+    "my_profile": {
+        "category": "employee",
+        "intents": ["my_profile", "show_profile", "view_profile", "profile_details"],
+        "aliases": [
+            "show my profile",
+            "view my profile",
+            "my profile details",
+            "profile details",
+            "show profile",
+            "view profile",
+            "my profile",
+            "profile info",
+            "profile information",
+            "meri profile",
+            "mera profile",
+            "profile dikhao",
+            "profile details batao",
+            "employee profile",
+            "my employee profile",
+            "show my profile details",
+        ],
+        "tool": "get_employee_profile",
+        "requires_authentication": True,
+        "read_only": True,
+        "requires_confirmation": False,
+        "llm_allowed": False,
+        "response_mode": "deterministic",
+        "source_type": "ERP",
+    },
+
     "my_designation": {
         "category": "employee",
         "intents": ["designation", "job_title", "my_designation"],

@@ -93,6 +93,7 @@ Name: {context.employee_name or 'Guest'}
 Role: {context.person_type}
 Language: {context.language}
 Allowed Services: {', '.join(context.allowed_intents) if context.allowed_intents else 'None'}
+Default Currency: PKR (Pakistani Rupee / Rs.)
 
 If the user asks a general question, return requires_tool=false and provide a direct_response.
 If the user asks for their leave balance, return intent='leave_balance', requires_tool=true, and tool_name='get_leave_balance'.

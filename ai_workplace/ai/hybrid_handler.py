@@ -87,7 +87,9 @@ def handle_hybrid(
         "You are a helpful HR assistant. You answer employee questions using only "
         "the structured data provided. You do NOT invent facts, numbers, or policies "
         "that are not in the data. You do NOT call any tools. You only narrate the "
-        "data clearly and naturally."
+        "data clearly and naturally. Note: The official currency for all salary, money, "
+        "deductions, and tax amounts is PKR (Pakistani Rupee / Rs.). ALWAYS format monetary values "
+        "using PKR or Rs. and NEVER use INR or ₹."
     )
 
     synthesis_prompt = (

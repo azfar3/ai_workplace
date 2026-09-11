@@ -469,6 +469,7 @@ def open_session(
             session.ready_for_hr = 1
             if session.status in ("Pending Intake", "Closed", "Expired"):
                 session.status = "Queued"
+                session.assigned_to = None
         session.off_hours_notice_sent = 0
         session.last_user_message_at = now
         session.session_window_expires_at = _compute_window_expires(now)
@@ -476,6 +477,7 @@ def open_session(
             session.closed_at = None
             session.closed_by = None
             session.opened_at = now
+            session.assigned_to = None
 
         session.flags.ignore_links = True
         session.save(ignore_permissions=True)
@@ -499,6 +501,7 @@ def open_session(
     session.contact_hr_selected = 1 if contact_hr_selected else 0
     session.ready_for_hr = 1 if ready_for_hr else 0
     session.status = "Queued" if ready_for_hr else "Pending Intake"
+    session.assigned_to = None
     session.opened_at = now
     session.last_user_message_at = now
     session.session_window_expires_at = _compute_window_expires(now)
@@ -737,44 +740,24 @@ def close_session(
                         or "English"
                     )
 
-                if reason == "inactivity":
-                    if lang == "Urdu":
-                        close_msg = (
-                            "💬 *HR لائیو چیٹ سیشن ختم ہو گیا*\n\n"
-                            "12 گھنٹے تک کوئی پیغام نہ ہونے کی وجہ سے آپ کا HR چیٹ سیشن خودکار طور پر بند کر دیا گیا ہے۔ ⌛\n\n"
-                            "اگر آپ کو مزید کسی مدد کی ضرورت ہے، تو نیچے دیے گئے مینو سے انتخاب کریں یا پیغام بھیجیں۔"
-                        )
-                    elif lang == "Roman Urdu":
-                        close_msg = (
-                            "💬 *HR Live Chat Session Closed*\n\n"
-                            "12 ghante tak koi activity na hone ki wajah se aap ka HR chat session auto close ho gaya hai. ⌛\n\n"
-                            "Agar aap ko mazeed kisi madad ki zarurat hai, toh neeche diye gaye menu se intikhab karein ya message bhejein."
-                        )
-                    else:
-                        close_msg = (
-                            "💬 *HR Live Chat Session Closed*\n\n"
-                            "Your live chat session with HR support was automatically closed due to 12 hours of inactivity. ⌛\n\n"
-                            "If you need further assistance, please select an option from the menu below or reply anytime."
-                        )
+                if lang == "Urdu":
+                    close_msg = (
+                        "💬 *HR چیٹ سیشن ختم ہو گیا*\n\n"
+                        "آپ کا HR چیٹ سیشن ختم ہو گیا ہے۔ 🙏\n\n"
+                        "اگر آپ کو مزید کسی مدد کی ضرورت ہے، تو نیچے دیے گئے مینو سے انتخاب کریں یا پیغام بھیجیں۔"
+                    )
+                elif lang == "Roman Urdu":
+                    close_msg = (
+                        "💬 *HR Chat Session Ended*\n\n"
+                        "Aap ka HR chat session khatam ho gaya hai. 🙏\n\n"
+                        "Agar aap ko mazeed kisi madad ki zarurat hai, toh neeche diye gaye menu se intikhab karein ya message bhejein."
+                    )
                 else:
-                    if lang == "Urdu":
-                        close_msg = (
-                            "💬 *HR لائیو چیٹ سیشن ختم ہو گیا*\n\n"
-                            "HR سپورٹ کے ساتھ آپ کا چیٹ سیشن مکمل ہو چکا ہے۔ امید ہے آپ کی مکمل رہنمائی ہوئی ہوگی! 🙏\n\n"
-                            "اگر آپ کو مزید کسی مدد کی ضرورت ہے، تو نیچے دیے گئے مینو سے انتخاب کریں یا پیغام بھیجیں۔"
-                        )
-                    elif lang == "Roman Urdu":
-                        close_msg = (
-                            "💬 *HR Live Chat Session Khatam Ho Gaya*\n\n"
-                            "HR support ke sath aap ka chat session complete ho gaya hai. Umeed hai aap ki mukammal madad hui hogi! 🙏\n\n"
-                            "Agar aap ko mazeed kisi madad ki zarurat hai, toh neeche diye gaye menu se intikhab karein ya message bhejein."
-                        )
-                    else:
-                        close_msg = (
-                            "💬 *HR Live Chat Session Ended*\n\n"
-                            "Your live chat session with HR support has been closed. We hope we were able to assist you effectively! 🙏\n\n"
-                            "If you need further assistance, please select an option from the menu below or reply anytime."
-                        )
+                    close_msg = (
+                        "💬 *HR Chat Session Ended*\n\n"
+                        "Your HR chat session has been ended. 🙏\n\n"
+                        "If you need further assistance, please select an option from the menu below or reply anytime."
+                    )
 
                 send_text_message(phone, close_msg)
 
@@ -1487,6 +1470,7 @@ def get_inbox_sessions(
 ) -> list[dict[str, Any]]:
     user = frappe.session.user
     filters: dict[str, Any] = _inbox_base_filters()
+    or_filters: Optional[list[dict[str, Any]]] = None
 
     access_role = get_hr_agent_role_access(user)
 
@@ -1503,19 +1487,24 @@ def get_inbox_sessions(
     else:
         if status_filter == "queue":
             filters["status"] = "Queued"
+            or_filters = [{"assigned_to": ["is", "not set"]}]
         elif status_filter == "mine":
             filters["assigned_to"] = user
             filters["status"] = ["in", ["Assigned", "Active"]]
         elif status_filter == "closed":
             filters["status"] = "Closed"
+            or_filters = [{"assigned_to": ["is", "not set"]}, {"assigned_to": user}]
         elif status_filter == "expired":
             filters["status"] = "Expired"
+            or_filters = [{"assigned_to": ["is", "not set"]}, {"assigned_to": user}]
         else:
             filters["status"] = ["in", list(INBOX_STATUSES)]
+            or_filters = [{"assigned_to": ["is", "not set"]}, {"assigned_to": user}]
 
     sessions = frappe.get_all(
         "HR Live Chat Session",
         filters=filters,
+        or_filters=or_filters,
         fields=[
             "name",
             "status",
@@ -1678,9 +1667,11 @@ def get_inbox_tab_counts() -> dict[str, int]:
     # Queue count
     queue_filters = _inbox_base_filters()
     queue_filters["status"] = "Queued"
+    queue_or_filters = [{"assigned_to": ["is", "not set"]}]
     queue_sessions = frappe.get_all(
         "HR Live Chat Session",
         filters=queue_filters,
+        or_filters=queue_or_filters,
         fields=["name", "last_user_message_at", "last_hr_reply_at"],
     )
     queue_count = len(queue_sessions)
@@ -1701,14 +1692,35 @@ def get_inbox_tab_counts() -> dict[str, int]:
         if last_u and (not last_h or last_u > last_h):
             mine_unread += 1
 
+    # Closed count
+    closed_filters = _inbox_base_filters()
+    closed_filters["status"] = "Closed"
+    if access_role == "Assigned HR User (View & Reply Assigned Only)":
+        closed_filters["assigned_to"] = user
+        closed_or_filters = None
+    else:
+        closed_or_filters = [{"assigned_to": ["is", "not set"]}, {"assigned_to": user}]
+    closed_sessions = frappe.get_all(
+        "HR Live Chat Session",
+        filters=closed_filters,
+        or_filters=closed_or_filters,
+        fields=["name"],
+    )
+    closed_count = len(closed_sessions)
+
     # All unread count
     all_filters = _inbox_base_filters()
     all_filters["status"] = ["in", list(INBOX_STATUSES)]
     if access_role == "Assigned HR User (View & Reply Assigned Only)":
         all_filters["assigned_to"] = user
+        all_or_filters = None
+    else:
+        all_or_filters = [{"assigned_to": ["is", "not set"]}, {"assigned_to": user}]
+
     all_sessions = frappe.get_all(
         "HR Live Chat Session",
         filters=all_filters,
+        or_filters=all_or_filters,
         fields=["name", "last_user_message_at", "last_hr_reply_at"],
     )
     all_unread = 0
@@ -1721,5 +1733,6 @@ def get_inbox_tab_counts() -> dict[str, int]:
     return {
         "queue": queue_count,
         "mine_unread": mine_unread,
+        "closed": closed_count,
         "all_unread": all_unread,
     }

@@ -138,13 +138,21 @@ class ResponseFormatter:
     def format_salary_slip(data: dict) -> str:
         if not data:
             return "💵 I couldn't find your latest salary slip. Please contact HR if you believe this is an error."
-        return f"💵 *Latest Salary Slip*\n\nSlip Name: {data.get('salary_slip_name')}\nPeriod: {data.get('start_date')} to {data.get('end_date')}\nNet Pay: {data.get('net_pay')}"
+        curr = data.get("currency") or "PKR"
+        net_pay = data.get("net_pay")
+        if net_pay and not any(c in str(net_pay) for c in ["PKR", "Rs"]):
+            net_pay = f"{curr} {net_pay}"
+        return f"💵 *Latest Salary Slip*\n\nSlip Name: {data.get('salary_slip_name')}\nPeriod: {data.get('start_date')} to {data.get('end_date')}\nNet Pay: {net_pay}"
 
     @staticmethod
     def format_tax_details(data: dict) -> str:
         if not data:
             return "🧾 I couldn't find your latest tax deduction details."
-        return f"🧾 *Latest Tax Deductions*\n\nSlip Name: {data.get('salary_slip_name')}\nPeriod: {data.get('start_date')} to {data.get('end_date')}\nTotal Deductions: {data.get('total_deductions')}"
+        curr = data.get("currency") or "PKR"
+        tot_ded = data.get("total_deductions")
+        if tot_ded and not any(c in str(tot_ded) for c in ["PKR", "Rs"]):
+            tot_ded = f"{curr} {tot_ded}"
+        return f"🧾 *Latest Tax Deductions*\n\nSlip Name: {data.get('salary_slip_name')}\nPeriod: {data.get('start_date')} to {data.get('end_date')}\nTotal Deductions: {tot_ded}"
 
     @staticmethod
     def format_leave_history(data: Any) -> str:

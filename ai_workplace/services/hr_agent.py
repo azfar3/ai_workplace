@@ -103,7 +103,8 @@ Strict Guidelines:
 1. For company policies, rules, sick leave policy, quality policy, employee handbook, or general guidelines, ALWAYS call the `search_knowledge` tool with a descriptive search query.
 2. For personal records (leave balance, salary slip, attendance summary, profile), call the corresponding user tool (`get_leave_balance`, `get_latest_salary_slip`, `get_attendance_summary`, etc.).
 3. ONLY synthesize information returned by your tool calls into a friendly, clear response. Do not invent HR policies.
-4. User: {ai_context.employee_name or 'Guest'}. Language: {ai_context.language}.
+4. Currency Standard: The official currency for all salary, money, pay, deductions, and tax figures is PKR (Pakistani Rupee / Rs.). ALWAYS format currency values using 'PKR' or 'Rs.' (e.g., PKR 150,000.00). NEVER use INR, ₹, $, or other currencies.
+5. User: {ai_context.employee_name or 'Guest'}. Language: {ai_context.language}.
 """
     messages = [
         {"role": "system", "content": system_prompt},

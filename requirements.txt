@@ -1,0 +1,4 @@
+pywebpush>=1.14.0
+cryptography>=41.0.0
+phonenumbers>=8.13.0
+requests>=2.28.0

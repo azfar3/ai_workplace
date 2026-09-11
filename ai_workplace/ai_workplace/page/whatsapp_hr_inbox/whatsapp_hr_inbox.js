@@ -573,15 +573,15 @@ frappe.whatsapp_hr_inbox = {
 			return (status === "Assigned" || status === "Active") && assigned === user;
 		}
 		if (this.current_filter === "queue") {
-			return status === "Queued";
+			return status === "Queued" && !assigned;
 		}
 		if (this.current_filter === "closed") {
-			return status === "Closed";
+			return status === "Closed" && (!assigned || assigned === user);
 		}
 		if (this.current_filter === "all") {
-			return ["Queued", "Assigned", "Active", "Closed", "Expired"].includes(status);
+			return ["Queued", "Assigned", "Active", "Closed", "Expired"].includes(status) && (!assigned || assigned === user);
 		}
-		return true;
+		return (!assigned || assigned === user);
 	},
 
 	sync_sidebar_item(payload) {

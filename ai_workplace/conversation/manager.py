@@ -291,7 +291,7 @@ def process_expired_conversation(
         lang = conv.preferred_language or "English"
         if lang == "Urdu":
             bye_text = (
-                "غیرفعالیت کی وجہ سے آپ کا سیشن ختم کر دیا گیا ہے۔ خدا حافظ! 👋\n\n"
+                "آپ کا سیشن ختم ہو گیا ہے۔ خدا حافظ! 👋\n\n"
                 "آپ کا دن اچھا گزرے۔\n\n"
                 "⭐ *آج آپ کا تجربہ کیسا رہا؟*\n"
                 "براہ کرم 1 سے 5 تک کی درجہ بندی کریں:\n"
@@ -304,7 +304,7 @@ def process_expired_conversation(
             )
         elif lang == "Roman Urdu":
             bye_text = (
-                "Ghair-faaliyat ki wajah se aap ka session close ho gaya hai. Khuda Hafiz! 👋\n\n"
+                "Aap ka session khatam ho gaya hai. Khuda Hafiz! 👋\n\n"
                 "Aap ka din accha guzre.\n\n"
                 "⭐ *Aaj aap ka experience kaisa raha?*\n"
                 "Barah-e-karam 1 se 5 rating dein:\n"
@@ -317,7 +317,7 @@ def process_expired_conversation(
             )
         else:
             bye_text = (
-                "Your session has expired due to inactivity. Goodbye! 👋\n\n"
+                "Your session has ended. Goodbye! 👋\n\n"
                 "Have a great day!\n\n"
                 "⭐ *How was your experience today?*\n"
                 "Please rate your session from 1 to 5:\n"
