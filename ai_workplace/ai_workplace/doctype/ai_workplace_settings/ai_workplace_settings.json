@@ -41,7 +41,11 @@
   "embedding_model",
   "embedding_dimensions",
   "rag_keyword_weight",
-  "rag_semantic_weight"
+  "rag_semantic_weight",
+  "section_web_push",
+  "vapid_public_key",
+  "vapid_private_key",
+  "vapid_subject"
  ],
  "fields": [
   {
@@ -257,6 +261,27 @@
    "fieldname": "rag_semantic_weight",
    "fieldtype": "Float",
    "label": "RAG Semantic Weight"
+  },
+  {
+   "fieldname": "section_web_push",
+   "fieldtype": "Section Break",
+   "label": "Web Push Notifications (VAPID)"
+  },
+  {
+   "fieldname": "vapid_public_key",
+   "fieldtype": "Small Text",
+   "label": "VAPID Public Key"
+  },
+  {
+   "fieldname": "vapid_private_key",
+   "fieldtype": "Password",
+   "label": "VAPID Private Key"
+  },
+  {
+   "default": "mailto:admin@example.com",
+   "fieldname": "vapid_subject",
+   "fieldtype": "Data",
+   "label": "VAPID Subject"
   }
  ],
  "icon": "fa fa-cog",

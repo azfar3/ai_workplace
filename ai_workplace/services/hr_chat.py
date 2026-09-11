@@ -196,20 +196,37 @@ def publish_session_update(
         # Verify enabled
         enabled_users = frappe.get_all("User", filters={"enabled": 1, "name": ["in", list(users)]}, pluck="name")
         
+        # Determine push notification target users
+        push_target_users = set()
+        if extra and extra.get("event") in ("inbound_message", "session_opened", "queued"):
+            if session.assigned_to and session.status in ("Assigned", "Active"):
+                # Active / Assigned chat: send push ONLY to assigned user
+                if session.assigned_to in enabled_users:
+                    push_target_users.add(session.assigned_to)
+            else:
+                # Queued / Unassigned chat: send push to all Main HR users
+                for u in enabled_users:
+                    if get_hr_agent_role_access(u) == "Main HR User (View & Reply All)":
+                        push_target_users.add(u)
+
         # Publish privately
         for u in enabled_users:
             frappe.publish_realtime(REALTIME_EVENT, payload, user=u, after_commit=False)
             
-            # Send Web Push for inbound messages
-            if extra and extra.get("event") == "inbound_message":
+            # Send Web Push for target users
+            if u in push_target_users:
                 try:
                     from ai_workplace.api.notifications import send_push_notification
+                    msg_preview = extra.get("message") if extra else None
+                    if not msg_preview:
+                        msg_preview = "New chat queued" if extra and extra.get("event") in ("session_opened", "queued") else "📎 Media"
+
                     push_payload = {
                         "conversation": session.name,
                         "sender_name": session.display_name or session.wa_id,
-                        "message_preview": extra.get("message") or "📎 Media",
-                        "message_type": extra.get("message_type") or "text",
-                        "timestamp": str(extra.get("timestamp")),
+                        "message_preview": msg_preview,
+                        "message_type": extra.get("message_type") if extra else "text",
+                        "timestamp": str((extra.get("timestamp") if extra else None) or frappe.utils.now()),
                         "url": f"/app/ai-workplace-admin?conversation={session.name}"
                     }
                     send_push_notification(u, push_payload)

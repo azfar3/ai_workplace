@@ -48,7 +48,10 @@ def unsubscribe(endpoint):
 def get_vapid_public_key():
     if not frappe.session.user or frappe.session.user == "Guest":
         return None
-    return frappe.conf.get("vapid_public_key")
+    pub_key = frappe.db.get_single_value("AI Workplace Settings", "vapid_public_key")
+    if not pub_key:
+        pub_key = frappe.conf.get("vapid_public_key")
+    return pub_key
 
 def send_push_notification(user, payload):
     frappe.enqueue(
@@ -66,9 +69,10 @@ def _send_push_notification_job(user, payload):
         frappe.logger("ai_workplace").warning("pywebpush not installed. Cannot send push notification.")
         return
 
-    vapid_private_key = frappe.conf.get("vapid_private_key")
-    vapid_public_key = frappe.conf.get("vapid_public_key")
-    vapid_subject = frappe.conf.get("vapid_subject", "mailto:admin@example.com")
+    settings = frappe.get_single("AI Workplace Settings")
+    vapid_private_key = settings.get_password("vapid_private_key") if settings.vapid_private_key else frappe.conf.get("vapid_private_key")
+    vapid_public_key = settings.vapid_public_key or frappe.conf.get("vapid_public_key")
+    vapid_subject = settings.vapid_subject or frappe.conf.get("vapid_subject", "mailto:admin@example.com")
     
     if not vapid_private_key or not vapid_public_key:
         return
