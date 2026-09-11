@@ -71,12 +71,6 @@ app_include_css = "/assets/ai_workplace/css/whatsapp_hr_inbox.css"
 after_install = "ai_workplace.install.after_install"
 after_migrate = "ai_workplace.install.after_migrate"
 
-scheduler_events = {
-	"daily": [
-		"ai_workplace.ai.indexer.reindex_stale_sources",
-	],
-}
-
 # Uninstallation
 # ------------
 
