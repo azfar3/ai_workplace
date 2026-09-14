@@ -240,8 +240,13 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
 
     "latest_salary_slip": {
         "category": "payroll",
-        "intents": ["latest_salary_slip", "salary_slip", "show_salary_slip", "payslip"],
+        "intents": ["latest_salary_slip", "salary_slip", "show_salary_slip", "payslip", "my_salary", "salary"],
         "aliases": [
+            "what is my salary",
+            "what is my salary?",
+            "what's my salary",
+            "what is my current salary",
+            "what is my net pay",
             "show my salary slip",
             "salary slip",
             "show my payslip",
@@ -252,6 +257,11 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
             "my salary slip",
             "get my payslip",
             "view salary slip",
+            "my salary",
+            "salary kitni hai",
+            "meri salary kitni hai",
+            "meri salary",
+            "salary",
         ],
         "tool": "get_latest_salary_slip",
         "requires_authentication": True,

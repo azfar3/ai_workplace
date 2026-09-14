@@ -104,7 +104,13 @@ Strict Guidelines:
 2. For personal records (leave balance, salary slip, attendance summary, profile), call the corresponding user tool (`get_leave_balance`, `get_latest_salary_slip`, `get_attendance_summary`, etc.).
 3. ONLY synthesize information returned by your tool calls into a friendly, clear response. Do not invent HR policies.
 4. Currency Standard: The official currency for all salary, money, pay, deductions, and tax figures is PKR (Pakistani Rupee / Rs.). ALWAYS format currency values using 'PKR' or 'Rs.' (e.g., PKR 150,000.00). NEVER use INR, ₹, $, or other currencies.
-5. User: {ai_context.employee_name or 'Guest'}. Language: {ai_context.language}.
+5. WhatsApp Formatting & Style Standard:
+   - NEVER use Markdown tables (`| ... |` or `|---|`). Always format tabular data using clean bullet points (`•`) and bold headers.
+   - NEVER use HTML tags (`<br>`, `<b>`, `<i>`, etc.). Use plain line breaks for newlines.
+   - Use WhatsApp single asterisks `*text*` for bold text (e.g., *WhatsApp*). NEVER use double asterisks `**text**`.
+   - Use single underscores `_text_` for italics if needed.
+   - Keep layout clean and scannable with relevant emojis and section headers.
+6. User: {ai_context.employee_name or 'Guest'}. Language: {ai_context.language}.
 """
     messages = [
         {"role": "system", "content": system_prompt},
@@ -139,6 +145,10 @@ Strict Guidelines:
             # 5. Redact sensitive text (like PII) using the evidence gateway
             from ai_workplace.ai.evidence import redact_sensitive_text
             final_text = redact_sensitive_text(final_text)
+            
+            # 6. Sanitize and format for WhatsApp compliance (strip tables, HTML <br>, **bold**)
+            from ai_workplace.ai.response_formatter import ResponseFormatter
+            final_text = ResponseFormatter.sanitize_whatsapp_text(final_text)
             
             # Log final response safely
             try:

@@ -25,6 +25,9 @@ PAYROLL_DOCUMENT_KEYS = frozenset(
         "pay_bank_letter",
         "pay_bank_faysal",
         "pay_bank_scb",
+        "tax_deductions",
+        "get_tax_details",
+        "pay_tax_deduction",
     }
 )
 
@@ -36,6 +39,9 @@ PAYROLL_SALARY_SLIP_KEYS = frozenset(
         "pay_slip_latest",
         "pay_download_slip",
         "pay_previous_slips",
+        "latest_salary_slip",
+        "my_salary",
+        "get_latest_salary_slip",
     }
 )
 
@@ -50,6 +56,13 @@ PROFILE_FLOW_KEYS = frozenset(
         "prof_doc_upload",
         "prof_education_ticket",
         "prof_work_history_ticket",
+        "my_profile",
+        "my_designation",
+        "my_department",
+        "my_branch",
+        "get_employee_profile",
+        "prof_summary",
+        "prof_view",
     }
 )
 
@@ -190,6 +203,8 @@ def authorize(
         "pay_bank_scb",
         "former_payslip",
         "former_letter",
+        "tax_deductions",
+        "get_tax_details",
     ):
         if (
             "payroll" in allowed_services

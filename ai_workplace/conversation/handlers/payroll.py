@@ -11,7 +11,7 @@ class PayrollHandler:
         return (
             clean.startswith("pay_")
             or intent.startswith("svc_pay_")
-            or clean in ("former_payslip", "pay_slip", "pay_previous_slips", "pay_slip_latest", "pay_slip_3m", "pay_slip_6m")
+            or clean in ("former_payslip", "pay_slip", "pay_previous_slips", "pay_slip_latest", "pay_slip_3m", "pay_slip_6m", "latest_salary_slip", "my_salary", "tax_deductions")
             or clean in ("tax_cert_current", "tax_cert_previous", "tax_cert_latest")
         )
 
@@ -21,8 +21,26 @@ class PayrollHandler:
         clean_intent = intent.replace("svc_", "")
         text_lower = (clean_text or "").strip().lower()
         
+        if clean_intent in ("latest_salary_slip", "my_salary"):
+            from ai_workplace.ai.tools import run_tool
+            from ai_workplace.ai.response_formatter import ResponseFormatter
+            raw_data = run_tool("get_latest_salary_slip", context)
+            resp_text = ResponseFormatter.format_response("latest_salary_slip", raw_data)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            outbound = wrap_with_menu_again(resp_text, context)
+            action = "view_latest_salary_slip"
+
+        elif clean_intent in ("tax_deductions",):
+            from ai_workplace.ai.tools import run_tool
+            from ai_workplace.ai.response_formatter import ResponseFormatter
+            raw_data = run_tool("get_tax_details", context)
+            resp_text = ResponseFormatter.format_response("tax_deductions", raw_data)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            outbound = wrap_with_menu_again(resp_text, context)
+            action = "view_tax_deductions"
+
         # 1) Specific period selection (1, 3, or 6 months)
-        if clean_intent in ("pay_slip_latest", "pay_slip_3m", "pay_slip_6m") or (
+        elif clean_intent in ("pay_slip_latest", "pay_slip_3m", "pay_slip_6m") or (
             getattr(conv, "active_service", None) == "pay_download_slip" and text_lower in ("0", "1", "3", "6", "3m", "6m", "3 months", "6 months", "latest", "last", "last 3", "last 6")
         ):
             from ai_workplace.services.payroll import build_salary_slip_download_outbound

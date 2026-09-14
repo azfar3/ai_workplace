@@ -946,6 +946,14 @@ def process_message(
             _p13_ok = not (_p13_auth and not context.get("employee"))
 
             if _p13_ok and _p13_mode == "deterministic" and _p13_tool and _p13_tool != "clarification":
+                _p13_svc_key = "my_profile" if _p13_intent in ("my_profile", "my_designation", "my_department", "my_branch") or _p13_tool == "get_employee_profile" else _p13_intent
+                from ai_workplace.security.authorization import requires_pin
+                if not skip_pin_check and requires_pin(_p13_svc_key):
+                    from ai_workplace.security.pin_flow import maybe_gate_service
+                    pin_gate = maybe_gate_service(conv, context, _p13_svc_key)
+                    if pin_gate:
+                        return pin_gate
+
                 _p13_data = _run_tool_p13(_p13_tool, context)
                 _p13_fmt = ResponseFormatter.format_response(_p13_intent, _p13_data)
                 # Clear AI mode — this message was deterministically resolved

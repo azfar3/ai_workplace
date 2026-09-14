@@ -21,47 +21,104 @@ from ai_workplace.ai.evidence import (
 def get_latest_salary_slip(employee: str) -> dict[str, Any]:
     if not employee or not getattr(frappe, "db", None):
         return {}
+
+    curr_today = frappe.utils.today()
+    fields = [
+        "name", "start_date", "end_date", "net_pay", "rounded_total",
+        "gross_pay", "final_earning", "basic_pay", "medical",
+        "special_allowance", "ta_da", "salary_arrears", "bonuses",
+        "total_deduction", "income_tax_amount", "currency", "docstatus"
+    ]
+
     slips = frappe.db.get_all(
         "Salary Slip",
-        filters={"employee": employee, "docstatus": ["!=", 2]},
-        fields=["name", "start_date", "end_date", "net_pay", "rounded_total", "gross_pay", "currency"],
-        order_by="creation desc",
+        filters={"employee": employee, "docstatus": 1, "start_date": ["<=", curr_today]},
+        fields=fields,
+        order_by="start_date desc, creation desc",
         limit=1,
     )
+
+    if not slips:
+        slips = frappe.db.get_all(
+            "Salary Slip",
+            filters={"employee": employee, "docstatus": 1},
+            fields=fields,
+            order_by="start_date desc, creation desc",
+            limit=1,
+        )
+
+    if not slips:
+        slips = frappe.db.get_all(
+            "Salary Slip",
+            filters={"employee": employee, "docstatus": ["!=", 2]},
+            fields=fields,
+            order_by="start_date desc, creation desc",
+            limit=1,
+        )
+
     if not slips:
         return {}
+
     s = slips[0]
-    pay = s.get("rounded_total") or s.get("net_pay") or s.get("gross_pay") or 0.0
+
+    pay = float(s.get("rounded_total") or s.get("net_pay") or s.get("gross_pay") or s.get("final_earning") or 0.0)
+    if pay <= 0:
+        basic = float(s.get("basic_pay") or 0.0)
+        medical = float(s.get("medical") or 0.0)
+        special = float(s.get("special_allowance") or 0.0)
+        tada = float(s.get("ta_da") or 0.0)
+        arrears = float(s.get("salary_arrears") or 0.0)
+        bonuses = float(s.get("bonuses") or 0.0)
+        earnings = basic + medical + special + tada + arrears + bonuses
+        deductions = float(s.get("total_deduction") or s.get("income_tax_amount") or 0.0)
+        if earnings > 0:
+            pay = earnings - deductions
+
     curr = s.get("currency") or (frappe.db.get_default("currency") if getattr(frappe, "db", None) else None) or "PKR"
     return {
         "salary_slip_name": s.get("name"),
         "start_date": str(s.get("start_date")),
         "end_date": str(s.get("end_date")),
         "currency": curr,
-        "net_pay": f"{curr} {pay:,.2f}" if isinstance(pay, (int, float)) else f"{curr} {pay}"
+        "net_pay": f"{curr} {pay:,.2f}"
     }
 
 def get_tax_details(employee: str) -> dict[str, Any]:
     if not employee or not getattr(frappe, "db", None):
         return {}
+
+    curr_today = frappe.utils.today()
+    fields = ["name", "start_date", "end_date", "total_deduction", "income_tax_amount", "currency"]
+
     slips = frappe.db.get_all(
         "Salary Slip",
-        filters={"employee": employee, "docstatus": ["!=", 2]},
-        fields=["name", "start_date", "end_date", "total_deduction", "currency"],
-        order_by="creation desc",
+        filters={"employee": employee, "docstatus": 1, "start_date": ["<=", curr_today]},
+        fields=fields,
+        order_by="start_date desc, creation desc",
         limit=1,
     )
+
+    if not slips:
+        slips = frappe.db.get_all(
+            "Salary Slip",
+            filters={"employee": employee, "docstatus": ["!=", 2]},
+            fields=fields,
+            order_by="start_date desc, creation desc",
+            limit=1,
+        )
+
     if not slips:
         return {}
+
     s = slips[0]
-    ded = s.get("total_deduction") or 0.0
+    ded = float(s.get("total_deduction") or s.get("income_tax_amount") or 0.0)
     curr = s.get("currency") or (frappe.db.get_default("currency") if getattr(frappe, "db", None) else None) or "PKR"
     return {
         "salary_slip_name": s.get("name"),
         "start_date": str(s.get("start_date")),
         "end_date": str(s.get("end_date")),
         "currency": curr,
-        "total_deductions": f"{curr} {ded:,.2f}" if isinstance(ded, (int, float)) else f"{curr} {ded}"
+        "total_deductions": f"{curr} {ded:,.2f}"
     }
 
 def get_office_timings(employee: Optional[str] = None) -> dict[str, Any]:

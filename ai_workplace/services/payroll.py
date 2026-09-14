@@ -16,20 +16,34 @@ from ai_workplace.whatsapp.outbound import OutboundMessage
 
 
 def get_latest_salary_slips(employee_id: str | None, limit: int = 1) -> list[dict[str, Any]]:
-    """Return the most recently submitted salary slips for the employee."""
+    """Return the most recently submitted salary slips for the employee on or before today."""
     if not employee_id or limit < 1:
         return []
 
-    return frappe.db.get_all(
+    curr_today = today()
+    slips = frappe.db.get_all(
         "Salary Slip",
         filters={
             "employee": employee_id,
             "docstatus": 1,
+            "start_date": ["<=", curr_today],
         },
         fields=["name", "start_date", "end_date", "posting_date", "gross_pay", "net_pay"],
-        order_by="start_date desc",
+        order_by="start_date desc, creation desc",
         limit=limit,
     )
+    if not slips:
+        slips = frappe.db.get_all(
+            "Salary Slip",
+            filters={
+                "employee": employee_id,
+                "docstatus": 1,
+            },
+            fields=["name", "start_date", "end_date", "posting_date", "gross_pay", "net_pay"],
+            order_by="start_date desc, creation desc",
+            limit=limit,
+        )
+    return slips
 
 
 def get_default_salary_slip_print_format() -> str:

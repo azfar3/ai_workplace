@@ -253,3 +253,61 @@ class ResponseFormatter:
             return "📋 *MicroMerger Staff Services*\n\nPlease select an option from the menu below or tap *View Services*."
         else:
             return str(data)
+
+    @staticmethod
+    def sanitize_whatsapp_text(text: str) -> str:
+        """
+        Sanitize and format text responses for WhatsApp compliance:
+        1. Converts double asterisks **bold** to single asterisks *bold*.
+        2. Strips Markdown tables (| col | col |) and converts rows into clean bullet points.
+        3. Converts HTML breaks <br> to proper newlines without breaking tables.
+        4. Strips residual HTML tags.
+        """
+        import re
+        if not text or not isinstance(text, str):
+            return text or ""
+
+        # 1. Convert double asterisks **text** to single asterisks *text* (WhatsApp style)
+        text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
+
+        # 2. Strip residual HTML tags except <br>
+        text = re.sub(r'<(?!\/?br\b)[^>]+>', '', text, flags=re.IGNORECASE)
+
+        # 3. Clean Markdown table lines line-by-line
+        lines = text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            stripped = line.strip()
+            # Skip separator rows like |-------|---------|
+            if re.match(r'^\|?[\s:\-]+\|[\s:\-\|]*$', stripped):
+                continue
+
+            # Process table row lines starting and ending with |
+            if stripped.startswith('|') and stripped.endswith('|'):
+                # Replace <br> inside this table row line with newline
+                row_content = re.sub(r'<br\s*/?>', '\n', stripped, flags=re.IGNORECASE)
+                # Split cells by |
+                cells = [c.strip() for c in row_content.strip('|').split('|') if c.strip()]
+                
+                # Skip header rows containing common headers
+                cell_str = " ".join(cells).lower()
+                if "method" in cell_str and ("contact" in cell_str or "how to" in cell_str):
+                    continue
+                    
+                for cell in cells:
+                    cell_lines = [l.strip() for l in cell.split('\n') if l.strip()]
+                    for cl in cell_lines:
+                        if cl.startswith("•") or cl.startswith("-") or cl.startswith("*"):
+                            cleaned_lines.append(f"  {cl}")
+                        else:
+                            cleaned_lines.append(f"• {cl}")
+            else:
+                # Replace <br> in normal non-table lines
+                line = re.sub(r'<br\s*/?>', '\n', line, flags=re.IGNORECASE)
+                cleaned_lines.append(line)
+
+        result = "\n".join(cleaned_lines)
+        result = re.sub(r'\n{3,}', '\n\n', result)
+        return result.strip()
+
+

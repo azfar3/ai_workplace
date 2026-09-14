@@ -45,12 +45,19 @@ class TestSupportPinValidation(unittest.TestCase):
 class TestServiceSecurityPolicy(unittest.TestCase):
     def test_payroll_requires_pin(self):
         self.assertEqual(get_service_security_policy("pay_download_slip"), POLICY_PIN_REQUIRED)
+        self.assertEqual(get_service_security_policy("latest_salary_slip"), POLICY_PIN_REQUIRED)
+        self.assertEqual(get_service_security_policy("my_salary"), POLICY_PIN_REQUIRED)
+        self.assertEqual(get_service_security_policy("tax_deductions"), POLICY_PIN_REQUIRED)
 
     def test_contact_hr_no_pin(self):
         self.assertEqual(get_service_security_policy("contact_hr"), POLICY_NONE)
 
     def test_requires_pin_helper(self):
         self.assertTrue(requires_pin("my_profile"))
+        self.assertTrue(requires_pin("my_designation"))
+        self.assertTrue(requires_pin("latest_salary_slip"))
+        self.assertTrue(requires_pin("pay_download_slip"))
+        self.assertTrue(requires_pin("tax_deductions"))
         self.assertFalse(requires_pin("att_today"))
 
     @patch("ai_workplace.security.authorization.get_menu_item_security_policy")
