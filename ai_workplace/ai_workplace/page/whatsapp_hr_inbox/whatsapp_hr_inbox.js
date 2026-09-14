@@ -14,48 +14,960 @@ frappe.pages["whatsapp-hr-inbox"].on_page_load = function (wrapper) {
 };
 
 const EMOJI_CATEGORIES = {
-	smileys: {
-		name: "Smileys & Emotion",
-		icon: "😀",
-		list: [
-			"😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
-			"🙂", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋",
-			"😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🤐",
-			"🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌",
-			"😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧",
-			"🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "😎", "🤓", "🧐",
-			"😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥",
-			"😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱"
+	"smileys": {
+		"name": "Smileys & Emotion",
+		"icon": "😀",
+		"list": [
+			"😀",
+			"😃",
+			"😄",
+			"😁",
+			"😆",
+			"😅",
+			"😂",
+			"🤣",
+			"🥲",
+			"🥹",
+			"😊",
+			"😇",
+			"🙂",
+			"��",
+			"😉",
+			"😌",
+			"😍",
+			"🥰",
+			"😘",
+			"😗",
+			"😙",
+			"😚",
+			"😋",
+			"😛",
+			"😜",
+			"🤪",
+			"😝",
+			"🤑",
+			"🤗",
+			"🤭",
+			"🤫",
+			"🤔",
+			"🫡",
+			"🤐",
+			"🤨",
+			"😐",
+			"😑",
+			"��",
+			"🫥",
+			"😏",
+			"😒",
+			"🙄",
+			"😬",
+			"🤥",
+			"😔",
+			"😪",
+			"🤤",
+			"😴",
+			"😷",
+			"🤒",
+			"🤕",
+			"🤢",
+			"🤮",
+			"🤧",
+			"🥵",
+			"🥶",
+			"🥴",
+			"😵",
+			"🤯",
+			"🤠",
+			"🥳",
+			"🥸",
+			"😎",
+			"🤓",
+			"🧐",
+			"😕",
+			"🫤",
+			"😟",
+			"🙁",
+			"😮",
+			"😯",
+			"😲",
+			"😳",
+			"🥺",
+			"😦",
+			"😧",
+			"😨",
+			"😰",
+			"😥",
+			"😢",
+			"😭",
+			"😱",
+			"😖",
+			"😣",
+			"😞",
+			"😓",
+			"😩",
+			"😫",
+			"🥱",
+			"😤",
+			"😡",
+			"😠",
+			"🤬",
+			"😈",
+			"👿",
+			"💀",
+			"☠️",
+			"💩",
+			"🤡",
+			"👹",
+			"👺",
+			"👻",
+			"👽",
+			"👾",
+			"🤖"
 		]
 	},
-	gestures: {
-		name: "People & Gestures",
-		icon: "👍",
-		list: [
-			"👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉",
-			"👆", "👇", "🖐️", "✋", "🖖", "👋", "👏", "🙌", "👐", "🤲",
-			"🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "👀", "👁️", "🧑‍💼",
-			"👨‍💼", "👩‍💼", "🙋‍♂️", "🙋‍♀️", "🙆‍♂️", "🙆‍♀️", "🙇‍♂️", "🙇‍♀️", "🤦‍♂️", "🤦‍♀️"
+	"gestures": {
+		"name": "People & Gestures",
+		"icon": "👋",
+		"list": [
+			"👋",
+			"🤚",
+			"🖐️",
+			"✋",
+			"🖖",
+			"🫱",
+			"🫲",
+			"🫳",
+			"🫴",
+			"👌",
+			"🤌",
+			"🤏",
+			"✌️",
+			"🤞",
+			"��",
+			"🤟",
+			"🤘",
+			"🤙",
+			"👈",
+			"👉",
+			"👆",
+			"🖕",
+			"👇",
+			"☝️",
+			"👍",
+			"👎",
+			"✊",
+			"👊",
+			"🤛",
+			"🤜",
+			"👏",
+			"🙌",
+			"🫶",
+			"👐",
+			"🤲",
+			"🤝",
+			"🙏",
+			"✍️",
+			"💅",
+			"🤳",
+			"💪",
+			"🦾",
+			"🦵",
+			"🦿",
+			"🦶",
+			"👂",
+			"��",
+			"🧠",
+			"🫀",
+			"🫁",
+			"🦴",
+			"👀",
+			"👁️",
+			"👄",
+			"👶",
+			"🧒",
+			"👦",
+			"👧",
+			"🧑",
+			"👱",
+			"👨",
+			"🧔",
+			"👩",
+			"🧓",
+			"👴",
+			"👵",
+			"🧑‍⚕️",
+			"👨‍⚕️",
+			"👩‍⚕️",
+			"🧑‍🎓",
+			"👨‍🎓",
+			"👩‍🎓",
+			"🧑‍💼",
+			"👨‍💼",
+			"👩‍💼",
+			"🧑‍💻",
+			"👨‍💻",
+			"👩‍💻",
+			"🙋‍♂️",
+			"��‍♀️",
+			"🙆‍♂️",
+			"🙆‍♀️",
+			"🙇‍♂️",
+			"🙇‍♀️",
+			"🤦‍♂️",
+			"🤦‍♀️",
+			"🤷‍♂️",
+			"🤷‍♀️"
 		]
 	},
-	workplace: {
-		name: "Work & HR",
+	"animals": {
+		"name": "Animals & Nature",
+		"icon": "🐶",
+		"list": [
+			"🐶",
+			"🐱",
+			"🐭",
+			"🐹",
+			"🐰",
+			"🦊",
+			"🐻",
+			"🐼",
+			"🐻‍❄️",
+			"🐨",
+			"🐯",
+			"🦁",
+			"🐮",
+			"🐷",
+			"🐽",
+			"🐸",
+			"🐵",
+			"🙈",
+			"🙉",
+			"🙊",
+			"🐒",
+			"🐔",
+			"🐧",
+			"🐦",
+			"🐤",
+			"🐣",
+			"🐥",
+			"🦆",
+			"🦅",
+			"🦉",
+			"🦇",
+			"🐺",
+			"🐗",
+			"🐴",
+			"🦄",
+			"🐝",
+			"🪱",
+			"🐛",
+			"🦋",
+			"🐌",
+			"🐞",
+			"🐜",
+			"🪰",
+			"🪲",
+			"🪳",
+			"🦟",
+			"🦗",
+			"🕷️",
+			"🕸️",
+			"🦂",
+			"🐢",
+			"🐍",
+			"��",
+			"🦕",
+			"🐙",
+			"🦑",
+			"🦐",
+			"🦞",
+			"🐡",
+			"��",
+			"🐟",
+			"🐬",
+			"🐳",
+			"🐋",
+			"🦈",
+			"🦭",
+			"🐊",
+			"🐅",
+			"🐆",
+			"🦓",
+			"🦍",
+			"🦧",
+			"🐘",
+			"🦛",
+			"🦏",
+			"🐪",
+			"🐫",
+			"🦒",
+			"🦘",
+			"🦬",
+			"🐃",
+			"🐂",
+			"🐄",
+			"��",
+			"🐖",
+			"🐏",
+			"🐑",
+			"🦙",
+			"🐐",
+			"🦌",
+			"🐕",
+			"🐩",
+			"🦮",
+			"🐕‍🦺",
+			"🐈",
+			"🐈‍⬛",
+			"🐓",
+			"🦃",
+			"🦚",
+			"🦜",
+			"🦢",
+			"🦩",
+			"🕊️",
+			"🐇",
+			"🦝",
+			"��",
+			"🦡",
+			"🦦",
+			"🦥",
+			"🐁",
+			"🐀",
+			"🐿️",
+			"🦔",
+			"🐾",
+			"🐉",
+			"🐲",
+			"🌵",
+			"🎄",
+			"🌲",
+			"🌳",
+			"🌴",
+			"🌱",
+			"🌿",
+			"☘️",
+			"🍀",
+			"🎍",
+			"🪴",
+			"🎋",
+			"🍃",
+			"🍂",
+			"🍁",
+			"🍄",
+			"🌾",
+			"💐",
+			"🌷",
+			"🌹",
+			"🥀",
+			"🌺",
+			"🌸",
+			"🌼",
+			"🌻",
+			"🌞",
+			"🌝",
+			"🌛",
+			"🌜",
+			"🌚",
+			"🌕",
+			"🌖",
+			"🌗",
+			"🌘",
+			"🌑",
+			"🌒",
+			"🌓",
+			"🌔",
+			"🌙",
+			"🌎",
+			"🌍",
+			"🌏",
+			"🪐",
+			"💫",
+			"⭐️",
+			"🌟",
+			"✨",
+			"⚡️",
+			"☄️",
+			"💥",
+			"🔥",
+			"🌪️",
+			"��",
+			"☀️",
+			"🌤️",
+			"⛅️",
+			"🌥️",
+			"☁️",
+			"🌦️",
+			"🌧️",
+			"🌩️",
+			"🌨️",
+			"❄️",
+			"☃️",
+			"⛄️",
+			"🌬️",
+			"💨",
+			"��",
+			"💦",
+			"☔️",
+			"☂️",
+			"🌊"
+		]
+	},
+	"food": {
+		"name": "Food & Drink",
+		"icon": "🍔",
+		"list": [
+			"🍏",
+			"🍎",
+			"🍐",
+			"🍊",
+			"🍋",
+			"🍌",
+			"🍉",
+			"🍇",
+			"🍓",
+			"🫐",
+			"🍈",
+			"🍒",
+			"🍑",
+			"🥭",
+			"🍍",
+			"🥥",
+			"🥝",
+			"🍅",
+			"🥑",
+			"🥦",
+			"🥬",
+			"🥒",
+			"🌶️",
+			"🫑",
+			"🌽",
+			"🥕",
+			"🫒",
+			"🧄",
+			"🧅",
+			"🥔",
+			"��",
+			"🥐",
+			"🥯",
+			"🍞",
+			"🥖",
+			"🥨",
+			"🧀",
+			"🥚",
+			"🍳",
+			"🧈",
+			"🥞",
+			"🧇",
+			"🥓",
+			"🥩",
+			"🍗",
+			"🍖",
+			"🌭",
+			"🍔",
+			"🍟",
+			"🍕",
+			"🫓",
+			"🥪",
+			"🥙",
+			"🧆",
+			"��",
+			"🌯",
+			"🫔",
+			"🥗",
+			"🥘",
+			"🫕",
+			"🍝",
+			"🍜",
+			"🍲",
+			"🍛",
+			"🍣",
+			"🍱",
+			"🥟",
+			"🦪",
+			"🦐",
+			"🦞",
+			"🍡",
+			"🍧",
+			"🍨",
+			"🍦",
+			"🥧",
+			"🧁",
+			"🍰",
+			"🎂",
+			"🍮",
+			"🍭",
+			"🍬",
+			"🍫",
+			"🍿",
+			"🍩",
+			"🍪",
+			"��",
+			"🥜",
+			"🍯",
+			"🥛",
+			"☕️",
+			"🫖",
+			"🍵",
+			"🧃",
+			"🥤",
+			"🧋",
+			"🍶",
+			"🍺",
+			"🍻",
+			"🥂",
+			"🍷",
+			"🥃",
+			"🍸",
+			"🍹",
+			"🧉",
+			"🍾",
+			"🧊",
+			"🍴",
+			"🍽️",
+			"🥣",
+			"🥡",
+			"🥢"
+		]
+	},
+	"travel": {
+		"name": "Travel & Places",
+		"icon": "🚗",
+		"list": [
+			"🚗",
+			"🚕",
+			"🚙",
+			"🚌",
+			"🛺",
+			"🏎️",
+			"🚓",
+			"🚑",
+			"��",
+			"🚐",
+			"🛻",
+			"🚚",
+			"🚛",
+			"🚜",
+			"🦯",
+			"🦽",
+			"🦼",
+			"🛵",
+			"🏍️",
+			"🚨",
+			"🚔",
+			"🚘",
+			"🚖",
+			"🛞",
+			"🚲",
+			"🛴",
+			"🛹",
+			"🛼",
+			"🚏",
+			"🛣️",
+			"🛤️",
+			"��️",
+			"⛽️",
+			"🚥",
+			"🚦",
+			"🛑",
+			"🚧",
+			"⚓️",
+			"⛵️",
+			"🚣‍♂️",
+			"🚤",
+			"🛳️",
+			"⚙️",
+			"🚢",
+			"✈️",
+			"🛫",
+			"🛬",
+			"🪂",
+			"💺",
+			"🚁",
+			"🚟",
+			"🚀",
+			"🛸",
+			"🛰️",
+			"��",
+			"⌛️",
+			"⏳",
+			"⌚️",
+			"⏰",
+			"⏱️",
+			"<ctrl42>",
+			"🕰️",
+			"🌡️",
+			"🌋",
+			"🏔️",
+			"⛰️",
+			"🏕️",
+			"🏖️",
+			"🏜️",
+			"🏝️",
+			"🏞️",
+			"🏟️",
+			"🏛️",
+			"🏗️",
+			"🧱",
+			"🪨",
+			"🪵",
+			"🛖",
+			"🏘️",
+			"🏚️",
+			"🏠",
+			"🏡",
+			"🏢",
+			"��",
+			"🏤",
+			"🏥",
+			"🏦",
+			"🏨",
+			"🏩",
+			"🏪",
+			"🏫",
+			"🏬",
+			"🏭",
+			"🏯",
+			"🏰",
+			"💒",
+			"🗼",
+			"🗽",
+			"⛪️",
+			"🕌",
+			"🛕",
+			"🕍",
+			"⛩️",
+			"🕋"
+		]
+	},
+	"workplace": {
+		"name": "Work, Objects & HR",
+		"icon": "💼",
+		"list": [
+			"💼",
+			"📋",
+			"📌",
+			"📍",
+			"📁",
+			"📂",
+			"📄",
+			"📑",
+			"📊",
+			"📈",
+			"📉",
+			"📆",
+			"📅",
+			"📇",
+			"📝",
+			"✏️",
+			"✒️",
+			"🖊️",
+			"🖋️",
+			"🖍️",
+			"🖌️",
+			"🔍",
+			"🔎",
+			"🔏",
+			"🔐",
+			"🔒",
+			"🔓",
+			"✉️",
+			"📧",
+			"📨",
+			"📩",
+			"📤",
+			"📥",
+			"📦",
+			"📫",
+			"📪",
+			"📬",
+			"📭",
+			"📮",
+			"📯",
+			"📜",
+			"📰",
+			"🗞️",
+			"📑",
+			"🔖",
+			"🏷️",
+			"💰",
+			"🪙",
+			"💴",
+			"💵",
+			"💶",
+			"💷",
+			"💸",
+			"💳",
+			"🧾",
+			"💻",
+			"🖥️",
+			"🖨️",
+			"⌨️",
+			"🖱️",
+			"🖲️",
+			"💽",
+			"💾",
+			"💿",
+			"📀",
+			"🧮",
+			"🎥",
+			"🎬",
+			"📽️",
+			"📺",
+			"📷",
+			"📸",
+			"📹",
+			"📼",
+			"📞",
+			"☎️",
+			"📟",
+			"📠",
+			"📱",
+			"📲",
+			"🏢",
+			"🏥",
+			"🏦",
+			"⏰",
+			"⏱️",
+			"💡",
+			"🕯️",
+			"🧯",
+			"🛢️",
+			"🔑",
+			"🗝️",
+			"🔨",
+			"🪓",
+			"⛏️",
+			"⚒️",
+			"🛠️",
+			"🗡️",
+			"⚔️",
+			"🛡️",
+			"🔧",
+			"🪛",
+			"⚙️",
+			"🗜️",
+			"⚖️",
+			"🦯",
+			"🔗",
+			"⛓️",
+			"🪝",
+			"🧰",
+			"🧲",
+			"🪜",
+			"🩺",
+			"🩹",
+			"💉",
+			"🩸",
+			"💊",
+			"🧫",
+			"🧪",
+			"🧬",
+			"🔬",
+			"🔭",
+			"📡"
+		]
+	},
+	"hearts": {
+		"name": "Hearts & Symbols",
+		"icon": "❤️",
+		"list": [
+			"❤️",
+			"🧡",
+			"💛",
+			"💚",
+			"💙",
+			"💜",
+			"🖤",
+			"🤍",
+			"🤎",
+			"💔",
+			"❣️",
+			"💕",
+			"💞",
+			"💓",
+			"💗",
+			"💖",
+			"💘",
+			"💝",
+			"💟",
+			"☮️",
+			"✝️",
+			"☪️",
+			"🕉️",
+			"☸️",
+			"✡️",
+			"🔯",
+			"🕎",
+			"☯️",
+			"☦️",
+			"🛐",
+			"<ctrl42>",
+			"♈️",
+			"♉️",
+			"♊️",
+			"♋️",
+			"♌️",
+			"<ctrl42>",
+			"♎️",
+			"♏️",
+			"🏹",
+			"♑️",
+			"♒️",
+			"<ctrl42>",
+			"🔀",
+			"🔁",
+			"🔂",
+			"▶️",
+			"⏩",
+			"⏭️",
+			"⏯️",
+			"◀️",
+			"⏪",
+			"⏮️",
+			"🔼",
+			"⏫",
+			"🔽",
+			"⏬",
+			"⏸️",
+			"⏹️",
+			"⏺️",
+			"⏏️",
+			"🎦",
+			"♀️",
+			"♂️",
+			"⚧️",
+			"✖️",
+			"➕",
+			"➖",
+			"➗",
+			"♾️",
+			"‼️",
+			"⁉️",
+			"❓",
+			"❗",
+			"〰️",
+			"💱",
+			"💲",
+			"⚕️",
+			"♻️",
+			"⚜️",
+			"🔱",
+			"📛",
+			"🔰",
+			"⭕️",
+			"✅",
+			"☑️",
+			"✔️",
+			"❌",
+			"❎",
+			"➰",
+			"➿",
+			"〽️",
+			"✳️",
+			"✴️",
+			"❇️",
+			"©️",
+			"®️",
+			"™️",
+			"💯",
+			"📌",
+			"🔴",
+			"🟠",
+			"🟡",
+			"🟢",
+			"🔵",
+			"🟣",
+			"⚫️",
+			"⚪️",
+			"🟤"
+		]
+	},
+	"flags": {
+		"name": "Flags",
+		"icon": "🚩",
+		"list": [
+			"🚩",
+			"🏳️",
+			"🏴",
+			"🏴‍☠️",
+			"🏁",
+			"🇵🇰",
+			"🇸🇦",
+			"🇦🇪",
+			"🇬🇧",
+			"🇨🇦",
+			"🇦🇺",
+			"🇹🇷",
+			"🇶🇦",
+			"🇰🇼",
+			"🇴🇲",
+			"🇧🇭",
+			"🇪🇬",
+			"🇯🇵",
+			"🇨🇳",
+			"🇩🇪",
+			"🇫🇷",
+			"🇮🇹",
+			"🇪🇸",
+			"🇧🇷",
+			"🇿🇦", ,
+			"🇮🇩",
+			"🇸🇬"
+		]
+	}
+};
+
+const STICKER_PACKS = {
+	hr_office: {
+		name: "HR & Office",
 		icon: "💼",
 		list: [
-			"💼", "📋", "📌", "📍", "📁", "📂", "📄", "📑", "📊", "📈",
-			"📉", "📆", "📅", "📇", "📝", "✏️", "✒️", "✉️", "📧", "📨",
-			"🏢", "🏥", "🏦", "⏰", "⏱️", "⌛", "⏳", "💡", "🔑", "🔒",
-			"🔔", "📣", "📢", "💬", "🎯", "🚀", "🎉", "🎊", "🎁", "🏆",
-			"🥇", "🥈", "🥉", "✅", "❌", "❓", "❗", "ℹ️", "⭐", "✨"
+			{ id: "stk_approved", title: "APPROVED", label: "✅ APPROVED", color: "#008069", bg: "#e7fce3" },
+			{ id: "stk_under_review", title: "UNDER REVIEW", label: "⏳ UNDER REVIEW", color: "#b38600", bg: "#fff8e6" },
+			{ id: "stk_rejected", title: "REJECTED", label: "❌ REJECTED", color: "#c0392b", bg: "#ffeaea" },
+			{ id: "stk_salary", title: "PAYROLL OK", label: "💵 PAYROLL PROCESSED", color: "#27ae60", bg: "#e8f8f5" },
+			{ id: "stk_attendance", title: "ATTENDANCE OK", label: "⏱️ ATTENDANCE LOGGED", color: "#2980b9", bg: "#ebf5fb" },
+			{ id: "stk_leave", title: "LEAVE GRANTED", label: "🌴 LEAVE SANCTIONED", color: "#8e44ad", bg: "#f4ecf7" }
 		]
 	},
-	hearts: {
-		name: "Hearts & Symbols",
-		icon: "❤️",
+	reactions: {
+		name: "Reactions & Praise",
+		icon: "👍",
 		list: [
-			"❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔",
-			"❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "💯",
-			"🔥", "💥", "⚡", "🌈", "☀️", "🌤️", "🌧️", "❄️", "🍀", "🌺"
+			{ id: "stk_thumbs_up", title: "GREAT JOB!", label: "👍 GREAT JOB!", color: "#008069", bg: "#e7fce3" },
+			{ id: "stk_thank_you", title: "THANK YOU!", label: "🙏 THANK YOU!", color: "#2980b9", bg: "#ebf5fb" },
+			{ id: "stk_welcome", title: "WELCOME ABOARD!", label: "🎉 WELCOME ABOARD!", color: "#8e44ad", bg: "#f4ecf7" },
+			{ id: "stk_noted", title: "NOTED BY HR", label: "📝 NOTED BY HR", color: "#34495e", bg: "#eaeded" },
+			{ id: "stk_resolved", title: "RESOLVED", label: "✅ ISSUE RESOLVED", color: "#27ae60", bg: "#e8f8f5" },
+			{ id: "stk_star", title: "STAR PERFORMER", label: "⭐ STAR PERFORMER", color: "#d35400", bg: "#fef5e7" }
+		]
+	},
+	greetings: {
+		name: "Greetings",
+		icon: "👋",
+		list: [
+			{ id: "stk_good_morning", title: "GOOD MORNING", label: "☀️ GOOD MORNING!", color: "#f39c12", bg: "#fef9e7" },
+			{ id: "stk_good_afternoon", title: "GOOD AFTERNOON", label: "🌤️ GOOD AFTERNOON!", color: "#e67e22", bg: "#fdf2e9" },
+			{ id: "stk_have_a_nice_day", title: "HAVE A GREAT DAY", label: "😊 HAVE A GREAT DAY!", color: "#16a085", bg: "#e8f8f5" },
+			{ id: "stk_aslam", title: "ASSALAM-O-ALAIKUM", label: "🤝 ASSALAM-O-ALAIKUM", color: "#008069", bg: "#e7fce3" }
+		]
+	}
+};
+
+const GIF_COLLECTIONS = {
+	all: {
+		name: "All GIFs",
+		icon: "🎬",
+		list: [
+			{ id: "gif_thanks", title: "Thank You", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcG5sdXoxbHRicXRrczlybHptb3VwZjh3NjdxdHRvZzVsNzJndmJmdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o6Zt6KHxJTbXCnSvu/giphy.gif" },
+			{ id: "gif_welcome", title: "Welcome Aboard", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGJ0eWdkeTB4ZHdyYjlsYXk5eWRudnhzMDJtdWZxbjdwYmsyZGpmdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/dZA2n7pA8o2781b0aV/giphy.gif" },
+			{ id: "gif_clap", title: "Great Work / Applause", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeHdwZnkyeGRucW9mYnU5b3hpeTB0NmkyejRndmY2ZTZubzljbnFkcyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/g9582DNuQppxC/giphy.gif" },
+			{ id: "gif_thumbsup", title: "Thumbs Up", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWJtcGVqZXc4dzg4d3QxcnFvaHBldWZqdmpraGZtNzN4Nm8wMms4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/111ebonMs90YLu/giphy.gif" },
+			{ id: "gif_yes", title: "Approved!", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHp1bHptcTV6MWYydXNlZmQzcnpwb2I1NzZ1YjQzMWNiaHkxbG96NiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/n1mNS67y85vQM/giphy.gif" },
+			{ id: "gif_working", title: "Working On It", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzlrdXk3Zml1anphMnpyamEzbXZ6ODQxdGtwbWNmMnVvbmlucXB3YiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JIX9t2j0ZTN9S/giphy.gif" },
+			{ id: "gif_goodjob", title: "Awesome Job", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdW4wbzY3NnBvOWl0YXZuZHVyZ3U3eXJwdzcyemIxbjAydm1iMjEwaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0IykG0AMyVJfHvvG/giphy.gif" },
+			{ id: "gif_bye", title: "Goodbye / Have a nice day", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDhvdnVrdnV6ZTZudWV2OWpjdWVxNGw3cXp6Mnk4NnpxNDVsaG8xYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/m9eG1qVjvNVP3MqdRJ/giphy.gif" }
 		]
 	}
 };
@@ -76,7 +988,7 @@ frappe.whatsapp_hr_inbox = {
 				<aside class="wa-sidebar">
 					<div class="wa-sidebar-header">
 						<span class="wa-live-dot"></span>${__("WhatsApp HR Inbox")}
-						<button class="wa-push-btn hidden p-0" title="${__('Enable Desktop Notifications')}" style="background: none; border: none; cursor: pointer; float: right; font-size: 16px;">🔔</button>
+						<button class="wa-push-btn hidden p-0" title="${__('Enable Desktop Notifications')}" style="background: none; border: none; cursor: pointer; float: right; color: #54656f; display: inline-flex; align-items: center; justify-content: center;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
 					</div>
 					<div class="wa-filters">
 						<button class="wa-filter-btn active" data-filter="mine">${__("Active")} <span class="wa-tab-badge wa-tab-badge-mine hidden"></span></button>
@@ -86,9 +998,9 @@ frappe.whatsapp_hr_inbox = {
 					</div>
 					<div class="wa-search-bar">
 						<div class="wa-search-input-wrap">
-							<span class="wa-search-icon">🔍</span>
+							<span class="wa-search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
 							<input type="text" class="wa-chat-search-input" placeholder="${__("Search chats...")}">
-							<button type="button" class="wa-search-clear-btn hidden" title="${__("Clear search")}">✕</button>
+							<button type="button" class="wa-search-clear-btn hidden" title="${__("Clear search")}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
 						</div>
 					</div>
 					<div class="wa-chat-list"></div>
@@ -110,7 +1022,13 @@ frappe.whatsapp_hr_inbox = {
 					<div class="wa-banner hidden"></div>
 					<div class="wa-messages">
 						<div class="wa-empty">
-							<div class="wa-empty-icon">💬</div>
+							<div class="wa-empty-icon">
+								<svg viewBox="0 0 24 24" width="60" height="60" fill="none" stroke="#008069" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.85;">
+									<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+									<path d="M8 10h8"/>
+									<path d="M8 14h5"/>
+								</svg>
+							</div>
 							<div class="wa-empty-title">${__("WhatsApp HR Live Chat")}</div>
 							<div class="wa-empty-sub">${__("Select a chat to view messages. New WhatsApp messages appear here automatically.")}</div>
 						</div>
@@ -121,12 +1039,12 @@ frappe.whatsapp_hr_inbox = {
 					</button>
 					<footer class="wa-compose">
 						<div class="wa-emoji-picker hidden">
-							<div class="wa-emoji-categories">
-								<button type="button" class="wa-emoji-cat-btn active" data-cat="smileys" title="${__("Smileys & Emotion")}">😀</button>
-								<button type="button" class="wa-emoji-cat-btn" data-cat="gestures" title="${__("People & Gestures")}">👍</button>
-								<button type="button" class="wa-emoji-cat-btn" data-cat="workplace" title="${__("Work & HR")}">💼</button>
-								<button type="button" class="wa-emoji-cat-btn" data-cat="hearts" title="${__("Hearts & Symbols")}">❤️</button>
+							<div class="wa-picker-top-tabs">
+								<button type="button" class="wa-picker-tab-btn active" data-mode="emoji" title="${__("Emojis")}">😀 ${__("Emojis")}</button>
+								<button type="button" class="wa-picker-tab-btn" data-mode="sticker" title="${__("Stickers")}">🏷️ ${__("Stickers")}</button>
+								<button type="button" class="wa-picker-tab-btn" data-mode="gif" title="${__("GIFs")}">🎬 ${__("GIFs")}</button>
 							</div>
+							<div class="wa-emoji-categories"></div>
 							<div class="wa-emoji-search-wrap">
 								<input type="text" class="wa-emoji-search-input" placeholder="${__("Search emoji...")}">
 							</div>
@@ -242,16 +1160,17 @@ frappe.whatsapp_hr_inbox = {
 		this.emoji_picker.on("click", (e) => e.stopPropagation());
 		$(document).on("click", () => this.hide_emoji_picker());
 
-		this.wrapper.find(".wa-emoji-cat-btn").on("click", (e) => {
-			const cat = $(e.currentTarget).data("cat");
-			this.wrapper.find(".wa-emoji-cat-btn").removeClass("active");
+		this.wrapper.find(".wa-picker-tab-btn").on("click", (e) => {
+			this.picker_mode = $(e.currentTarget).data("mode");
+			this.wrapper.find(".wa-picker-tab-btn").removeClass("active");
 			$(e.currentTarget).addClass("active");
-			this.render_emoji_grid(cat, this.wrapper.find(".wa-emoji-search-input").val());
+			this.wrapper.find(".wa-emoji-search-input").val("");
+			this.render_picker_subcategories();
+			this.render_picker_grid();
 		});
 
 		this.wrapper.find(".wa-emoji-search-input").on("input", (e) => {
-			const active_cat = this.wrapper.find(".wa-emoji-cat-btn.active").data("cat") || "smileys";
-			this.render_emoji_grid(active_cat, $(e.currentTarget).val());
+			this.render_picker_grid($(e.currentTarget).val());
 		});
 
 		this.compose_el.on("keydown", (e) => {
@@ -1144,7 +2063,7 @@ frappe.whatsapp_hr_inbox = {
 			if (!inbound) {
 				const s_name = m.sender_name || m.sender || "";
 				if (s_name && s_name !== "Guest") {
-					sender_html = `<div class="wa-bubble-sender" title="${__("Sent by HR Agent")}">${frappe.utils.escape_html(s_name)}</div>`;
+					sender_html = `<div class="wa-bubble-sender" title="${__("Sent by HR Agent")}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:3.5px; opacity:0.85;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${frappe.utils.escape_html(s_name)}</div>`;
 				}
 			}
 
@@ -1255,12 +2174,14 @@ frappe.whatsapp_hr_inbox = {
 		}
 	},
 
+	picker_mode: "emoji",
+
 	toggle_emoji_picker() {
 		if (!this.emoji_btn || this.emoji_btn.prop("disabled")) return;
 		if (this.emoji_picker.hasClass("hidden")) {
 			this.emoji_picker.removeClass("hidden");
-			const active_cat = this.wrapper.find(".wa-emoji-cat-btn.active").data("cat") || "smileys";
-			this.render_emoji_grid(active_cat);
+			this.render_picker_subcategories();
+			this.render_picker_grid();
 		} else {
 			this.hide_emoji_picker();
 		}
@@ -1272,27 +2193,121 @@ frappe.whatsapp_hr_inbox = {
 		}
 	},
 
-	render_emoji_grid(cat_key, query = "") {
-		const grid = this.wrapper.find(".wa-emoji-grid");
-		grid.empty();
-		query = (query || "").trim().toLowerCase();
+	render_picker_subcategories() {
+		const cat_wrap = this.wrapper.find(".wa-emoji-categories");
+		cat_wrap.empty();
+		const mode = this.picker_mode || "emoji";
 
-		let list = [];
-		if (query) {
-			Object.keys(EMOJI_CATEGORIES).forEach((k) => {
-				list.push(...EMOJI_CATEGORIES[k].list);
+		if (mode === "emoji") {
+			Object.keys(EMOJI_CATEGORIES).forEach((key, idx) => {
+				const cat = EMOJI_CATEGORIES[key];
+				const active = idx === 0 ? "active" : "";
+				$(`<button type="button" class="wa-emoji-cat-btn ${active}" data-cat="${key}" title="${frappe.utils.escape_html(cat.name)}">${cat.icon}</button>`)
+					.on("click", (e) => {
+						cat_wrap.find(".wa-emoji-cat-btn").removeClass("active");
+						$(e.currentTarget).addClass("active");
+						this.render_picker_grid();
+					})
+					.appendTo(cat_wrap);
 			});
-			list = Array.from(new Set(list));
-		} else {
-			const category = EMOJI_CATEGORIES[cat_key] || EMOJI_CATEGORIES.smileys;
-			list = category.list;
+		} else if (mode === "sticker") {
+			Object.keys(STICKER_PACKS).forEach((key, idx) => {
+				const pack = STICKER_PACKS[key];
+				const active = idx === 0 ? "active" : "";
+				$(`<button type="button" class="wa-emoji-cat-btn ${active}" data-cat="${key}" title="${frappe.utils.escape_html(pack.name)}">${pack.icon}</button>`)
+					.on("click", (e) => {
+						cat_wrap.find(".wa-emoji-cat-btn").removeClass("active");
+						$(e.currentTarget).addClass("active");
+						this.render_picker_grid();
+					})
+					.appendTo(cat_wrap);
+			});
+		} else if (mode === "gif") {
+			Object.keys(GIF_COLLECTIONS).forEach((key, idx) => {
+				const coll = GIF_COLLECTIONS[key];
+				const active = idx === 0 ? "active" : "";
+				$(`<button type="button" class="wa-emoji-cat-btn ${active}" data-cat="${key}" title="${frappe.utils.escape_html(coll.name)}">${coll.icon}</button>`)
+					.on("click", (e) => {
+						cat_wrap.find(".wa-emoji-cat-btn").removeClass("active");
+						$(e.currentTarget).addClass("active");
+						this.render_picker_grid();
+					})
+					.appendTo(cat_wrap);
+			});
 		}
+	},
 
-		list.forEach((emoji) => {
-			$(`<span class="wa-emoji-item">${emoji}</span>`)
-				.on("click", () => this.insert_emoji(emoji))
-				.appendTo(grid);
-		});
+	render_picker_grid(query = "") {
+		const grid = this.wrapper.find(".wa-emoji-grid");
+		grid.empty().removeClass("sticker-grid gif-grid");
+		query = (query || this.wrapper.find(".wa-emoji-search-input").val() || "").trim().toLowerCase();
+		const mode = this.picker_mode || "emoji";
+		const active_cat = this.wrapper.find(".wa-emoji-cat-btn.active").data("cat");
+
+		if (mode === "emoji") {
+			let list = [];
+			if (query) {
+				Object.keys(EMOJI_CATEGORIES).forEach((k) => {
+					list.push(...EMOJI_CATEGORIES[k].list);
+				});
+				list = Array.from(new Set(list));
+			} else {
+				const category = EMOJI_CATEGORIES[active_cat] || EMOJI_CATEGORIES.smileys;
+				list = category.list;
+			}
+			list.forEach((emoji) => {
+				$(`<span class="wa-emoji-item">${emoji}</span>`)
+					.on("click", () => this.insert_emoji(emoji))
+					.appendTo(grid);
+			});
+		} else if (mode === "sticker") {
+			grid.addClass("sticker-grid");
+			let list = [];
+			if (query) {
+				Object.keys(STICKER_PACKS).forEach((k) => {
+					list.push(...STICKER_PACKS[k].list);
+				});
+			} else {
+				const pack = STICKER_PACKS[active_cat] || STICKER_PACKS.hr_office;
+				list = pack.list;
+			}
+			if (query) {
+				list = list.filter(s => s.title.toLowerCase().includes(query) || s.label.toLowerCase().includes(query));
+			}
+			list.forEach((stk) => {
+				$(`
+					<div class="wa-sticker-item" style="background:${stk.bg}; color:${stk.color}; border: 1.5px solid ${stk.color};">
+						${frappe.utils.escape_html(stk.label)}
+					</div>
+				`)
+					.on("click", () => this.insert_emoji(`[Sticker: ${stk.label}]`))
+					.appendTo(grid);
+			});
+		} else if (mode === "gif") {
+			grid.addClass("gif-grid");
+			let list = [];
+			if (query) {
+				Object.keys(GIF_COLLECTIONS).forEach((k) => {
+					list.push(...GIF_COLLECTIONS[k].list);
+				});
+			} else {
+				const coll = GIF_COLLECTIONS[active_cat] || GIF_COLLECTIONS.all;
+				list = coll.list;
+			}
+			if (query) {
+				list = list.filter(g => g.title.toLowerCase().includes(query));
+			}
+			list.forEach((gif) => {
+				$(`
+					<div class="wa-gif-item" title="${frappe.utils.escape_html(gif.title)}">
+						<img src="${frappe.utils.escape_html(gif.url)}" alt="${frappe.utils.escape_html(gif.title)}" loading="lazy">
+						<div class="wa-gif-title">${frappe.utils.escape_html(gif.title)}</div>
+					</div>
+				`)
+					.on("click", () => this.insert_emoji(gif.url))
+					.appendTo(grid);
+			});
+		}
 	},
 
 	insert_emoji(emoji) {
@@ -1478,7 +2493,7 @@ frappe.whatsapp_hr_inbox = {
 				html += `<a class="wa-media-link" href="${frappe.utils.escape_html(media)}" target="_blank" rel="noopener"><img class="wa-media-img" src="${frappe.utils.escape_html(media)}" alt=""></a>`;
 			} else {
 				const label = frappe.utils.escape_html(message.message || media.split("/").pop());
-				html += `<a class="wa-media-doc" href="${frappe.utils.escape_html(media)}" target="_blank" rel="noopener"><span class="wa-doc-icon">📎</span><span class="wa-doc-name">${label}</span></a>`;
+				html += `<a class="wa-media-doc" href="${frappe.utils.escape_html(media)}" target="_blank" rel="noopener"><span class="wa-doc-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span><span class="wa-doc-name">${label}</span></a>`;
 			}
 		}
 
@@ -1544,7 +2559,7 @@ frappe.whatsapp_hr_inbox = {
 		if (!inbound) {
 			const s_name = message.sender_name || message.sender || "";
 			if (s_name && s_name !== "Guest") {
-				sender_html = `<div class="wa-bubble-sender" title="${__("Sent by HR Agent")}">${frappe.utils.escape_html(s_name)}</div>`;
+				sender_html = `<div class="wa-bubble-sender" title="${__("Sent by HR Agent")}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:3.5px; opacity:0.85;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${frappe.utils.escape_html(s_name)}</div>`;
 			}
 		}
 
@@ -1661,7 +2676,13 @@ frappe.whatsapp_hr_inbox = {
 					this.load_inbox();
 					this.messages_el.html(`
 						<div class="wa-empty">
-							<div class="wa-empty-icon">💬</div>
+							<div class="wa-empty-icon">
+								<svg viewBox="0 0 24 24" width="60" height="60" fill="none" stroke="#008069" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.85;">
+									<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+									<path d="M8 10h8"/>
+									<path d="M8 14h5"/>
+								</svg>
+							</div>
 							<div class="wa-empty-title">${__("WhatsApp HR Live Chat")}</div>
 							<div class="wa-empty-sub">${__("Select a chat to view messages.")}</div>
 						</div>

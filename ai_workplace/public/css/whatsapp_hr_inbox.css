@@ -1,5 +1,9 @@
 /* WhatsApp Web–style HR Live Chat Inbox */
 
+#page-whatsapp-hr-inbox .page-head.flex {
+	display: none;
+}
+
 /* Fit inside Frappe desk page — no outer scrollbar */
 .wa-inbox-page-wrapper .layout-main-section,
 .wa-inbox-page {
@@ -13,13 +17,13 @@
 
 .wa-inbox {
 	display: flex;
-	height: calc(100vh - 175px);
-	max-height: 640px;
-	min-height: 420px;
-	border-radius: 8px;
+	height: calc(100vh - 110px);
+	min-height: 500px;
+	border-radius: 12px;
 	overflow: hidden;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-	font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+	border: 1px solid #e2e8f0;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
@@ -179,9 +183,17 @@
 }
 
 @keyframes wa-badge-pulse {
-	0% { transform: scale(1); }
-	50% { transform: scale(1.15); }
-	100% { transform: scale(1); }
+	0% {
+		transform: scale(1);
+	}
+
+	50% {
+		transform: scale(1.15);
+	}
+
+	100% {
+		transform: scale(1);
+	}
 }
 
 .wa-chat-list {
@@ -206,24 +218,26 @@
 
 .wa-chat-item.active {
 	background: #f0f2f5;
+	border-left: 3.5px solid #008069;
 }
 
 .wa-avatar {
-	width: 48px;
-	height: 48px;
+	width: 44px;
+	height: 44px;
 	border-radius: 50%;
-	background: #dfe5e7;
-	color: #54656f;
+	background: linear-gradient(135deg, #64748b, #475569);
+	color: #ffffff;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 18px;
+	font-size: 16px;
 	font-weight: 600;
 	flex-shrink: 0;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .wa-avatar.hr {
-	background: #008069;
+	background: linear-gradient(135deg, #008069, #00a884);
 	color: #fff;
 }
 
@@ -288,9 +302,20 @@
 	margin-top: 4px;
 }
 
-.wa-badge.Queued { background: #fff8e6; color: #b38600; }
-.wa-badge.Expired { background: #ffeaea; color: #c0392b; }
-.wa-badge.Closed { background: #f0f2f5; color: #667781; }
+.wa-badge.Queued {
+	background: #fff8e6;
+	color: #b38600;
+}
+
+.wa-badge.Expired {
+	background: #ffeaea;
+	color: #c0392b;
+}
+
+.wa-badge.Closed {
+	background: #f0f2f5;
+	color: #667781;
+}
 
 /* ── Chat panel ──────────────────────────────────────────────────────────── */
 .wa-chat-panel {
@@ -705,19 +730,56 @@
 	display: none !important;
 }
 
+.wa-picker-top-tabs {
+	display: flex;
+	background: #e9edef;
+	border-bottom: 1px solid #d1d7db;
+	padding: 4px;
+	gap: 4px;
+}
+
+.wa-picker-tab-btn {
+	flex: 1;
+	border: none;
+	background: transparent;
+	font-size: 13px;
+	font-weight: 600;
+	color: #54656f;
+	padding: 6px 0;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+}
+
+.wa-picker-tab-btn:hover {
+	background: rgba(255, 255, 255, 0.5);
+}
+
+.wa-picker-tab-btn.active {
+	background: #ffffff;
+	color: #008069;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .wa-emoji-categories {
 	display: flex;
 	background: #f0f2f5;
 	border-bottom: 1px solid #e9edef;
 	padding: 4px;
 	gap: 4px;
+	overflow-x: auto;
 }
 
 .wa-emoji-cat-btn {
 	flex: 1;
+	min-width: 32px;
 	border: none;
 	background: transparent;
-	font-size: 18px;
+	font-size: 16px;
 	padding: 6px 0;
 	border-radius: 6px;
 	cursor: pointer;
@@ -756,6 +818,16 @@
 	overflow-y: auto;
 }
 
+.wa-emoji-grid.sticker-grid {
+	grid-template-columns: repeat(2, 1fr);
+	gap: 8px;
+}
+
+.wa-emoji-grid.gif-grid {
+	grid-template-columns: repeat(2, 1fr);
+	gap: 8px;
+}
+
 .wa-emoji-item {
 	display: flex;
 	align-items: center;
@@ -771,6 +843,60 @@
 .wa-emoji-item:hover {
 	background: #f0f2f5;
 	transform: scale(1.18);
+}
+
+.wa-sticker-item {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 8px;
+	border-radius: 8px;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 700;
+	text-align: center;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+	transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.wa-sticker-item:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.wa-gif-item {
+	position: relative;
+	border-radius: 8px;
+	overflow: hidden;
+	height: 90px;
+	cursor: pointer;
+	background: #222;
+	transition: transform 0.15s;
+}
+
+.wa-gif-item:hover {
+	transform: scale(1.03);
+}
+
+.wa-gif-item img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.wa-gif-title {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background: rgba(0, 0, 0, 0.65);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 3px 6px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .wa-send-btn {
@@ -843,8 +969,15 @@
 }
 
 @keyframes wa-pulse {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.4; }
+
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.4;
+	}
 }
 
 /* ==========================================================================
@@ -1009,11 +1142,22 @@ html[data-theme="dark"] .wa-badge {
 }
 
 .wa-inbox.dark-theme .wa-badge.Queued,
-body[data-theme="dark"] .wa-badge.Queued { background: rgba(245, 158, 11, 0.2) !important; color: #f59e0b !important; }
+body[data-theme="dark"] .wa-badge.Queued {
+	background: rgba(245, 158, 11, 0.2) !important;
+	color: #f59e0b !important;
+}
+
 .wa-inbox.dark-theme .wa-badge.Expired,
-body[data-theme="dark"] .wa-badge.Expired { background: rgba(239, 68, 68, 0.2) !important; color: #ef4444 !important; }
+body[data-theme="dark"] .wa-badge.Expired {
+	background: rgba(239, 68, 68, 0.2) !important;
+	color: #ef4444 !important;
+}
+
 .wa-inbox.dark-theme .wa-badge.Closed,
-body[data-theme="dark"] .wa-badge.Closed { background: #202c33 !important; color: #8696a0 !important; }
+body[data-theme="dark"] .wa-badge.Closed {
+	background: #202c33 !important;
+	color: #8696a0 !important;
+}
 
 .wa-inbox.dark-theme .wa-chat-panel,
 [data-theme="dark"] .wa-chat-panel,
@@ -1300,6 +1444,7 @@ body[data-theme="dark"] .wa-emoji-item:hover {
 
 /* ── Mobile: WhatsApp-style list ↔ chat navigation ─────────────────────── */
 @media (max-width: 767px) {
+
 	.wa-inbox-page-wrapper .layout-main-section,
 	.wa-inbox-page {
 		padding: 0 !important;
@@ -1584,4 +1729,3 @@ body[data-theme="dark"] .wa-scroll-bottom-btn:hover {
 	background: #2a3942 !important;
 	color: #e9edef !important;
 }
-
