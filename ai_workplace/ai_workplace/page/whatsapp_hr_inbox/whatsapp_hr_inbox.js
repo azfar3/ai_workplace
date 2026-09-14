@@ -1534,6 +1534,16 @@ frappe.whatsapp_hr_inbox = {
 		return (!assigned || assigned === user);
 	},
 
+	render_avatar_html(img_url, title, initial) {
+		const safe_title = frappe.utils.escape_html(title || "?");
+		const safe_initial = frappe.utils.escape_html(initial || "?");
+		if (img_url) {
+			const safe_url = frappe.utils.escape_html(img_url);
+			return `<img src="${safe_url}" alt="${safe_title}" class="wa-avatar-img" onerror="this.style.display='none'; if(this.parentElement) this.parentElement.innerText='${safe_initial}';" />`;
+		}
+		return safe_initial;
+	},
+
 	sync_sidebar_item(payload) {
 		const session_name = payload.name || payload.session_name;
 		if (!session_name) return;
@@ -1559,6 +1569,8 @@ frappe.whatsapp_hr_inbox = {
 
 		const title = payload.display_title || payload.display_name || payload.employee_name || payload.wa_id || payload.phone || session_name;
 		const initial = (title || "?").charAt(0).toUpperCase();
+		const img_url = payload.employee_image || payload.image;
+		const avatar_html = this.render_avatar_html(img_url, title, initial);
 		const msg_text = (payload.last_message || payload.last_message_preview || payload.message || "").trim();
 		const unread_cnt = payload.unread_count !== undefined ? payload.unread_count : 0;
 		const status = payload.status || "Queued";
@@ -1570,7 +1582,7 @@ frappe.whatsapp_hr_inbox = {
 			: "";
 
 		if (item.length) {
-			item.find(".wa-avatar").text(initial);
+			item.find(".wa-avatar").html(avatar_html);
 			item.find(".wa-chat-item-name").text(title);
 			item.find(".wa-chat-item-time").text(time_str);
 			if (msg_text) {
@@ -1593,7 +1605,7 @@ frappe.whatsapp_hr_inbox = {
 			const has_unread_cls = unread_cnt > 0 ? "has-unread" : "";
 			item = $(`
 				<div class="wa-chat-item ${has_unread_cls}" data-name="${frappe.utils.escape_html(session_name)}">
-					<div class="wa-avatar">${frappe.utils.escape_html(initial)}</div>
+					<div class="wa-avatar">${avatar_html}</div>
 					<div class="wa-chat-item-body">
 						<div class="wa-chat-item-top">
 							<span class="wa-chat-item-name">${frappe.utils.escape_html(title)}</span>
@@ -1824,6 +1836,8 @@ frappe.whatsapp_hr_inbox = {
 		sessions.forEach((s) => {
 			const title = s.display_title || s.display_name || s.employee_name || s.wa_id || s.name;
 			const initial = (title || "?").charAt(0).toUpperCase();
+			const img_url = s.employee_image || s.image;
+			const avatar_html = this.render_avatar_html(img_url, title, initial);
 			const last_msg = (s.last_message || s.initial_query || "").trim();
 			const preview = last_msg || s.phone || s.wa_id || "";
 			const unread_cnt = s.unread_count || 0;
@@ -1837,6 +1851,7 @@ frappe.whatsapp_hr_inbox = {
 
 			const existing = this.list_el.find(`.wa-chat-item[data-name="${frappe.utils.escape_html(s.name)}"]`);
 			if (existing.length) {
+				existing.find(".wa-avatar").html(avatar_html);
 				existing.find(".wa-chat-item-name").text(title);
 				existing.find(".wa-chat-item-time").text(time_str);
 				existing.find(".wa-chat-item-preview").text(preview).attr("title", preview);
@@ -1853,7 +1868,7 @@ frappe.whatsapp_hr_inbox = {
 
 			const item = $(`
 				<div class="wa-chat-item ${has_unread_cls}" data-name="${frappe.utils.escape_html(s.name)}">
-					<div class="wa-avatar">${frappe.utils.escape_html(initial)}</div>
+					<div class="wa-avatar">${avatar_html}</div>
 					<div class="wa-chat-item-body">
 						<div class="wa-chat-item-top">
 							<span class="wa-chat-item-name">${frappe.utils.escape_html(title)}</span>
@@ -2127,8 +2142,11 @@ frappe.whatsapp_hr_inbox = {
 			`);
 		}
 
+		const img_url = data.employee_image || data.image;
+		const avatar_html = this.render_avatar_html(img_url, title, initial);
+
 		this.subtitle_el.html(status_items.filter(Boolean).join(" · "));
-		this.avatar_el.text(initial);
+		this.avatar_el.html(avatar_html);
 
 		// Click to open Employee form
 		this.wrapper.find(".wa-emp-link").off("click").on("click", (e) => {

@@ -98,6 +98,31 @@ def _compute_window_expires(last_user_message_at: Any) -> Any:
     return last_user_message_at + timedelta(hours=SESSION_WINDOW_HOURS)
 
 
+def get_employee_image(employee: Optional[str] = None, erp_user: Optional[str] = None) -> Optional[str]:
+    """Return profile image URL for employee or ERP user if available."""
+    image_url = None
+    if employee and getattr(frappe, "db", None) and frappe.db.exists("Employee", employee):
+        try:
+            image_url = frappe.db.get_value("Employee", employee, "image")
+        except Exception:
+            image_url = None
+        if not image_url:
+            try:
+                user_id = frappe.db.get_value("Employee", employee, "user_id")
+                if user_id and frappe.db.exists("User", user_id):
+                    image_url = frappe.db.get_value("User", user_id, "user_image")
+            except Exception:
+                image_url = None
+
+    if not image_url and erp_user and getattr(frappe, "db", None) and frappe.db.exists("User", erp_user):
+        try:
+            image_url = frappe.db.get_value("User", erp_user, "user_image")
+        except Exception:
+            image_url = None
+
+    return image_url or None
+
+
 def _session_payload(session: Any) -> dict[str, Any]:
     can_reply, reason = evaluate_reply_permission(session)
     office = get_office_hours_info()
@@ -137,6 +162,7 @@ def _session_payload(session: Any) -> dict[str, Any]:
             last_message = f"📎 Media ({msg_obj.get('message_type') or 'file'})"
 
     tab_counts = get_inbox_tab_counts()
+    emp_image = get_employee_image(session.employee, session.erp_user)
 
     return {
         "name": session.name,
@@ -148,6 +174,8 @@ def _session_payload(session: Any) -> dict[str, Any]:
         "display_title": display_title,
         "employee": session.employee,
         "employee_name": frappe.db.get_value("Employee", session.employee, "employee_name") if session.employee else None,
+        "employee_image": emp_image,
+        "image": emp_image,
         "erp_user": session.erp_user,
         "wa_id": session.wa_id,
         "phone": session.wa_id or "",
@@ -1564,6 +1592,9 @@ def get_inbox_sessions(
     merged_sessions = list(grouped_sessions.values())
 
     for row in merged_sessions:
+        emp_image = get_employee_image(row.get("employee"), row.get("erp_user"))
+        row["employee_image"] = emp_image
+        row["image"] = emp_image
         row["display_title"] = (
             row.get("display_name")
             or row.get("employee")

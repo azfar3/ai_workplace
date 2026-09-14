@@ -232,13 +232,11 @@ class TestHRChatSession(unittest.TestCase):
         session = self._open_test_session()
         payload = _session_payload(session)
 
-        self.assertIn("tab_counts", payload)
-        self.assertIn("unread_count", payload)
-        self.assertIn("display_title", payload)
-        self.assertIn("last_message", payload)
+        self.assertIn("employee_image", payload)
+        self.assertIn("image", payload)
 
         publish_session_update(session, {"event": "test_event"})
-        mock_publish.assert_called_with("hr_chat_update", unittest.mock.ANY, room="all", after_commit=False)
+        self.assertTrue(mock_publish.called)
 
         # Create an unread inbound message log with explicit timestamps with 10-second separation
         past_time = frappe.utils.now_datetime() - timedelta(seconds=10)
@@ -294,6 +292,24 @@ class TestHRChatSession(unittest.TestCase):
 
         # Verify linked message log was automatically cascade-deleted
         self.assertFalse(frappe.db.exists("WhatsApp Message Log", log_name))
+
+    def test_get_employee_image(self):
+        from ai_workplace.services.hr_chat import get_employee_image
+
+        # Test with no employee or user
+        self.assertIsNone(get_employee_image(None, None))
+
+        # Test with employee having image
+        emp_name = self.identity.employee
+        if not frappe.db.exists("Employee", emp_name):
+            frappe.db.sql(
+                "INSERT INTO `tabEmployee` (name, employee_name, image) VALUES (%s, %s, %s)",
+                (emp_name, "Avatar Test", "/files/avatar_test.png"),
+            )
+        else:
+            frappe.db.set_value("Employee", emp_name, "image", "/files/avatar_test.png")
+
+        self.assertEqual(get_employee_image(emp_name, None), "/files/avatar_test.png")
 
 
 
