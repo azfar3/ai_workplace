@@ -136,6 +136,45 @@ def resolve_identity(phone_number: str) -> IdentityResult:
     return res
 
 
+def resolve_web_identity(
+    user_email: Optional[str] = None,
+    guest_info: Optional[dict] = None,
+) -> IdentityResult:
+    """
+    Resolve a Web Chat user or guest to an ERPNext identity.
+    """
+    if user_email and user_email != "Guest":
+        usr = frappe.db.get_value("User", user_email, ["name", "full_name", "phone", "mobile_no"], as_dict=True)
+        if usr:
+            emp = frappe.db.get_value("Employee", {"user_id": user_email, "status": "Active"}, ["name", "employee_name", "cell_number"], as_dict=True)
+            phone = (usr.get("mobile_no") or usr.get("phone") or (emp.get("cell_number") if emp else None) or "+923000000000")
+            try:
+                norm_phone = normalize_phone_number(phone)
+            except Exception:
+                norm_phone = phone or "+923000000000"
+
+            return IdentityResult(
+                status="matched",
+                normalized_phone=norm_phone,
+                user=usr.get("name"),
+                employee=emp.get("name") if emp else None,
+                full_name=emp.get("employee_name") if emp else usr.get("full_name"),
+            )
+
+    guest_info = guest_info or {}
+    phone = guest_info.get("phone") or "+923000000000"
+    try:
+        norm_phone = normalize_phone_number(phone)
+    except Exception:
+        norm_phone = phone
+
+    return IdentityResult(
+        status="guest",
+        normalized_phone=norm_phone,
+        full_name=guest_info.get("name") or "Web Guest",
+    )
+
+
 def get_or_create_whatsapp_identity(identity: IdentityResult | dict, wa_id: str = "") -> str:
     """
     Ensure a WhatsApp Identity record exists in ERPNext for the given identity result.

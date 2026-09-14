@@ -6,6 +6,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "channel",
   "whatsapp_identity",
   "whatsapp_conversation",
   "wa_id",
@@ -32,6 +33,15 @@
   "closed_by"
  ],
  "fields": [
+  {
+   "default": "WhatsApp",
+   "fieldname": "channel",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Channel",
+   "options": "WhatsApp\nWeb Chat"
+  },
   {
    "fieldname": "whatsapp_identity",
    "fieldtype": "Data",

@@ -368,13 +368,14 @@ def evaluate_reply_permission(
         if not user_is_hr_manager(user):
             return False, _("This chat is assigned to another HR agent.")
 
-    if not session.last_user_message_at or not session.session_window_expires_at:
-        return False, _("Waiting for an employee message on WhatsApp.")
+    if getattr(session, "channel", "WhatsApp") != "Web Chat":
+        if not session.last_user_message_at or not session.session_window_expires_at:
+            return False, _("Waiting for an employee message on WhatsApp.")
 
-    if now > session.session_window_expires_at:
-        return False, _(
-            "WhatsApp 24-hour window expired. The employee must send a new message on WhatsApp before you can reply."
-        )
+        if now > session.session_window_expires_at:
+            return False, _(
+                "WhatsApp 24-hour window expired. The employee must send a new message on WhatsApp before you can reply."
+            )
 
     return True, ""
 
@@ -1153,36 +1154,50 @@ def send_hr_attachment(
     phone = frappe.db.get_value(
         "WhatsApp Identity", session.whatsapp_identity, "normalized_phone"
     )
-    if not phone:
-        frappe.throw(_("No WhatsApp phone number found for this session."))
 
     file_doc, content, filename, mime_type = _resolve_attachment_file(file_url)
     ext = os.path.splitext(filename or file_doc.file_name or "")[1].lower()
     is_image = ext in IMAGE_EXTENSIONS
-
-    upload_result = upload_media_bytes(
-        content, mime_type, filename or file_doc.file_name
-    )
-    if not upload_result.get("success"):
-        frappe.throw(
-            upload_result.get("error") or _("Failed to upload file to WhatsApp.")
-        )
-
-    media_id = upload_result.get("media_id")
     caption_text = (caption or "").strip()
-    if is_image:
-        result = send_image_message(phone, media_id, caption=caption_text)
-        message_type = "image"
-        log_message = caption_text or file_doc.file_name
-    else:
-        result = send_document_message(
-            phone,
-            media_id,
-            filename=filename or file_doc.file_name or "file",
-            caption=caption_text,
+    log_message = caption_text or file_doc.file_name or "Attachment"
+    message_type = "image" if is_image else "document"
+
+    if getattr(session, "channel", "WhatsApp") == "Web Chat":
+        result = {"success": True, "message_id": f"WEB-{frappe.generate_hash(length=8)}"}
+        frappe.publish_realtime(
+            "xpert_chat_reply",
+            {
+                "session": session.name,
+                "message": log_message,
+                "media_file": file_doc.file_url,
+                "message_type": message_type,
+                "sender_type": "HR Agent",
+                "sender_name": frappe.db.get_value("User", user, "full_name") or user,
+                "timestamp": str(_now()),
+            },
         )
-        message_type = "document"
-        log_message = caption_text or file_doc.file_name
+    else:
+        if not phone:
+            frappe.throw(_("No WhatsApp phone number found for this session."))
+
+        upload_result = upload_media_bytes(
+            content, mime_type, filename or file_doc.file_name
+        )
+        if not upload_result.get("success"):
+            frappe.throw(
+                upload_result.get("error") or _("Failed to upload file to WhatsApp.")
+            )
+
+        media_id = upload_result.get("media_id")
+        if is_image:
+            result = send_image_message(phone, media_id, caption=caption_text)
+        else:
+            result = send_document_message(
+                phone,
+                media_id,
+                filename=filename or file_doc.file_name or "file",
+                caption=caption_text,
+            )
 
     now = _now()
     session.last_hr_reply_at = now
@@ -1257,31 +1272,46 @@ def send_hr_reply(
     phone = frappe.db.get_value(
         "WhatsApp Identity", session.whatsapp_identity, "normalized_phone"
     )
-    if not phone:
-        frappe.throw(_("No WhatsApp phone number found for this session."))
 
-    from ai_workplace.whatsapp.interactive import build_button_message
-    from ai_workplace.whatsapp.sender import send_message
+    if getattr(session, "channel", "WhatsApp") == "Web Chat":
+        result = {"success": True, "message_id": f"WEB-{frappe.generate_hash(length=8)}"}
+        frappe.publish_realtime(
+            "xpert_chat_reply",
+            {
+                "session": session.name,
+                "message": text,
+                "sender_type": "HR Agent",
+                "sender_name": frappe.db.get_value("User", user, "full_name") or user,
+                "timestamp": str(_now()),
+            },
+        )
+    else:
+        if not phone:
+            frappe.throw(_("No WhatsApp phone number found for this session."))
 
-    btn_title = "🔴 End HR Chat"
-    try:
-        from ai_workplace.conversation.manager import get_or_create_conversation
-        conv = get_or_create_conversation(session.whatsapp_identity)
-        lang = conv.preferred_language or "English"
-        if lang == "Urdu":
-            btn_title = "🔴 چیٹ ختم کریں"
-        elif lang == "Roman Urdu":
-            btn_title = "🔴 Chat Khatam Karein"
-    except Exception:
-        pass
+        from ai_workplace.whatsapp.interactive import build_button_message
+        from ai_workplace.whatsapp.sender import send_message
 
-    outbound_msg = build_button_message(
-        body=text,
-        buttons=[
-            {"id": "svc_end_hr_chat", "title": btn_title[:20]},
-        ]
-    )
-    result = send_message(phone, outbound_msg)
+        btn_title = "🔴 End HR Chat"
+        try:
+            from ai_workplace.conversation.manager import get_or_create_conversation
+            conv = get_or_create_conversation(session.whatsapp_identity)
+            lang = conv.preferred_language or "English"
+            if lang == "Urdu":
+                btn_title = "🔴 چیٹ ختم کریں"
+            elif lang == "Roman Urdu":
+                btn_title = "🔴 Chat Khatam Karein"
+        except Exception:
+            pass
+
+        outbound_msg = build_button_message(
+            body=text,
+            buttons=[
+                {"id": "svc_end_hr_chat", "title": btn_title[:20]},
+            ]
+        )
+        result = send_message(phone, outbound_msg)
+
     now = _now()
     session.last_hr_reply_at = now
     session.flags.ignore_links = True
