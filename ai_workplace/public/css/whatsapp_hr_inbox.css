@@ -51,6 +51,67 @@
 	flex-wrap: wrap;
 }
 
+/* ── Search Bar ──────────────────────────────────────────────────────────── */
+.wa-search-bar {
+	padding: 8px 12px;
+	background: #fff;
+	border-bottom: 1px solid #e9edef;
+	flex-shrink: 0;
+}
+
+.wa-search-input-wrap {
+	display: flex;
+	align-items: center;
+	background: #f0f2f5;
+	border-radius: 8px;
+	padding: 6px 10px;
+	gap: 8px;
+	border: 1.5px solid transparent;
+	transition: background 0.15s, border-color 0.15s;
+}
+
+.wa-search-input-wrap:focus-within {
+	background: #ffffff;
+	border-color: #008069;
+	box-shadow: 0 0 0 2px rgba(0, 128, 105, 0.12);
+}
+
+.wa-search-icon {
+	font-size: 13px;
+	color: #54656f;
+	line-height: 1;
+}
+
+.wa-chat-search-input {
+	flex: 1;
+	border: none !important;
+	outline: none !important;
+	background: transparent !important;
+	font-size: 13px;
+	color: #111b21;
+	padding: 0;
+	margin: 0;
+	box-shadow: none !important;
+}
+
+.wa-search-clear-btn {
+	background: none;
+	border: none;
+	color: #667781;
+	font-size: 14px;
+	cursor: pointer;
+	padding: 0 4px;
+	line-height: 1;
+}
+
+.wa-search-clear-btn:hover {
+	color: #111b21;
+}
+
+.wa-search-clear-btn.hidden {
+	display: none !important;
+}
+
 .wa-filters .wa-filter-btn {
 	border: none;
 	background: #f0f2f5;
@@ -804,6 +865,35 @@ body[data-theme="dark"] .wa-sidebar,
 html[data-theme="dark"] .wa-sidebar {
 	background: #111b21 !important;
 	border-right: 1px solid #222d34 !important;
+}
+
+.wa-inbox.dark-theme .wa-search-bar,
+[data-theme="dark"] .wa-search-bar,
+body[data-theme="dark"] .wa-search-bar,
+html[data-theme="dark"] .wa-search-bar {
+	background: #111b21 !important;
+	border-bottom: 1px solid #222d34 !important;
+}
+
+.wa-inbox.dark-theme .wa-search-input-wrap,
+[data-theme="dark"] .wa-search-input-wrap,
+body[data-theme="dark"] .wa-search-input-wrap,
+html[data-theme="dark"] .wa-search-input-wrap {
+	background: #202c33 !important;
+}
+
+.wa-inbox.dark-theme .wa-chat-search-input,
+[data-theme="dark"] .wa-chat-search-input,
+body[data-theme="dark"] .wa-chat-search-input,
+html[data-theme="dark"] .wa-chat-search-input {
+	color: #e9edef !important;
+}
+
+.wa-inbox.dark-theme .wa-search-icon,
+[data-theme="dark"] .wa-search-icon,
+body[data-theme="dark"] .wa-search-icon,
+html[data-theme="dark"] .wa-search-icon {
+	color: #8696a0 !important;
 }
 
 .wa-inbox.dark-theme .wa-sidebar-header,

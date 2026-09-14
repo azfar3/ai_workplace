@@ -84,6 +84,13 @@ frappe.whatsapp_hr_inbox = {
 						<button class="wa-filter-btn" data-filter="closed">${__("Closed")} <span class="wa-tab-badge wa-tab-badge-closed hidden"></span></button>
 						<button class="wa-filter-btn" data-filter="all">${__("All")} <span class="wa-tab-badge wa-tab-badge-all hidden"></span></button>
 					</div>
+					<div class="wa-search-bar">
+						<div class="wa-search-input-wrap">
+							<span class="wa-search-icon">🔍</span>
+							<input type="text" class="wa-chat-search-input" placeholder="${__("Search chats...")}">
+							<button type="button" class="wa-search-clear-btn hidden" title="${__("Clear search")}">✕</button>
+						</div>
+					</div>
 					<div class="wa-chat-list"></div>
 				</aside>
 				<main class="wa-chat-panel">
@@ -166,10 +173,26 @@ frappe.whatsapp_hr_inbox = {
 		this.actions_el = this.wrapper.find(".wa-chat-header-actions");
 		this.back_btn = this.wrapper.find(".wa-back-btn");
 		this.push_btn = this.wrapper.find(".wa-push-btn");
+		this.search_input = this.wrapper.find(".wa-chat-search-input");
+		this.search_clear_btn = this.wrapper.find(".wa-search-clear-btn");
+		this.search_query = "";
 		this.inbox_el = this.wrapper;
 
 		this.init_mobile_nav();
 		this.init_push_notifications();
+
+		this.search_input.on("input", (e) => {
+			this.search_query = $(e.currentTarget).val().trim().toLowerCase();
+			this.search_clear_btn.toggleClass("hidden", !this.search_query);
+			this.apply_chat_search();
+		});
+
+		this.search_clear_btn.on("click", () => {
+			this.search_input.val("");
+			this.search_query = "";
+			this.search_clear_btn.addClass("hidden");
+			this.apply_chat_search();
+		});
 
 		this.wrapper.find(".wa-filter-btn").on("click", (e) => {
 			this.current_filter = $(e.currentTarget).data("filter");
@@ -929,6 +952,38 @@ frappe.whatsapp_hr_inbox = {
 			item.on("click", () => this.load_session(s.name));
 			this.list_el.append(item);
 		});
+		this.apply_chat_search();
+	},
+
+	apply_chat_search() {
+		const q = (this.search_query || "").toLowerCase();
+		const items = this.list_el.find(".wa-chat-item");
+		this.list_el.find(".wa-search-no-results").remove();
+
+		if (!items.length) return;
+
+		let visible_count = 0;
+		items.each(function () {
+			const $item = $(this);
+			const name = ($item.find(".wa-chat-item-name").text() || "").toLowerCase();
+			const preview = ($item.find(".wa-chat-item-preview").text() || "").toLowerCase();
+			const docname = ($item.attr("data-name") || "").toLowerCase();
+
+			if (!q || name.includes(q) || preview.includes(q) || docname.includes(q)) {
+				$item.show();
+				visible_count++;
+			} else {
+				$item.hide();
+			}
+		});
+
+		if (q && visible_count === 0) {
+			this.list_el.append(`
+				<div class="wa-empty wa-search-no-results" style="height:180px;padding:20px;">
+					<div class="wa-empty-sub">${__("No chats found matching \"{0}\"", [frappe.utils.escape_html(this.search_query)])}</div>
+				</div>
+			`);
+		}
 	},
 
 	load_session(name, silent) {
