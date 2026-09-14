@@ -472,18 +472,26 @@ frappe.whatsapp_hr_inbox = {
 			try {
 				frappe.realtime.socket.on("connect", () => {
 					bind();
+					this.start_live_poll();
 					this.load_inbox(true);
 				});
 				frappe.realtime.socket.on("reconnect", () => {
 					bind();
+					this.start_live_poll();
 					this.load_inbox(true);
+				});
+				frappe.realtime.socket.on("disconnect", () => {
+					this.start_live_poll();
 				});
 			} catch (e) { }
 		} else {
 			if (typeof frappe.realtime.init === "function") {
 				frappe.realtime.init();
 			}
-			setTimeout(bind, 500);
+			setTimeout(() => {
+				bind();
+				this.start_live_poll();
+			}, 500);
 		}
 	},
 
@@ -719,19 +727,32 @@ frappe.whatsapp_hr_inbox = {
 
 	start_live_poll() {
 		this.stop_live_poll();
-		this._poll_timer = setInterval(() => {
-			if (!document.hidden) {
-				this.load_inbox(true);
-				if (this.current_session) {
-					this.refresh_session(true);
+		const schedule_next = () => {
+			// Sockets deliver updates in real time (<100ms).
+			// Background poll acts as a slow backup (60s when socket active, 30s when disconnected).
+			const is_connected = Boolean(frappe.realtime?.socket?.connected);
+			const delay = is_connected ? 60000 : 30000;
+
+			this._poll_timer = setTimeout(() => {
+				if (!document.hidden) {
+					try {
+						this.load_inbox(true);
+						if (this.current_session) {
+							this.refresh_session(true);
+						}
+					} catch (err) {
+						console.warn("HR Inbox poll error (handled):", err);
+					}
 				}
-			}
-		}, 3000);
+				schedule_next();
+			}, delay);
+		};
+		schedule_next();
 	},
 
 	stop_live_poll() {
 		if (this._poll_timer) {
-			clearInterval(this._poll_timer);
+			clearTimeout(this._poll_timer);
 			this._poll_timer = null;
 		}
 	},
@@ -1064,9 +1085,18 @@ frappe.whatsapp_hr_inbox = {
 			const time_str = this.format_msg_time(m.timestamp);
 			const tick = this.render_tick_html(m);
 
+			let sender_html = "";
+			if (!inbound) {
+				const s_name = m.sender_name || m.sender || "";
+				if (s_name && s_name !== "Guest") {
+					sender_html = `<div class="wa-bubble-sender" title="${__("Sent by HR Agent")}">${frappe.utils.escape_html(s_name)}</div>`;
+				}
+			}
+
 			const row_html = `
 				<div class="wa-msg-row ${cls}" data-key="${frappe.utils.escape_html(msg_key)}">
 					<div class="wa-bubble">
+						${sender_html}
 						${this.render_message_body(m)}
 						<div class="wa-bubble-footer">
 							<span class="wa-bubble-time">${time_str}</span>
@@ -1455,9 +1485,18 @@ frappe.whatsapp_hr_inbox = {
 		const tick = this.render_tick_html(message);
 		const unread_dot = (inbound && message.is_unread) ? `<span class="wa-bubble-unread-dot" title="${__("Unread message")}"></span>` : "";
 
+		let sender_html = "";
+		if (!inbound) {
+			const s_name = message.sender_name || message.sender || "";
+			if (s_name && s_name !== "Guest") {
+				sender_html = `<div class="wa-bubble-sender" title="${__("Sent by HR Agent")}">${frappe.utils.escape_html(s_name)}</div>`;
+			}
+		}
+
 		const row_html = $(`
 			<div class="wa-msg-row ${cls}" data-key="${frappe.utils.escape_html(msg_key)}">
 				<div class="wa-bubble">
+					${sender_html}
 					${this.render_message_body(message)}
 					<div class="wa-bubble-footer">
 						<span class="wa-bubble-time">${unread_dot}${time_str}</span>

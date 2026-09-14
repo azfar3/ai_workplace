@@ -1189,6 +1189,8 @@ def send_hr_attachment(
             "delivery_status": "Failed" if log_status == "Failed" else "Sent",
             "message_type": message_type,
             "media_file": file_doc.file_url,
+            "sender": user,
+            "sender_name": frappe.db.get_value("User", user, "full_name") or user,
         },
     )
 
@@ -1282,6 +1284,8 @@ def send_hr_reply(
             "log_name": log_name,
             "delivery_status": "Failed" if log_status == "Failed" else "Sent",
             "message_type": "text",
+            "sender": user,
+            "sender_name": frappe.db.get_value("User", user, "full_name") or user,
         },
     )
 
@@ -1395,11 +1399,27 @@ def get_session_thread(
             seen_names.add(row["name"])
             rows.append(row)
 
+    outbound_senders = {r.get("sender") for r in rows if r.get("direction") == "Outbound" and r.get("sender")}
+    sender_name_map = {}
+    if outbound_senders:
+        user_names = frappe.get_all(
+            "User",
+            filters={"name": ["in", list(outbound_senders)]},
+            fields=["name", "full_name"],
+        )
+        for u in user_names:
+            sender_name_map[u["name"]] = u.get("full_name") or u["name"]
+
     for row in rows:
         if row.get("direction") == "Outbound":
             row["delivery_status"] = row.get("delivery_status") or (
                 "Failed" if row.get("status") == "Failed" else "Sent"
             )
+            sender_id = row.get("sender")
+            if sender_id and sender_id != "Guest":
+                row["sender_name"] = sender_name_map.get(sender_id) or sender_id
+            else:
+                row["sender_name"] = "HR Agent"
 
     if start == 0:
         if session.initial_query and not any(
