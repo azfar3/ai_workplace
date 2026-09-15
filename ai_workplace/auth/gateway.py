@@ -205,6 +205,15 @@ def authorize(
         "former_letter",
         "tax_deductions",
         "get_tax_details",
+        "tax_certificate",
+        "tax_cert_current",
+        "tax_cert_previous",
+        "tax_cert_latest",
+        "svc_pay_tax_deduction",
+        "svc_tax_certificate",
+        "svc_tax_cert_current",
+        "svc_tax_cert_previous",
+        "svc_tax_cert_latest",
     ):
         if (
             "payroll" in allowed_services

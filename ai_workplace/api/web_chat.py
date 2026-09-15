@@ -323,11 +323,30 @@ def _outbound_to_dict(outbound: Any) -> dict[str, Any]:
     for f in follow_ups:
         follow_up_dicts.append(_outbound_to_dict(f))
 
+    media_url = getattr(outbound, "media_url", None)
+    doc_bytes = getattr(outbound, "document_bytes", None) or getattr(outbound, "image_bytes", None)
+    doc_filename = getattr(outbound, "document_filename", None) or getattr(outbound, "filename", None)
+
+    if doc_bytes and not media_url:
+        try:
+            fname = doc_filename or f"doc_{frappe.generate_hash(length=8)}.pdf"
+            _file = frappe.get_doc({
+                "doctype": "File",
+                "file_name": fname,
+                "content": doc_bytes,
+                "is_private": 0,
+            })
+            _file.insert(ignore_permissions=True)
+            frappe.db.commit()
+            media_url = _file.file_url
+        except Exception as e:
+            frappe.logger("ai_workplace").error(f"Failed to save web chat document bytes to File: {e}")
+
     return {
         "body_text": body,
         "buttons": buttons,
         "follow_up": follow_up_dicts,
         "message_type": getattr(outbound, "message_type", "text"),
-        "media_url": getattr(outbound, "media_url", None),
-        "filename": getattr(outbound, "filename", None),
+        "media_url": media_url,
+        "filename": doc_filename,
     }

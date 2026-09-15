@@ -57,9 +57,15 @@ class TestKeywordRouter(unittest.TestCase):
 
 class TestQuickActions(unittest.TestCase):
     def test_pinned_quick_action_keys(self):
+        from ai_workplace.services.registry import ACTIVE_EMPLOYEE_QUICK_ACTION_KEYS, GUEST_QUICK_ACTION_KEYS
+        
         self.assertEqual(
             ACTIVE_EMPLOYEE_QUICK_ACTION_KEYS,
             ("attendance_leave", "payroll", "contact_hr"),
+        )
+        self.assertEqual(
+            GUEST_QUICK_ACTION_KEYS,
+            ("guest_careers", "guest_job_status", "contact_hr"),
         )
 
 
@@ -92,7 +98,7 @@ class TestServiceAliases(unittest.TestCase):
         for alias, target in (
             ("doc_salary_slip", "pay_download_slip"),
             ("doc_my_requests", "prof_my_requests"),
-            ("staff_hr_guidance", "pol_view_policies"),
+            ("staff_hr_guidance", "pol_ai_assistant"),
         ):
             self.assertEqual(SERVICE_ALIASES[alias], target)
             self.assertEqual(_resolve_service_key(alias), target)

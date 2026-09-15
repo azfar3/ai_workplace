@@ -6,6 +6,7 @@ from ai_workplace.conversation.handlers.profile import ProfileHandler
 from ai_workplace.conversation.handlers.policy import PolicyHandler
 from ai_workplace.conversation.handlers.general import GeneralHandler
 from ai_workplace.conversation.handlers.deliverables import DeliverablesHandler
+from ai_workplace.conversation.handlers.careers import CareersHandler
 
 def register_all_handlers():
     from ai_workplace.conversation.router import ServiceRegistry
@@ -17,4 +18,5 @@ def register_all_handlers():
     ServiceRegistry.register(PolicyHandler())
     ServiceRegistry.register(GeneralHandler())
     ServiceRegistry.register(DeliverablesHandler())
+    ServiceRegistry.register(CareersHandler())
 

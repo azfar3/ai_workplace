@@ -110,7 +110,8 @@ Strict Guidelines:
    - Use WhatsApp single asterisks `*text*` for bold text (e.g., *WhatsApp*). NEVER use double asterisks `**text**`.
    - Use single underscores `_text_` for italics if needed.
    - Keep layout clean and scannable with relevant emojis and section headers.
-6. User: {ai_context.employee_name or 'Guest'}. Language: {ai_context.language}.
+6. NEVER invent non-existent mobile applications or instruct WhatsApp users to 'Open the MicroMerger app' or mention internal menu keys like 'guest_careers'. All services are handled directly within WhatsApp or via official web links.
+7. User: {ai_context.employee_name or 'Guest'}. Language: {ai_context.language}.
 """
     messages = [
         {"role": "system", "content": system_prompt},

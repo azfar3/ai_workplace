@@ -268,13 +268,17 @@ def handle_contact_hr_prompt_reply(
         handle_contact_hr_connect,
         handle_live_hr_inbound,
     )
+    from ai_workplace.services.hr_guest_intake import is_guest_context
 
-    handle_contact_hr_connect(
+    connect_out = handle_contact_hr_connect(
         conv,
         context,
         trace_id=trace_id,
         identity=identity,
     )
+    if is_guest_context(context):
+        return connect_out
+
     if message_text:
         handle_live_hr_inbound(
             conv,

@@ -75,6 +75,27 @@ def canonical_to_code(language: str) -> str:
     return "en"
 
 
+def auto_detect_language(text: str) -> str:
+    """Auto-detect language based on characters and keywords."""
+    if not text:
+        return "English"
+    clean = text.lower()
+    
+    # Check for Arabic/Urdu script block
+    urdu_chars = [chr(i) for i in range(0x0600, 0x06FF)]
+    if any(c in clean for c in urdu_chars):
+        return "Urdu"
+        
+    # Check for common Roman Urdu words
+    roman_keywords = {"kese", "kya", "hai", "hain", "karna", "nahi", "bhi", "tha", "thi", "liye", "mein", "mera", "meri", "hum", "kia", "ko", "se", "kaise"}
+    words = set(clean.split())
+    if any(kw in words for kw in roman_keywords):
+        return "Roman Urdu"
+        
+    return "English"
+
+
+
 def build_language_selection_message(
     context: dict[str, Any],
     welcome_text: Optional[str] = None,

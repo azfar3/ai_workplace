@@ -38,6 +38,7 @@ from ai_workplace.services.language import (
     persist_language,
     build_language_selection_message,
     build_language_saved_message,
+    auto_detect_language,
 )
 from ai_workplace.response.builder import (
     build_cancellation_response,
@@ -379,6 +380,28 @@ def process_message(
     wa_id: Optional[str] = None,
     skip_pin_check: bool = False,
 ) -> Union[OutboundMessage, str]:
+    shared = {}
+    result = _process_message_internal(message_text, identity, message_id, trace_id, wa_id, skip_pin_check, shared)
+    if shared.get("prepend_welcome_text") and isinstance(result, OutboundMessage):
+        if result.body_text:
+            result.body_text = f"{shared['prepend_welcome_text']}\n\n{result.body_text}"
+        elif getattr(result, "interactive", None) and isinstance(result.interactive, dict):
+            body_obj = result.interactive.get("body", {})
+            if isinstance(body_obj, dict) and body_obj.get("text"):
+                body_obj["text"] = f"{shared['prepend_welcome_text']}\n\n{body_obj['text']}"
+    return result
+
+
+
+def _process_message_internal(
+    message_text: str,
+    identity: Any,
+    message_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
+    wa_id: Optional[str] = None,
+    skip_pin_check: bool = False,
+    shared_state: Optional[dict] = None,
+) -> Union[OutboundMessage, str]:
     """
     Orchestrate incoming WhatsApp message through context, language, menu, and routing.
     Returns OutboundMessage (text or interactive).
@@ -578,47 +601,23 @@ def process_message(
 
             close_session(conv.active_hr_chat_session, reset_conversation=False)
 
-        update_conversation(conv, state=ConversationState.AWAITING_FEEDBACK, current_intent="session_feedback")
+        complete_conversation(conv)
 
         lang = context.get("preferred_language", "English")
         if lang == "Urdu":
             bye_text = (
                 "خدا حافظ! 👋\n\n"
-                "آپ کا سیشن ختم کر دیا گیا ہے۔ آپ کا دن اچھا گزرے۔\n\n"
-                "⭐ *آج آپ کا تجربہ کیسا رہا؟*\n"
-                "براہ کرم 1 سے 5 تک کی درجہ بندی کریں:\n"
-                "1️⃣ ⭐️ خراب\n"
-                "2️⃣ ⭐️⭐️ مناسب\n"
-                "3️⃣ ⭐️⭐️⭐️ اچھا\n"
-                "4️⃣ ⭐️⭐️⭐️⭐️ بہت اچھا\n"
-                "5️⃣ ⭐️⭐️⭐️⭐️⭐️ بہترین\n\n"
-                "(یا تاثرات لکھیے!)"
+                "آپ کا سیشن ختم کر دیا گیا ہے۔ آپ کا دن اچھا گزرے۔"
             )
         elif lang == "Roman Urdu":
             bye_text = (
                 "Khuda Hafiz! 👋\n\n"
-                "Aap ka session close kar diya gaya hai. Aap ka din accha guzre.\n\n"
-                "⭐ *Aaj aap ka experience kaisa raha?*\n"
-                "Barah-e-karam 1 se 5 rating dein:\n"
-                "1️⃣ ⭐️ Poor\n"
-                "2️⃣ ⭐️⭐️ Fair\n"
-                "3️⃣ ⭐️⭐️⭐️ Good\n"
-                "4️⃣ ⭐️⭐️⭐️⭐ Very Good\n"
-                "5️⃣ ⭐️⭐️⭐️⭐️⭐️ Excellent\n\n"
-                "(Ya apna feedback likhein!)"
+                "Aap ka session close kar diya gaya hai. Aap ka din accha guzre."
             )
         else:
             bye_text = (
                 "Goodbye! 👋\n\n"
-                "Your session has been closed. Have a great day!\n\n"
-                "⭐ *How was your experience today?*\n"
-                "Please rate your session from 1 to 5:\n"
-                "1️⃣ ⭐ Poor\n"
-                "2️⃣ ⭐⭐ Fair\n"
-                "3️⃣ ⭐⭐⭐ Good\n"
-                "4️⃣ ⭐⭐⭐⭐ Very Good\n"
-                "5️⃣ ⭐⭐⭐⭐⭐ Excellent\n\n"
-                "(Or reply with any feedback comments!)"
+                "Your session has been closed. Have a great day!"
             )
 
         log_ai_action(
@@ -852,21 +851,19 @@ def process_message(
 
     # ── Step 1: Language selection (first contact or AWAITING_LANGUAGE) ─────────
     if current_state == ConversationState.NEW:
-        update_conversation(conv, state=ConversationState.AWAITING_LANGUAGE)
-        welcome_header = build_welcome_header(context)
-        outbound = build_language_selection_message(context, welcome_text=welcome_header)
-        log_ai_action(
-            trace_id=trace_id,
-            conversation_name=conv.name,
+        detected_lang = auto_detect_language(clean_text)
+        persist_language(
             whatsapp_identity=conv.whatsapp_identity,
-            erp_user=conv.erp_user or "",
-            employee=conv.employee or "",
-            intent="language",
-            action="display_welcome_and_language_menu",
-            result=outbound.log_text(),
-            status="Success",
+            language=detected_lang,
+            conversation=conv,
         )
-        return outbound
+        context["preferred_language"] = detected_lang
+        
+        if shared_state is not None:
+            shared_state["prepend_welcome_text"] = build_welcome_header(context)
+            
+        update_conversation(conv, state=ConversationState.AWAITING_SELECTION, preferred_language=detected_lang)
+        current_state = ConversationState.AWAITING_SELECTION
 
     if current_state == ConversationState.AWAITING_LANGUAGE:
         selected_lang = parse_language_selection(clean_text)

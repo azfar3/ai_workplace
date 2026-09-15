@@ -61,8 +61,7 @@ def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
 
     prev_user = frappe.session.user
     try:
-        if prev_user == "Guest":
-            frappe.set_user("Administrator")
+        frappe.set_user("Administrator")
         pdf_bytes = frappe.get_print(
             "Salary Slip",
             slip_name,

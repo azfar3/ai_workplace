@@ -153,11 +153,15 @@ def build_quick_action_buttons_message(
     """
     Employee-first quick reply buttons: Attendance, Payroll, Chat with HR.
     """
-    from ai_workplace.services.registry import ACTIVE_EMPLOYEE_QUICK_ACTION_KEYS
+    from ai_workplace.services.registry import ACTIVE_EMPLOYEE_QUICK_ACTION_KEYS, GUEST_QUICK_ACTION_KEYS
 
     lang = context.get("preferred_language", "English")
+    person_type = context.get("person_type", "Guest")
+    
+    target_keys = GUEST_QUICK_ACTION_KEYS if person_type == "Guest" else ACTIVE_EMPLOYEE_QUICK_ACTION_KEYS
+
     by_key = {svc["key"]: svc for svc in services}
-    quick_services = [by_key[k] for k in ACTIVE_EMPLOYEE_QUICK_ACTION_KEYS if k in by_key]
+    quick_services = [by_key[k] for k in target_keys if k in by_key]
     if not quick_services:
         quick_services = [svc for svc in services if svc.get("key") != "main_menu"][:3]
     if not quick_services:

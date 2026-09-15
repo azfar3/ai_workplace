@@ -150,11 +150,7 @@ def build_tax_certificate_download_outbound(context: dict[str, Any], period: str
     erp_user = context.get("user")
     prev_user = frappe.session.user
     try:
-        if erp_user and frappe.db.exists("User", erp_user):
-            frappe.set_user(erp_user)
-        elif prev_user == "Guest":
-            frappe.set_user("Administrator")
-
+        frappe.set_user("Administrator")
         fiscal_year = resolve_tax_certificate_fiscal_year(period, employee_id)
         pdf_bytes, filename = generate_tax_certificate_pdf(employee_id, fiscal_year)
         caption = build_tax_certificate_caption(context, fiscal_year)

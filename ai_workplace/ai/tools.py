@@ -311,6 +311,12 @@ def get_portal_url(route: str = "/hrms") -> str:
     return frappe.utils.get_url(route)
 
 
+def get_careers_guide(service_key: str = "guest_careers", context: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    from ai_workplace.services.careers_guide import build_careers_guide_response
+    resp = build_careers_guide_response(service_key, context or {})
+    return {"careers_guide_response": resp}
+
+
 def search_knowledge(query: str, limit: int = 5, context: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
     from ai_workplace.ai.indexer import search_knowledge as _search
 

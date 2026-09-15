@@ -20,6 +20,12 @@ ACTIVE_EMPLOYEE_QUICK_ACTION_KEYS = (
     "contact_hr",
 )
 
+GUEST_QUICK_ACTION_KEYS = (
+    "guest_careers",
+    "guest_job_status",
+    "contact_hr",
+)
+
 # Minimal fallback for items not stored in DB (navigation).
 FALLBACK_SERVICES: dict[str, dict[str, Any]] = {
     "main_menu": {

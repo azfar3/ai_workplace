@@ -251,6 +251,10 @@ class ResponseFormatter:
             return ResponseFormatter.format_monthly_attendance(data)
         elif intent == "get_menu_help":
             return "📋 *MicroMerger Staff Services*\n\nPlease select an option from the menu below or tap *View Services*."
+        elif intent in ("guest_job_status", "guest_careers"):
+            if isinstance(data, dict) and "careers_guide_response" in data:
+                return data["careers_guide_response"]
+            return str(data)
         else:
             return str(data)
 
