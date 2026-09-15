@@ -2501,6 +2501,37 @@ frappe.whatsapp_hr_inbox = {
 		});
 	},
 
+	format_message_text(text) {
+		const label_map = {
+			"svc_contact_hr": __("Chat with HR"),
+			"fb_helpful": __("Helpful"),
+			"fb_not_helpful": __("Not Helpful"),
+			"svc_end_hr_chat": __("End HR Chat"),
+			"svc_main_menu": __("Main Menu"),
+			"svc_att_today": __("Today's Attendance"),
+			"svc_leave_requests": __("My Leave"),
+			"svc_open_hrmis": __("Open Portal"),
+			"svc_update_profile": __("My Details"),
+			"svc_doc_contract": __("Contract"),
+			"svc_doc_salary_slip": __("Salary Slip"),
+			"svc_doc_tax_cert": __("Tax Certificate"),
+			"svc_att_checkin": __("Check In"),
+			"svc_att_checkout": __("Check Out"),
+			"svc_att_monthly": __("Monthly View"),
+		};
+
+		if (label_map[text]) {
+			return label_map[text];
+		}
+
+		if (text.startsWith("svc_") || text.startsWith("fb_")) {
+			let parts = text.split("_").slice(1);
+			return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+		}
+
+		return text;
+	},
+
 	render_message_body(message) {
 		const media = (message.media_file || "").trim();
 		const msg_type = (message.message_type || "text").toLowerCase();
@@ -2515,7 +2546,9 @@ frappe.whatsapp_hr_inbox = {
 			}
 		}
 
-		const text = (message.message || "").trim();
+		let text = (message.message || "").trim();
+		text = this.format_message_text(text);
+
 		if (text && msg_type === "image" && media) {
 			html += `<div class="wa-bubble-text">${frappe.utils.escape_html(text)}</div>`;
 		} else if (text && !media) {
