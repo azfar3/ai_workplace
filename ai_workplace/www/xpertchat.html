@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
         :root {
             --brand-green: #004d34;
@@ -92,6 +95,8 @@
             letter-spacing: 0.5px;
             box-shadow: 0 4px 10px rgba(0, 77, 52, 0.2);
             flex-shrink: 0;
+            background-size: cover;
+            background-position: center;
         }
 
         .brand-title {
@@ -120,13 +125,12 @@
         .brand-subtitle {
             font-size: 12px;
             color: var(--text-muted);
-            margin-top: 2px;
         }
 
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .status-badge {
@@ -152,9 +156,20 @@
         }
 
         @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 77, 52, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(0, 77, 52, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 77, 52, 0); }
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(0, 77, 52, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 8px rgba(0, 77, 52, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(0, 77, 52, 0);
+            }
         }
 
         .icon-btn {
@@ -189,14 +204,80 @@
             background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1.2px, transparent 1.2px), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M39 16h2v6h-2zm0 8h2v6h-2zm-7-7h16v2H32zm45 20h2v6h-2zm0 8h2v6h-2zm-7-7h16v2H70zm-35 20h2v6h-2zm0 8h2v6h-2zm-7-7h16v2H32zm-32-20h2v6h-2zm0 8h2v6h-2zm-7-7h16v2H0z' fill='%23000000' fill-opacity='0.04'/%3E%3C/svg%3E");
             background-size: 32px 32px, 80px 80px;
             scroll-behavior: smooth;
+            position: relative;
         }
 
         .chat-body::-webkit-scrollbar {
             width: 6px;
         }
+
         .chat-body::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 10px;
+        }
+
+        /* Date Separator Pill */
+        .date-separator {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+            width: 100%;
+            clear: both;
+        }
+
+        .date-pill {
+            background: #ffffff;
+            color: #556987;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 14px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            letter-spacing: 0.2px;
+        }
+
+        /* Floating Scroll Down Button */
+        .scroll-down-btn {
+            position: absolute;
+            right: 20px;
+            bottom: 90px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #ffffff;
+            color: #475569;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            z-index: 25;
+            transition: all 0.2s ease;
+        }
+
+        .scroll-down-btn:hover {
+            background: #ffffff;
+            color: var(--brand-green);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        /* History Loading Indicator */
+        .history-loader {
+            display: none;
+            text-align: center;
+            padding: 8px 16px;
+            font-size: 12px;
+            color: var(--brand-green);
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 20px;
+            width: fit-content;
+            margin: 0 auto 10px auto;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
         }
 
         /* Message Bubbles */
@@ -208,8 +289,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message-row.user {
@@ -217,7 +305,8 @@
             flex-direction: row-reverse;
         }
 
-        .message-row.bot, .message-row.agent {
+        .message-row.bot,
+        .message-row.agent {
             align-self: flex-start;
         }
 
@@ -231,20 +320,22 @@
             font-size: 14px;
             flex-shrink: 0;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-size: cover;
+            background-position: center;
         }
 
         .message-row.bot .avatar {
-            background: var(--brand-green);
+            background-color: var(--brand-green);
             color: #fff;
         }
 
         .message-row.agent .avatar {
-            background: #059669;
+            background-color: #059669;
             color: #fff;
         }
 
         .message-row.user .avatar {
-            background: #ffffff;
+            background-color: #ffffff;
             color: var(--brand-green);
             border: 1px solid #cbd5e1;
         }
@@ -386,7 +477,7 @@
             transform: scale(1.03);
         }
 
-        /* Modal Guest Intake Styled Exactly Like ERP Login Theme */
+        /* Modal Guest Intake */
         .modal-overlay {
             position: absolute;
             top: 0;
@@ -418,8 +509,15 @@
         }
 
         @keyframes popIn {
-            from { opacity: 0; transform: scale(0.92); }
-            to { opacity: 1; transform: scale(1); }
+            from {
+                opacity: 0;
+                transform: scale(0.92);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         .intake-header {
@@ -452,9 +550,20 @@
             margin-bottom: 6px;
         }
 
-        .intake-logo-text .logo-x { color: #c026d3; font-weight: 800; }
-        .intake-logo-text .logo-pert { color: var(--brand-green); font-weight: 800; }
-        .intake-logo-text .logo-erp { color: #334155; font-weight: 700; }
+        .intake-logo-text .logo-x {
+            color: #c026d3;
+            font-weight: 800;
+        }
+
+        .intake-logo-text .logo-pert {
+            color: var(--brand-green);
+            font-weight: 800;
+        }
+
+        .intake-logo-text .logo-erp {
+            color: #334155;
+            font-weight: 700;
+        }
 
         .intake-header p {
             font-size: 13px;
@@ -558,12 +667,25 @@
             animation: bounce 1.4s infinite ease-in-out both;
         }
 
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        .typing-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
 
         @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
         }
 
         @media (max-width: 768px) {
@@ -571,11 +693,20 @@
                 background: linear-gradient(180deg, var(--bg-left) 120px, var(--bg-right) 120px);
                 padding: 0;
             }
-            .chat-app-container { height: 100vh; border-radius: 0; border: none; }
-            .message-row { max-width: 92%; }
+
+            .chat-app-container {
+                height: 100vh;
+                border-radius: 0;
+                border: none;
+            }
+
+            .message-row {
+                max-width: 92%;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <div class="chat-app-container">
@@ -587,7 +718,7 @@
                 </div>
                 <div class="brand-info">
                     <div class="brand-title">
-                        <span class="logo-x">X</span><span class="logo-pert">pert</span><span class="logo-sub">ERP</span>
+                        <img src="https://portal.micromerger.com/logo.png" style="width:100px">
                     </div>
                     <div class="brand-subtitle">AI Support & HR Live Support</div>
                 </div>
@@ -605,6 +736,11 @@
 
         <!-- Messages stream -->
         <div class="chat-body" id="chat-stream">
+            <!-- Scroll-Up History Loader -->
+            <div class="history-loader" id="history-loader">
+                <i class="fa-solid fa-spinner fa-spin"></i> Loading older messages...
+            </div>
+
             <!-- Dynamic Messages -->
             <div class="typing-indicator" id="typing-indicator">
                 <div class="typing-dot"></div>
@@ -613,23 +749,29 @@
             </div>
         </div>
 
+        <!-- Floating Quick Scroll Down Button -->
+        <button class="scroll-down-btn" id="scroll-down-btn" title="Scroll to bottom">
+            <i class="fa-solid fa-chevron-down"></i>
+        </button>
+
         <!-- Footer Input -->
         <footer class="chat-footer">
             <div class="input-wrapper">
-                <input type="text" class="chat-input" id="message-input" placeholder="Type your message or select an option..." autocomplete="off">
+                <input type="text" class="chat-input" id="message-input"
+                    placeholder="Type your message or select an option..." autocomplete="off">
             </div>
             <button class="send-btn" id="send-btn">
                 <i class="fa-solid fa-paper-plane"></i>
             </button>
         </footer>
 
-        <!-- Guest Intake Modal (Styled matching ERP Theme) -->
+        <!-- Guest Intake Modal -->
         <div class="modal-overlay" id="guest-modal" style="display: none;">
             <div class="intake-card">
                 <div class="intake-header">
                     <div class="intake-avatar">HRMS</div>
                     <div class="intake-logo-text">
-                        <span class="logo-x">X</span><span class="logo-pert">pert</span><span class="logo-erp">ERP</span>
+                        <img src="https://portal.micromerger.com/logo.png" style="width:100px">
                     </div>
                     <p id="modal-subtitle">Sign in to your account</p>
                 </div>
@@ -640,7 +782,8 @@
                         <i class="fa-solid fa-right-to-bracket"></i> Employee Sign In
                     </button>
                     <div style="text-align: center; color: var(--text-muted); font-size: 12px; margin: 12px 0;">or</div>
-                    <button id="btn-show-guest-form" class="chip-btn" style="width: 100%; justify-content: center; padding: 11px;">
+                    <button id="btn-show-guest-form" class="chip-btn"
+                        style="width: 100%; justify-content: center; padding: 11px;">
                         <i class="fa-regular fa-user"></i> Continue as Guest
                     </button>
                 </div>
@@ -650,21 +793,24 @@
                         <label>Full Name *</label>
                         <div class="styled-input-group">
                             <i class="fa-regular fa-user"></i>
-                            <input type="text" id="guest-name" class="form-input-theme" placeholder="e.g. John Doe" required>
+                            <input type="text" id="guest-name" class="form-input-theme" placeholder="e.g. John Doe"
+                                required>
                         </div>
                     </div>
                     <div class="form-group" style="margin-top: 10px;">
                         <label>Email Address *</label>
                         <div class="styled-input-group">
                             <i class="fa-regular fa-envelope"></i>
-                            <input type="email" id="guest-email" class="form-input-theme" placeholder="e.g. john@example.com" required>
+                            <input type="email" id="guest-email" class="form-input-theme"
+                                placeholder="e.g. john@example.com" required>
                         </div>
                     </div>
                     <div class="form-group" style="margin-top: 10px;">
                         <label>Phone Number *</label>
                         <div class="styled-input-group">
                             <i class="fa-solid fa-phone"></i>
-                            <input type="tel" id="guest-phone" class="form-input-theme" placeholder="e.g. +923001234567" required>
+                            <input type="tel" id="guest-phone" class="form-input-theme" placeholder="e.g. +923001234567"
+                                required>
                         </div>
                     </div>
                     <button type="submit" class="submit-btn-theme" style="margin-top: 16px;">
@@ -686,38 +832,131 @@
         let isGuest = {{ "true" if is_guest else "false" }};
         let guestData = JSON.parse(localStorage.getItem("xpert_guest_data") || "null");
         let activeSessionId = null;
+        let userAvatarUrl = null;
+        let renderedMessageIds = new Set();
+        let lastRenderedDateKey = null;
 
-        $(document).ready(function() {
+        // History Pagination State
+        let historyOffset = 0;
+        let historyLimit = 10;
+        let hasMoreHistory = true;
+        let loadingHistory = false;
+
+        $(document).ready(function () {
             initSession();
 
-            $("#send-btn").on("click", function() {
+            $("#send-btn").on("click", function () {
                 sendMessage();
             });
 
-            $("#message-input").on("keypress", function(e) {
+            $("#message-input").on("keypress", function (e) {
                 if (e.which === 13) {
                     sendMessage();
                 }
             });
 
-            $("#reset-btn").on("click", function() {
+            $("#reset-btn").on("click", function () {
                 sendMessage("restart");
             });
 
-            $("#btn-login-redirect").on("click", function() {
+            $("#btn-login-redirect").on("click", function () {
                 window.location.href = "/login?redirect-to=/xpertchat";
             });
 
-            $("#btn-show-guest-form").on("click", function() {
+            $("#btn-show-guest-form").on("click", function () {
                 $("#auth-selection").hide();
                 $("#guest-form").show();
                 $("#modal-subtitle").text("Enter your details to start live support");
             });
 
+            // Scroll listener for infinite scroll to top & quick scroll down button display
+            $("#chat-stream").on("scroll", function () {
+                let streamEl = this;
+                let scrollTop = $(streamEl).scrollTop();
+
+                // 1. Infinite Scroll: Trigger load older messages when near top
+                if (scrollTop <= 80 && !loadingHistory && hasMoreHistory) {
+                    loadOlderMessages();
+                }
+
+                // 2. Quick Scroll Down Button: Show if scrolled up past threshold
+                let scrollBottomDist = streamEl.scrollHeight - scrollTop - streamEl.clientHeight;
+                if (scrollBottomDist > 120) {
+                    $("#scroll-down-btn").fadeIn(200);
+                } else {
+                    $("#scroll-down-btn").fadeOut(200);
+                }
+            });
+
+            $("#scroll-down-btn").on("click", function () {
+                scrollToBottom(true);
+            });
+
             setupSocketListeners();
         });
 
-        let renderedMessageIds = new Set();
+        function formatDateKey(ts) {
+            if (!ts) {
+                let d = new Date();
+                let day = String(d.getDate()).padStart(2, '0');
+                let month = String(d.getMonth() + 1).padStart(2, '0');
+                return `${day}-${month}-${d.getFullYear()}`;
+            }
+            let d = new Date(ts);
+            if (isNaN(d.getTime())) return "";
+            let day = String(d.getDate()).padStart(2, '0');
+            let month = String(d.getMonth() + 1).padStart(2, '0');
+            return `${day}-${month}-${d.getFullYear()}`;
+        }
+
+        function buildDateSeparatorHtml(dateKey) {
+            if (!dateKey) return "";
+            return `
+                <div class="date-separator" data-date="${dateKey}">
+                    <span class="date-pill">${dateKey}</span>
+                </div>
+            `;
+        }
+
+        function format_message_text(text) {
+            if (!text) return "";
+            let cleanText = String(text).trim();
+
+            const labelMap = {
+                "svc_contact_hr": "Chat with HR",
+                "contact_hr": "Chat with HR",
+                "fb_helpful": "Helpful",
+                "fb_not_helpful": "Not Helpful",
+                "svc_end_hr_chat": "End HR Chat",
+                "end_hr_chat": "End HR Chat",
+                "svc_main_menu": "Main Menu",
+                "main_menu": "Main Menu",
+                "btn_menu": "Main Menu",
+                "menu": "Main Menu",
+                "svc_att_today": "Today's Attendance",
+                "svc_leave_requests": "My Leave",
+                "svc_open_hrmis": "Open Portal",
+                "svc_update_profile": "My Details",
+                "svc_doc_contract": "Contract",
+                "svc_doc_salary_slip": "Salary Slip",
+                "svc_doc_tax_cert": "Tax Certificate",
+                "svc_att_checkin": "Check In",
+                "svc_att_checkout": "Check Out",
+                "svc_att_monthly": "Monthly View",
+                "restart": "Restart Session"
+            };
+
+            if (labelMap[cleanText]) {
+                return labelMap[cleanText];
+            }
+
+            if (cleanText.startsWith("svc_") || cleanText.startsWith("fb_") || cleanText.startsWith("btn_")) {
+                let parts = cleanText.split("_").slice(1);
+                return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+            }
+
+            return cleanText;
+        }
 
         function initSession() {
             if (isGuest && (!guestData || !guestData.phone)) {
@@ -739,7 +978,7 @@
                 url: "/api/method/ai_workplace.api.web_chat.init_session",
                 type: "POST",
                 data: reqData,
-                success: function(res) {
+                success: function (res) {
                     showTyping(false);
                     if (res.message && res.message.success) {
                         let data = res.message;
@@ -749,24 +988,106 @@
                         }
                         activeSessionId = data.whatsapp_identity;
 
-                        // Render history if available
+                        if (data.user_image) {
+                            userAvatarUrl = data.user_image;
+                        }
+
+                        // Render initial 10 messages from history
                         if (data.history && data.history.length > 0) {
+                            historyOffset = data.history.length;
+                            if (data.history.length < historyLimit) {
+                                hasMoreHistory = false;
+                            }
+
+                            let initialHtml = "";
+                            let lastDateInBatch = null;
+
                             data.history.forEach(msg => {
                                 renderedMessageIds.add(msg.name);
-                                renderMessage(msg.message, msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot"), [], msg.sender_type, msg.media_file);
+                                let msgDateKey = formatDateKey(msg.timestamp);
+                                if (msgDateKey && msgDateKey !== lastDateInBatch) {
+                                    lastDateInBatch = msgDateKey;
+                                    initialHtml += buildDateSeparatorHtml(msgDateKey);
+                                }
+                                let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
+                                initialHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
                             });
+
+                            lastRenderedDateKey = lastDateInBatch;
+                            $("#history-loader").after(initialHtml);
+                            scrollToBottom();
                         } else {
+                            hasMoreHistory = false;
                             if (data.welcome) renderOutbound(data.welcome, "bot");
                             if (data.menu) renderOutbound(data.menu, "bot");
                         }
-                        
-                        // Start polling fallback loop for 100% reliability
+
                         startPollingLoop();
                     }
                 },
-                error: function() {
+                error: function () {
                     showTyping(false);
                     renderMessage("Failed to connect to XpertChat server.", "bot");
+                }
+            });
+        }
+
+        function loadOlderMessages() {
+            if (loadingHistory || !hasMoreHistory || !activeSessionId) return;
+            loadingHistory = true;
+            $("#history-loader").show();
+
+            let stream = document.getElementById("chat-stream");
+            let oldScrollHeight = stream.scrollHeight;
+
+            $.ajax({
+                url: "/api/method/ai_workplace.api.web_chat.get_chat_history",
+                type: "GET",
+                data: {
+                    wa_identity_name: activeSessionId,
+                    start: historyOffset,
+                    limit: historyLimit
+                },
+                success: function (res) {
+                    $("#history-loader").hide();
+                    if (res.message && Array.isArray(res.message)) {
+                        let olderMsgs = res.message;
+                        if (olderMsgs.length < historyLimit) {
+                            hasMoreHistory = false;
+                        }
+
+                        if (olderMsgs.length > 0) {
+                            historyOffset += olderMsgs.length;
+                            let prependedHtml = "";
+                            let lastPrependedDateKey = null;
+
+                            olderMsgs.forEach(msg => {
+                                if (!renderedMessageIds.has(msg.name)) {
+                                    renderedMessageIds.add(msg.name);
+                                    let msgDateKey = formatDateKey(msg.timestamp);
+                                    if (msgDateKey && msgDateKey !== lastPrependedDateKey) {
+                                        if ($(`#chat-stream .date-separator[data-date="${msgDateKey}"]`).length === 0) {
+                                            lastPrependedDateKey = msgDateKey;
+                                            prependedHtml += buildDateSeparatorHtml(msgDateKey);
+                                        }
+                                    }
+                                    let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
+                                    prependedHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
+                                }
+                            });
+
+                            if (prependedHtml) {
+                                $("#history-loader").after(prependedHtml);
+                                let newScrollHeight = stream.scrollHeight;
+                                stream.scrollTop = newScrollHeight - oldScrollHeight;
+                            }
+                        }
+                    }
+                    loadingHistory = false;
+                },
+                error: function () {
+                    $("#history-loader").hide();
+                    loadingHistory = false;
                 }
             });
         }
@@ -777,21 +1098,21 @@
                 $.ajax({
                     url: "/api/method/ai_workplace.api.web_chat.get_chat_history",
                     type: "GET",
-                    data: { wa_identity_name: activeSessionId, limit: 50 },
-                    success: function(res) {
+                    data: { wa_identity_name: activeSessionId, start: 0, limit: 15 },
+                    success: function (res) {
                         if (res.message && Array.isArray(res.message)) {
                             res.message.forEach(msg => {
                                 if (!renderedMessageIds.has(msg.name)) {
                                     renderedMessageIds.add(msg.name);
                                     if (msg.direction === "Outbound") {
-                                        renderMessage(msg.message, msg.sender_type === "HR Agent" ? "agent" : "bot", [], msg.sender_type, msg.media_file);
+                                        renderMessage(msg.message, msg.sender_type === "HR Agent" ? "agent" : "bot", [], msg.sender_type, msg.media_file, msg.timestamp);
                                     }
                                 }
                             });
                         }
                     }
                 });
-            }, 3000); // 3 seconds polling
+            }, 3000);
         }
 
         function handleGuestSubmit(e) {
@@ -831,13 +1152,13 @@
                 url: "/api/method/ai_workplace.api.web_chat.send_message",
                 type: "POST",
                 data: reqData,
-                success: function(res) {
+                success: function (res) {
                     showTyping(false);
                     if (res.message && res.message.success) {
                         renderOutbound(res.message.response, "bot");
                     }
                 },
-                error: function() {
+                error: function () {
                     showTyping(false);
                     renderMessage("Sorry, message could not be sent.", "bot");
                 }
@@ -854,13 +1175,33 @@
             }
         }
 
-        function renderMessage(text, role, buttons = [], senderTag = "", mediaFile = "") {
+        function buildMessageHtml(text, role, buttons = [], senderTag = "", mediaFile = "", timestamp = null) {
+            let rawText = text ? String(text).trim() : "";
+            let formattedText = formatMarkdown(rawText);
+
+            // Prevent rendering empty message bubbles without text, buttons, or media
+            if (!formattedText && !mediaFile && (!buttons || buttons.length === 0)) {
+                return "";
+            }
+
             let isUser = role === "user";
             let isAgent = role === "agent";
             let iconClass = isUser ? "fa-user" : (isAgent ? "fa-user-tie" : "fa-robot");
-            let timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            let formattedText = formatMarkdown(text);
+            let avatarHtml = "";
+            if (isUser && userAvatarUrl) {
+                avatarHtml = `<div class="avatar" style="background-image: url('${escapeHtml(userAvatarUrl)}');"></div>`;
+            } else {
+                avatarHtml = `<div class="avatar"><i class="fa-solid ${iconClass}"></i></div>`;
+            }
+
+            let timeStr = "";
+            if (timestamp) {
+                timeStr = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+                timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
             if (mediaFile) {
                 formattedText += `<div style="margin-top: 8px;"><a href="${mediaFile}" target="_blank" style="color: #004d34; font-weight: 600; text-decoration: underline;"><i class="fa-solid fa-paperclip"></i> View Attachment</a></div>`;
             }
@@ -869,14 +1210,15 @@
             if (buttons && buttons.length > 0) {
                 buttonsHtml = `<div class="button-chips">`;
                 buttons.forEach(btn => {
-                    buttonsHtml += `<button class="chip-btn" onclick="sendMessage('${btn.id || btn.title}')">${escapeHtml(btn.title)}</button>`;
+                    let label = format_message_text(btn.title || btn.id);
+                    buttonsHtml += `<button class="chip-btn" onclick="sendMessage('${btn.id || btn.title}')">${escapeHtml(label)}</button>`;
                 });
                 buttonsHtml += `</div>`;
             }
 
-            let html = `
+            return `
                 <div class="message-row ${role}">
-                    <div class="avatar"><i class="fa-solid ${iconClass}"></i></div>
+                    ${avatarHtml}
                     <div class="message-content">
                         ${senderTag && !isUser ? `<div class="sender-tag">${escapeHtml(senderTag)}</div>` : ''}
                         <div class="bubble">
@@ -887,7 +1229,19 @@
                     </div>
                 </div>
             `;
+        }
 
+        function renderMessage(text, role, buttons = [], senderTag = "", mediaFile = "", timestamp = null) {
+            let msgDateKey = formatDateKey(timestamp);
+            if (msgDateKey && msgDateKey !== lastRenderedDateKey) {
+                if ($(`#chat-stream .date-separator[data-date="${msgDateKey}"]`).length === 0) {
+                    lastRenderedDateKey = msgDateKey;
+                    $("#chat-stream").append(buildDateSeparatorHtml(msgDateKey));
+                }
+            }
+
+            let html = buildMessageHtml(text, role, buttons, senderTag, mediaFile, timestamp);
+            if (!html || !html.trim()) return;
             $("#chat-stream").append(html);
             scrollToBottom();
         }
@@ -901,14 +1255,20 @@
             }
         }
 
-        function scrollToBottom() {
+        function scrollToBottom(smooth = false) {
             let stream = document.getElementById("chat-stream");
-            stream.scrollTop = stream.scrollHeight;
+            if (!stream) return;
+            if (smooth) {
+                $("#chat-stream").animate({ scrollTop: stream.scrollHeight }, 250);
+            } else {
+                stream.scrollTop = stream.scrollHeight;
+            }
         }
 
         function formatMarkdown(text) {
             if (!text) return "";
-            let html = escapeHtml(text);
+            let translated = format_message_text(text);
+            let html = escapeHtml(translated);
             html = html.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
             html = html.replace(/\n/g, "<br>");
             return html;
@@ -927,26 +1287,27 @@
                         withCredentials: true,
                         reconnection: true
                     });
-                    
-                    socket.on("connect", function() {
+
+                    socket.on("connect", function () {
                         console.log("Socket.IO Connected to /" + siteName);
                     });
 
-                    socket.on("xpert_chat_reply", function(data) {
+                    socket.on("xpert_chat_reply", function (data) {
                         console.log("Socket received xpert_chat_reply:", data);
                         if (data && data.message && data.whatsapp_identity === activeSessionId) {
                             renderMessage(data.message, "agent", [], data.sender_name || "HR Support", data.media_file);
                         }
                     });
-                    
-                    socket.on("connect_error", function(err) {
+
+                    socket.on("connect_error", function (err) {
                         console.log("Socket.IO Connect Error:", err.message);
                     });
-                } catch(e) {
+                } catch (e) {
                     console.log("Socket listener setup error", e);
                 }
             }
         }
     </script>
 </body>
+
 </html>

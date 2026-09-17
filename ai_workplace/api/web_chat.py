@@ -58,17 +58,22 @@ def init_session(
             wa_id=identity.normalized_phone or wa_id,
         )
 
+        from ai_workplace.services.hr_chat import get_employee_image
+        user_img = get_employee_image(employee=identity.employee, erp_user=user_email)
+
         return {
             "success": True,
             "is_guest": False,
             "user": user_email,
             "full_name": identity.full_name,
             "employee": identity.employee,
+            "user_image": user_img,
             "whatsapp_identity": wa_identity_name,
             "welcome": _outbound_to_dict(welcome_msg),
             "menu": _outbound_to_dict(menu_msg),
             "active_hr_session": active_hr_session,
-            "history": get_chat_history(wa_identity_name=wa_identity_name),
+            "previous_sessions": get_user_sessions(),
+            "history": get_chat_history(wa_identity_name=wa_identity_name, start=0, limit=10),
         }
 
     # Guest user flow
@@ -92,6 +97,9 @@ def init_session(
             whatsapp_identity=wa_identity_name, wa_id=wa_id
         )
 
+        from ai_workplace.services.hr_chat import get_employee_image
+        user_img = get_employee_image(employee=identity.employee, erp_user="")
+
         return {
             "success": True,
             "is_guest": True,
@@ -99,11 +107,13 @@ def init_session(
             "full_name": guest_name,
             "email": guest_email,
             "phone": guest_phone,
+            "user_image": user_img,
             "whatsapp_identity": wa_identity_name,
             "welcome": _outbound_to_dict(welcome_msg),
             "menu": _outbound_to_dict(menu_msg),
             "active_hr_session": active_hr_session,
-            "history": get_chat_history(wa_identity_name=wa_identity_name),
+            "previous_sessions": get_user_sessions(guest_phone=guest_phone),
+            "history": get_chat_history(wa_identity_name=wa_identity_name, start=0, limit=10),
         }
 
     return {
@@ -221,28 +231,141 @@ def send_message(
 
 
 @frappe.whitelist(allow_guest=True)
-def get_chat_history(wa_identity_name: str = "", limit: int = 50) -> list[dict[str, Any]]:
+def get_user_sessions(
+    guest_phone: Optional[str] = None,
+) -> list[dict[str, Any]]:
     """
-    Fetch message log history for the specified web chat session.
+    Get all previous chat sessions for the logged-in user or guest.
     """
-    if not wa_identity_name:
-        user_email = frappe.session.user
-        if user_email and user_email != "Guest":
-            identity = resolve_web_identity(user_email=user_email)
-            wa_identity_name = get_or_create_whatsapp_identity(identity, wa_id=f"WEB-{user_email}")
-        else:
-            return []
+    user_email = frappe.session.user
+    is_logged_in = user_email and user_email != "Guest"
 
-    logs = frappe.get_all(
-        "WhatsApp Message Log",
-        filters={"channel": "Web Chat", "whatsapp_id": ["like", f"%{wa_identity_name}%"]},
-        fields=["name", "direction", "message", "timestamp", "sender_type", "media_file", "message_type"],
-        order_by="timestamp asc",
-        limit_page_length=limit,
+    or_filters = []
+    if is_logged_in:
+        identity = resolve_web_identity(user_email=user_email)
+        if identity.employee:
+            or_filters.append({"employee": identity.employee})
+        if identity.user:
+            or_filters.append({"erp_user": identity.user})
+        if identity.whatsapp_identity:
+            or_filters.append({"whatsapp_identity": identity.whatsapp_identity})
+        or_filters.append({"wa_id": f"WEB-{user_email}"})
+    elif guest_phone:
+        wa_id = f"WEB-GUEST-{guest_phone}"
+        or_filters.append({"wa_id": wa_id})
+        or_filters.append({"whatsapp_identity": wa_id})
+    else:
+        return []
+
+    sessions = frappe.get_all(
+        "HR Live Chat Session",
+        or_filters=or_filters,
+        fields=[
+            "name",
+            "status",
+            "display_name",
+            "initial_query",
+            "opened_at",
+            "modified",
+            "channel",
+            "assigned_to",
+            "whatsapp_identity",
+        ],
+        order_by="modified desc",
+        limit_page_length=30,
     )
 
+    result = []
+    for s in sessions:
+        last_log = frappe.get_all(
+            "WhatsApp Message Log",
+            filters={"hr_live_chat_session": s.name},
+            fields=["message", "timestamp", "direction", "sender_type"],
+            order_by="timestamp desc",
+            limit_page_length=1,
+        )
+        last_msg = ""
+        if last_log:
+            last_msg = last_log[0].message
+        else:
+            last_msg = s.initial_query or "HR Live Support Chat"
+
+        result.append({
+            "name": s.name,
+            "display_title": s.display_name or s.initial_query or f"Chat Session ({s.name})",
+            "status": s.status or "Active",
+            "last_message": last_msg,
+            "whatsapp_identity": s.whatsapp_identity or "",
+            "opened_at": str(s.opened_at) if s.opened_at else str(s.modified),
+            "modified": str(s.modified),
+        })
+
+    return result
+
+
+@frappe.whitelist(allow_guest=True)
+def get_chat_history(
+    wa_identity_name: str = "",
+    session_name: str = "",
+    start: int = 0,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """
+    Fetch message log history for the specified web chat session or identity with pagination support.
+    Ordered from newest to oldest in DB query, then returned in chronological order.
+    """
+    start = max(0, int(start or 0))
+    limit = max(1, int(limit or 10))
+
+    if session_name:
+        logs = frappe.get_all(
+            "WhatsApp Message Log",
+            filters={"hr_live_chat_session": session_name},
+            fields=["name", "direction", "message", "timestamp", "sender_type", "media_file", "message_type", "hr_live_chat_session"],
+            order_by="timestamp desc",
+            start=start,
+            page_length=limit,
+        )
+    else:
+        user_email = frappe.session.user
+        is_logged_in = user_email and user_email != "Guest"
+        or_filters = []
+        if wa_identity_name:
+            or_filters.append({"whatsapp_id": ["like", f"%{wa_identity_name}%"]})
+        
+        if is_logged_in:
+            identity = resolve_web_identity(user_email=user_email)
+            or_filters.append({"erp_user": user_email})
+            if identity.employee:
+                or_filters.append({"employee": identity.employee})
+            if identity.whatsapp_identity:
+                or_filters.append({"whatsapp_id": identity.whatsapp_identity})
+        
+        if not or_filters:
+            return []
+
+        logs = frappe.get_all(
+            "WhatsApp Message Log",
+            or_filters=or_filters,
+            fields=["name", "direction", "message", "timestamp", "sender_type", "media_file", "message_type", "hr_live_chat_session"],
+            order_by="timestamp desc",
+            start=start,
+            page_length=limit,
+        )
+
+    # Reverse to ascending chronological order for display
+    logs.reverse()
+
     history = []
+    seen_ids = set()
     for l in logs:
+        if l.name in seen_ids:
+            continue
+        msg_text = (l.message or "").strip()
+        media_file = (l.media_file or "").strip()
+        if not msg_text and not media_file:
+            continue
+        seen_ids.add(l.name)
         history.append({
             "name": l.name,
             "direction": l.direction,
@@ -251,6 +374,7 @@ def get_chat_history(wa_identity_name: str = "", limit: int = 50) -> list[dict[s
             "sender_type": l.sender_type or ("Employee" if l.direction == "Inbound" else "System"),
             "media_file": l.media_file or "",
             "message_type": l.message_type or "text",
+            "session": l.hr_live_chat_session or "",
         })
     return history
 
@@ -271,6 +395,9 @@ def _create_web_message_log(
     sender_type: str = "",
 ) -> "frappe.Document":
     """Helper to insert a Web Chat entry into WhatsApp Message Log."""
+    if not (message or "").strip():
+        return None
+
     doc = frappe.new_doc("WhatsApp Message Log")
     doc.channel = "Web Chat"
     doc.meta_message_id = meta_message_id
