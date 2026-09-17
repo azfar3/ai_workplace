@@ -537,9 +537,21 @@
             <div class="intake-card">
                 <div class="intake-header">
                     <h2>Welcome to XpertChat</h2>
-                    <p>Please enter your details to start chatting with support</p>
+                    <p id="modal-subtitle">Choose how you would like to continue</p>
                 </div>
-                <form id="guest-form" onsubmit="handleGuestSubmit(event)">
+
+                <!-- View 1: Selection -->
+                <div id="auth-selection">
+                    <button id="btn-login-redirect" class="submit-btn" style="width: 100%; margin-bottom: 12px;">
+                        <i class="fa-solid fa-lock"></i> Employee Login
+                    </button>
+                    <div style="text-align: center; color: var(--text-muted); margin: 16px 0;">or</div>
+                    <button id="btn-show-guest-form" class="chip-btn" style="width: 100%; justify-content: center;">
+                        <i class="fa-solid fa-user"></i> Continue as Guest
+                    </button>
+                </div>
+
+                <form id="guest-form" onsubmit="handleGuestSubmit(event)" style="display: none;">
                     <div class="form-group">
                         <label>Full Name *</label>
                         <input type="text" id="guest-name" class="form-input" placeholder="e.g. John Doe" required>
@@ -581,6 +593,16 @@
 
             $("#reset-btn").on("click", function() {
                 sendMessage("restart");
+            });
+
+            $("#btn-login-redirect").on("click", function() {
+                window.location.href = "/login?redirect-to=/xpertchat";
+            });
+
+            $("#btn-show-guest-form").on("click", function() {
+                $("#auth-selection").hide();
+                $("#guest-form").show();
+                $("#modal-subtitle").text("Please enter your details to start chatting with support");
             });
 
             setupSocketListeners();
