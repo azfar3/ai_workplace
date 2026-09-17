@@ -197,7 +197,7 @@ def send_message(
     response_text = outbound.log_text() if hasattr(outbound, "log_text") else str(outbound)
 
     # Log Outbound Web Message
-    _create_web_message_log(
+    outbound_log = _create_web_message_log(
         meta_message_id=f"OUT-{meta_msg_id}",
         direction="Outbound",
         sender="System",
@@ -211,6 +211,8 @@ def send_message(
         trace_id=trace_id,
         sender_type="System",
     )
+    if outbound_log:
+        outbound_dict["log_name"] = outbound_log.name
 
     active_hr_session = get_active_session_for_identity(
         whatsapp_identity=wa_identity_name,
@@ -321,8 +323,8 @@ def get_chat_history(
         logs = frappe.get_all(
             "WhatsApp Message Log",
             filters={"hr_live_chat_session": session_name},
-            fields=["name", "direction", "message", "timestamp", "sender_type", "media_file", "message_type", "hr_live_chat_session"],
-            order_by="timestamp desc",
+            fields=["name", "direction", "message", "timestamp", "creation", "sender_type", "media_file", "message_type", "hr_live_chat_session"],
+            order_by="creation desc, name desc",
             start=start,
             page_length=limit,
         )
@@ -347,8 +349,8 @@ def get_chat_history(
         logs = frappe.get_all(
             "WhatsApp Message Log",
             or_filters=or_filters,
-            fields=["name", "direction", "message", "timestamp", "sender_type", "media_file", "message_type", "hr_live_chat_session"],
-            order_by="timestamp desc",
+            fields=["name", "direction", "message", "timestamp", "creation", "sender_type", "media_file", "message_type", "hr_live_chat_session"],
+            order_by="creation desc, name desc",
             start=start,
             page_length=limit,
         )
@@ -366,11 +368,13 @@ def get_chat_history(
         if not msg_text and not media_file:
             continue
         seen_ids.add(l.name)
+        ts_val = l.timestamp or l.creation
         history.append({
             "name": l.name,
             "direction": l.direction,
             "message": l.message,
-            "timestamp": str(l.timestamp) if l.timestamp else "",
+            "timestamp": str(ts_val) if ts_val else "",
+            "creation": str(l.creation) if l.creation else "",
             "sender_type": l.sender_type or ("Employee" if l.direction == "Inbound" else "System"),
             "media_file": l.media_file or "",
             "message_type": l.message_type or "text",

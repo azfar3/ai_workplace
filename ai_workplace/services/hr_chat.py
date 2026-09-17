@@ -1041,6 +1041,9 @@ def _create_outbound_log(
     message_type: str = "text",
     media_file: str = "",
 ) -> str:
+    if not (message or "").strip() and not (media_file or "").strip():
+        return ""
+
     session_channel = getattr(session, "channel", "WhatsApp") or "WhatsApp"
     is_web = session_channel == "Web Chat"
 
@@ -1385,6 +1388,7 @@ def get_session_thread(
                 "direction",
                 "message",
                 "timestamp",
+                "creation",
                 "sender_type",
                 "sender",
                 "status",
@@ -1393,7 +1397,7 @@ def get_session_thread(
                 "message_type",
                 "media_file",
             ],
-            order_by="timestamp desc",
+            order_by="creation desc, name desc",
             start=start,
             page_length=limit,
         )
@@ -1408,6 +1412,7 @@ def get_session_thread(
                 "direction",
                 "message",
                 "timestamp",
+                "creation",
                 "sender_type",
                 "sender",
                 "status",
@@ -1416,7 +1421,7 @@ def get_session_thread(
                 "message_type",
                 "media_file",
             ],
-            order_by="timestamp desc",
+            order_by="creation desc, name desc",
             start=start,
             page_length=limit,
         )
@@ -1429,8 +1434,11 @@ def get_session_thread(
     payload_keys = {"svc_contact_hr", "contact_hr", "hr_wait_connect", "hr_call", "guest_contact", "main_menu", "btn_menu", "menu"}
     for row in raw_rows:
         if row["name"] not in seen_names:
+            msg_clean = (row.get("message") or "").strip().lower()
+            media_clean = (row.get("media_file") or "").strip()
+            if not msg_clean and not media_clean:
+                continue
             if not show_all:
-                msg_clean = (row.get("message") or "").strip().lower()
                 if msg_clean in payload_keys or msg_clean.startswith("svc_") or msg_clean.startswith("btn_"):
                     continue
             seen_names.add(row["name"])

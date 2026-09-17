@@ -2060,6 +2060,12 @@ frappe.whatsapp_hr_inbox = {
 		let first_elem = this.messages_el.find(".wa-msg-row, .wa-date-separator").first();
 		const msgs = messages.slice().reverse();
 		msgs.forEach((m) => {
+			const text_content = (m.message || "").trim();
+			const media_content = (m.media_file || "").trim();
+			if (!text_content && !media_content) {
+				return;
+			}
+
 			const msg_key = this._message_key(m);
 			const content_key = this._content_key(m);
 
@@ -2557,7 +2563,7 @@ frappe.whatsapp_hr_inbox = {
 			html += `<div class="wa-bubble-text">${frappe.utils.escape_html(text)}</div>`;
 		}
 
-		return html || `<div class="wa-bubble-text">${__("(empty message)")}</div>`;
+		return html;
 	},
 
 	update_message_delivery(payload) {
@@ -2589,6 +2595,12 @@ frappe.whatsapp_hr_inbox = {
 	},
 
 	append_thread_message(message, skip_scroll) {
+		const text_content = (message.message || "").trim();
+		const media_content = (message.media_file || "").trim();
+		if (!text_content && !media_content) {
+			return false;
+		}
+
 		const msg_key = this._message_key(message);
 		const content_key = this._content_key(message);
 

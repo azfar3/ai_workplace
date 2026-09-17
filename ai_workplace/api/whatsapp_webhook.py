@@ -680,6 +680,9 @@ def _create_message_log(
     media_file: str = "",
 ) -> "frappe.Document":
     """Create and insert a WhatsApp Message Log record."""
+    if not (message or "").strip() and not (media_file or "").strip():
+        return None
+
     doc = frappe.new_doc("WhatsApp Message Log")
     doc.meta_message_id = meta_message_id
     doc.direction = direction
