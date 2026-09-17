@@ -11,18 +11,23 @@
     
     <style>
         :root {
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
-            --glass-bg: rgba(30, 41, 59, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-primary: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.35);
-            --accent-hover: #4f46e5;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --bubble-user: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-            --bubble-bot: rgba(30, 41, 59, 0.85);
-            --bubble-agent: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            --card-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+            --brand-green: #004d34;
+            --brand-green-hover: #003826;
+            --brand-green-light: #e6f4ea;
+            --brand-purple: #9333ea;
+            --bg-left: #004d34;
+            --bg-right: #ffffff;
+            --card-bg: #ffffff;
+            --input-bg: #eef4ff;
+            --input-border: #dce4f0;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+            --bubble-user: #d9fdd3;
+            --bubble-user-text: #064e3b;
+            --bubble-bot: #ffffff;
+            --bubble-agent: #dcfce7;
+            --card-shadow: 0 20px 40px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.05);
         }
 
         * {
@@ -33,8 +38,8 @@
         }
 
         body {
-            background: var(--bg-gradient);
-            color: var(--text-main);
+            background: linear-gradient(90deg, var(--bg-left) 50%, var(--bg-right) 50%);
+            color: var(--text-dark);
             height: 100vh;
             display: flex;
             justify-content: center;
@@ -44,14 +49,12 @@
 
         .chat-app-container {
             width: 100%;
-            max-width: 950px;
+            max-width: 960px;
             height: 92vh;
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
+            background: var(--card-bg);
+            border-radius: 20px;
             box-shadow: var(--card-shadow);
+            border: 1px solid rgba(0, 0, 0, 0.08);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -60,9 +63,9 @@
 
         /* Header */
         .chat-header {
-            padding: 18px 24px;
-            background: rgba(15, 23, 42, 0.6);
-            border-bottom: 1px solid var(--glass-border);
+            padding: 16px 24px;
+            background: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -75,31 +78,49 @@
             gap: 14px;
         }
 
-        .brand-logo {
+        .brand-avatar {
             width: 44px;
             height: 44px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border-radius: 50%;
+            background-color: var(--brand-green);
+            color: #ffffff;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 20px;
-            color: #fff;
-            box-shadow: 0 0 20px var(--accent-glow);
-        }
-
-        .brand-info h1 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 20px;
             font-weight: 700;
-            background: linear-gradient(to right, #ffffff, #c084fc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 10px rgba(0, 77, 52, 0.2);
+            flex-shrink: 0;
         }
 
-        .brand-info p {
+        .brand-title {
+            font-family: 'Outfit', sans-serif;
+            line-height: 1.1;
+        }
+
+        .brand-title .logo-x {
+            color: #c026d3;
+            font-weight: 800;
+            font-size: 20px;
+        }
+
+        .brand-title .logo-pert {
+            color: var(--brand-green);
+            font-weight: 800;
+            font-size: 20px;
+        }
+
+        .brand-title .logo-sub {
+            color: #334155;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .brand-subtitle {
             font-size: 12px;
             color: var(--text-muted);
+            margin-top: 2px;
         }
 
         .header-actions {
@@ -114,31 +135,31 @@
             gap: 8px;
             padding: 6px 14px;
             border-radius: 20px;
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            background: var(--brand-green-light);
+            border: 1px solid rgba(0, 77, 52, 0.15);
             font-size: 12px;
-            color: #34d399;
-            font-weight: 500;
+            color: var(--brand-green);
+            font-weight: 600;
         }
 
         .pulse-dot {
             width: 8px;
             height: 8px;
-            background: #10b981;
+            background: var(--brand-green);
             border-radius: 50%;
-            box-shadow: 0 0 10px #10b981;
+            box-shadow: 0 0 8px var(--brand-green);
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 77, 52, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(0, 77, 52, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 77, 52, 0); }
         }
 
         .icon-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
             color: var(--text-muted);
             width: 38px;
             height: 38px;
@@ -151,11 +172,12 @@
         }
 
         .icon-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
+            background: var(--brand-green-light);
+            color: var(--brand-green);
+            border-color: rgba(0, 77, 52, 0.2);
         }
 
-        /* Chat Body */
+        /* Chat Body with Warm Beige Doodle Pattern Wallpaper */
         .chat-body {
             flex: 1;
             padding: 24px;
@@ -163,6 +185,9 @@
             display: flex;
             flex-direction: column;
             gap: 18px;
+            background-color: #efeae2;
+            background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1.2px, transparent 1.2px), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M39 16h2v6h-2zm0 8h2v6h-2zm-7-7h16v2H32zm45 20h2v6h-2zm0 8h2v6h-2zm-7-7h16v2H70zm-35 20h2v6h-2zm0 8h2v6h-2zm-7-7h16v2H32zm-32-20h2v6h-2zm0 8h2v6h-2zm-7-7h16v2H0z' fill='%23000000' fill-opacity='0.04'/%3E%3C/svg%3E");
+            background-size: 32px 32px, 80px 80px;
             scroll-behavior: smooth;
         }
 
@@ -170,7 +195,7 @@
             width: 6px;
         }
         .chat-body::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.15);
+            background: #cbd5e1;
             border-radius: 10px;
         }
 
@@ -199,72 +224,77 @@
         .avatar {
             width: 36px;
             height: 36px;
-            border-radius: 12px;
+            border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 14px;
             flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .message-row.bot .avatar {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            background: var(--brand-green);
             color: #fff;
         }
 
         .message-row.agent .avatar {
-            background: linear-gradient(135deg, #10b981, #059669);
+            background: #059669;
             color: #fff;
         }
 
         .message-row.user .avatar {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
+            background: #ffffff;
+            color: var(--brand-green);
+            border: 1px solid #cbd5e1;
         }
 
         .message-content {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .bubble {
             padding: 14px 18px;
-            border-radius: 18px;
+            border-radius: 16px;
             font-size: 14.5px;
             line-height: 1.55;
             word-wrap: break-word;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
         .message-row.user .bubble {
             background: var(--bubble-user);
-            color: #fff;
+            color: var(--bubble-user-text);
             border-bottom-right-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
         }
 
         .message-row.bot .bubble {
             background: var(--bubble-bot);
-            color: var(--text-main);
-            border: 1px solid var(--glass-border);
+            color: var(--text-dark);
+            border: 1px solid rgba(0, 0, 0, 0.06);
             border-bottom-left-radius: 4px;
         }
 
         .message-row.agent .bubble {
             background: var(--bubble-agent);
-            color: #fff;
+            color: #064e3b;
+            border: 1px solid #86efac;
             border-bottom-left-radius: 4px;
         }
 
         .sender-tag {
             font-size: 11px;
+            font-weight: 600;
             color: var(--text-muted);
             margin-bottom: 2px;
         }
 
         .msg-time {
             font-size: 10px;
-            color: rgba(255, 255, 255, 0.5);
+            opacity: 0.75;
             align-self: flex-end;
             margin-top: 4px;
         }
@@ -274,17 +304,17 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-top: 6px;
+            margin-top: 8px;
         }
 
         .chip-btn {
-            background: rgba(99, 102, 241, 0.15);
-            border: 1px solid rgba(99, 102, 241, 0.4);
-            color: #c7d2fe;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: var(--brand-green);
             padding: 8px 14px;
             border-radius: 20px;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
@@ -293,17 +323,18 @@
         }
 
         .chip-btn:hover {
-            background: var(--accent-primary);
-            color: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px var(--accent-glow);
+            background: var(--brand-green);
+            color: #ffffff;
+            border-color: var(--brand-green);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 77, 52, 0.2);
         }
 
         /* Footer Input Area */
         .chat-footer {
             padding: 16px 24px;
-            background: rgba(15, 23, 42, 0.8);
-            border-top: 1px solid var(--glass-border);
+            background: #ffffff;
+            border-top: 1px solid #f1f5f9;
             display: flex;
             gap: 12px;
             align-items: center;
@@ -318,51 +349,52 @@
 
         .chat-input {
             width: 100%;
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid var(--glass-border);
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
             padding: 14px 20px;
-            border-radius: 16px;
-            color: var(--text-main);
+            border-radius: 12px;
+            color: var(--text-dark);
             font-size: 14.5px;
             outline: none;
             transition: all 0.2s ease;
         }
 
         .chat-input:focus {
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 15px var(--accent-glow);
+            border-color: var(--brand-green);
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(0, 77, 52, 0.15);
         }
 
         .send-btn {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            background: var(--brand-green);
             border: none;
             color: #fff;
             width: 48px;
             height: 48px;
-            border-radius: 14px;
+            border-radius: 12px;
             cursor: pointer;
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 16px;
             transition: all 0.2s ease;
-            box-shadow: 0 4px 15px var(--accent-glow);
+            box-shadow: 0 4px 12px rgba(0, 77, 52, 0.2);
         }
 
         .send-btn:hover {
-            transform: scale(1.05);
-            background: var(--accent-hover);
+            background: var(--brand-green-hover);
+            transform: scale(1.03);
         }
 
-        /* Modal Guest Intake */
+        /* Modal Guest Intake Styled Exactly Like ERP Login Theme */
         .modal-overlay {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(12px);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(6px);
             z-index: 100;
             display: flex;
             justify-content: center;
@@ -371,35 +403,58 @@
         }
 
         .intake-card {
-            background: rgba(30, 41, 59, 0.95);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 32px;
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 18px;
+            padding: 36px 32px 24px 32px;
             width: 100%;
-            max-width: 420px;
+            max-width: 400px;
             box-shadow: var(--card-shadow);
             display: flex;
             flex-direction: column;
             gap: 20px;
             animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
         }
 
         @keyframes popIn {
-            from { opacity: 0; transform: scale(0.9); }
+            from { opacity: 0; transform: scale(0.92); }
             to { opacity: 1; transform: scale(1); }
         }
 
         .intake-header {
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .intake-header h2 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 22px;
+        .intake-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--brand-green);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             font-weight: 700;
-            color: #fff;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 14px rgba(0, 77, 52, 0.3);
+        }
+
+        .intake-logo-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            line-height: 1;
             margin-bottom: 6px;
         }
+
+        .intake-logo-text .logo-x { color: #c026d3; font-weight: 800; }
+        .intake-logo-text .logo-pert { color: var(--brand-green); font-weight: 800; }
+        .intake-logo-text .logo-erp { color: #334155; font-weight: 700; }
 
         .intake-header p {
             font-size: 13px;
@@ -414,43 +469,73 @@
 
         .form-group label {
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--text-muted);
         }
 
-        .form-input {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid var(--glass-border);
-            padding: 12px 16px;
-            border-radius: 12px;
-            color: #fff;
+        .styled-input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .styled-input-group i {
+            position: absolute;
+            left: 14px;
+            color: var(--text-light);
             font-size: 14px;
+            pointer-events: none;
+        }
+
+        .form-input-theme {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            padding: 12px 14px 12px 38px;
+            border-radius: 10px;
+            color: var(--text-dark);
+            font-size: 13.5px;
             outline: none;
             transition: all 0.2s ease;
         }
 
-        .form-input:focus {
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 10px var(--accent-glow);
+        .form-input-theme:focus {
+            border-color: var(--brand-green);
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(0, 77, 52, 0.15);
         }
 
-        .submit-btn {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            color: #fff;
+        .submit-btn-theme {
+            background: var(--brand-green);
+            color: #ffffff;
             border: none;
-            padding: 14px;
-            border-radius: 14px;
-            font-size: 15px;
+            padding: 13px;
+            border-radius: 10px;
+            font-size: 14.5px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            box-shadow: 0 4px 15px var(--accent-glow);
-            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0, 77, 52, 0.25);
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
         }
 
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            background: var(--accent-hover);
+        .submit-btn-theme:hover {
+            background: var(--brand-green-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 77, 52, 0.3);
+        }
+
+        .theme-copyright {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-light);
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid #f1f5f9;
         }
 
         /* Typing Indicator */
@@ -462,7 +547,7 @@
             background: var(--bubble-bot);
             border-radius: 16px;
             width: fit-content;
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--input-border);
         }
 
         .typing-dot {
@@ -481,9 +566,13 @@
             40% { transform: scale(1); }
         }
 
-        @media (max-width: 600px) {
-            .chat-app-container { height: 100vh; border-radius: 0; }
-            .message-row { max-width: 95%; }
+        @media (max-width: 768px) {
+            body {
+                background: linear-gradient(180deg, var(--bg-left) 120px, var(--bg-right) 120px);
+                padding: 0;
+            }
+            .chat-app-container { height: 100vh; border-radius: 0; border: none; }
+            .message-row { max-width: 92%; }
         }
     </style>
 </head>
@@ -493,12 +582,14 @@
         <!-- Header -->
         <header class="chat-header">
             <div class="header-brand">
-                <div class="brand-logo">
-                    <i class="fa-solid fa-robot"></i>
+                <div class="brand-avatar">
+                    HRMS
                 </div>
                 <div class="brand-info">
-                    <h1>XpertChat</h1>
-                    <p>AI Support & HR Live Support</p>
+                    <div class="brand-title">
+                        <span class="logo-x">X</span><span class="logo-pert">pert</span><span class="logo-sub">ERP</span>
+                    </div>
+                    <div class="brand-subtitle">AI Support & HR Live Support</div>
                 </div>
             </div>
             <div class="header-actions">
@@ -532,40 +623,58 @@
             </button>
         </footer>
 
-        <!-- Guest Intake Modal -->
+        <!-- Guest Intake Modal (Styled matching ERP Theme) -->
         <div class="modal-overlay" id="guest-modal" style="display: none;">
             <div class="intake-card">
                 <div class="intake-header">
-                    <h2>Welcome to XpertChat</h2>
-                    <p id="modal-subtitle">Choose how you would like to continue</p>
+                    <div class="intake-avatar">HRMS</div>
+                    <div class="intake-logo-text">
+                        <span class="logo-x">X</span><span class="logo-pert">pert</span><span class="logo-erp">ERP</span>
+                    </div>
+                    <p id="modal-subtitle">Sign in to your account</p>
                 </div>
 
                 <!-- View 1: Selection -->
                 <div id="auth-selection">
-                    <button id="btn-login-redirect" class="submit-btn" style="width: 100%; margin-bottom: 12px;">
-                        <i class="fa-solid fa-lock"></i> Employee Login
+                    <button id="btn-login-redirect" class="submit-btn-theme" style="margin-bottom: 12px;">
+                        <i class="fa-solid fa-right-to-bracket"></i> Employee Sign In
                     </button>
-                    <div style="text-align: center; color: var(--text-muted); margin: 16px 0;">or</div>
-                    <button id="btn-show-guest-form" class="chip-btn" style="width: 100%; justify-content: center;">
-                        <i class="fa-solid fa-user"></i> Continue as Guest
+                    <div style="text-align: center; color: var(--text-muted); font-size: 12px; margin: 12px 0;">or</div>
+                    <button id="btn-show-guest-form" class="chip-btn" style="width: 100%; justify-content: center; padding: 11px;">
+                        <i class="fa-regular fa-user"></i> Continue as Guest
                     </button>
                 </div>
 
                 <form id="guest-form" onsubmit="handleGuestSubmit(event)" style="display: none;">
                     <div class="form-group">
                         <label>Full Name *</label>
-                        <input type="text" id="guest-name" class="form-input" placeholder="e.g. John Doe" required>
+                        <div class="styled-input-group">
+                            <i class="fa-regular fa-user"></i>
+                            <input type="text" id="guest-name" class="form-input-theme" placeholder="e.g. John Doe" required>
+                        </div>
                     </div>
-                    <div class="form-group" style="margin-top: 12px;">
+                    <div class="form-group" style="margin-top: 10px;">
                         <label>Email Address *</label>
-                        <input type="email" id="guest-email" class="form-input" placeholder="e.g. john@example.com" required>
+                        <div class="styled-input-group">
+                            <i class="fa-regular fa-envelope"></i>
+                            <input type="email" id="guest-email" class="form-input-theme" placeholder="e.g. john@example.com" required>
+                        </div>
                     </div>
-                    <div class="form-group" style="margin-top: 12px;">
+                    <div class="form-group" style="margin-top: 10px;">
                         <label>Phone Number *</label>
-                        <input type="tel" id="guest-phone" class="form-input" placeholder="e.g. +923001234567" required>
+                        <div class="styled-input-group">
+                            <i class="fa-solid fa-phone"></i>
+                            <input type="tel" id="guest-phone" class="form-input-theme" placeholder="e.g. +923001234567" required>
+                        </div>
                     </div>
-                    <button type="submit" class="submit-btn">Start Chat</button>
+                    <button type="submit" class="submit-btn-theme" style="margin-top: 16px;">
+                        Sign In & Start Chat
+                    </button>
                 </form>
+
+                <div class="theme-copyright">
+                    © 2025 MicroMerger (Pvt) Ltd. All rights reserved.
+                </div>
             </div>
         </div>
     </div>
@@ -602,7 +711,7 @@
             $("#btn-show-guest-form").on("click", function() {
                 $("#auth-selection").hide();
                 $("#guest-form").show();
-                $("#modal-subtitle").text("Please enter your details to start chatting with support");
+                $("#modal-subtitle").text("Enter your details to start live support");
             });
 
             setupSocketListeners();
@@ -753,7 +862,7 @@
 
             let formattedText = formatMarkdown(text);
             if (mediaFile) {
-                formattedText += `<div style="margin-top: 8px;"><a href="${mediaFile}" target="_blank" style="color: #60a5fa; text-decoration: underline;"><i class="fa-solid fa-paperclip"></i> View Attachment</a></div>`;
+                formattedText += `<div style="margin-top: 8px;"><a href="${mediaFile}" target="_blank" style="color: #004d34; font-weight: 600; text-decoration: underline;"><i class="fa-solid fa-paperclip"></i> View Attachment</a></div>`;
             }
 
             let buttonsHtml = "";
