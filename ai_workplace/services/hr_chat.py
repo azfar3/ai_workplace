@@ -458,6 +458,7 @@ def open_session(
     person_type: str = "",
     contact_hr_selected: bool = False,
     ready_for_hr: bool = False,
+    channel: str = "WhatsApp",
     context: Optional[dict[str, Any]] = None,
 ) -> Any:
     """Create or resume an HR live chat session, merging/reusing existing session for the same employee."""
@@ -502,6 +503,8 @@ def open_session(
         session.off_hours_notice_sent = 0
         session.last_user_message_at = now
         session.session_window_expires_at = _compute_window_expires(now)
+        if channel:
+            session.channel = channel
         if was_closed_or_expired:
             session.closed_at = None
             session.closed_by = None
@@ -519,6 +522,7 @@ def open_session(
     session.whatsapp_identity = whatsapp_identity
     session.whatsapp_conversation = whatsapp_conversation
     session.wa_id = wa_id
+    session.channel = channel
     session.employee = employee or None
     session.erp_user = erp_user or None
     session.display_name = resolved_name or None
@@ -575,6 +579,7 @@ def append_inbound_message(
     meta_message_id: str = "",
     message_type: str = "text",
     media_file: str = "",
+    channel: str = "WhatsApp",
 ) -> None:
     from ai_workplace.security.credential_redaction import (
         redact_message_for_log,
@@ -586,6 +591,8 @@ def append_inbound_message(
     )
     now = _now()
     refresh_session_window(session, now=now)
+    if channel:
+        session.channel = channel
     session.flags.ignore_links = True
     session.save(ignore_permissions=True)
     frappe.db.commit()
@@ -738,77 +745,28 @@ def close_session(
 
     if reset_conversation and session.whatsapp_conversation:
         conv = frappe.get_doc("WhatsApp Conversation", session.whatsapp_conversation)
-        update_conversation(
-            conv,
-            state=ConversationState.AWAITING_SELECTION,
-            current_intent=None,
-            active_service=None,
-            clear_active_hr_chat_session=True,
-            clear_active_fields=False,
-        )
-
-    menu_out = None
-    if notify_user:
-        try:
-            phone = session.wa_id or (
-                frappe.db.get_value(
-                    "WhatsApp Identity", session.whatsapp_identity, "normalized_phone"
+        
+        if notify_user:
+            try:
+                from ai_workplace.conversation.manager import process_expired_conversation
+                # Clear active session pointer before processing expiry to prevent circular checks
+                from ai_workplace.conversation.manager import update_conversation
+                update_conversation(conv, clear_active_hr_chat_session=True)
+                process_expired_conversation(conv)
+            except Exception as err:
+                frappe.logger("ai_workplace").error(
+                    f"Failed to process expired conversation on HR chat close for {session_name}: {err}"
                 )
-                if session.whatsapp_identity
-                else None
-            )
-            if phone:
-                lang = "English"
-                if session.whatsapp_conversation:
-                    lang = (
-                        frappe.db.get_value(
-                            "WhatsApp Conversation",
-                            session.whatsapp_conversation,
-                            "preferred_language",
-                        )
-                        or "English"
-                    )
-
-                if lang == "Urdu":
-                    close_msg = (
-                        "💬 *HR چیٹ سیشن ختم ہو گیا*\n\n"
-                        "آپ کا HR چیٹ سیشن ختم ہو گیا ہے۔ 🙏\n\n"
-                        "اگر آپ کو مزید کسی مدد کی ضرورت ہے، تو نیچے دیے گئے مینو سے انتخاب کریں یا پیغام بھیجیں۔"
-                    )
-                elif lang == "Roman Urdu":
-                    close_msg = (
-                        "💬 *HR Chat Session Ended*\n\n"
-                        "Aap ka HR chat session khatam ho gaya hai. 🙏\n\n"
-                        "Agar aap ko mazeed kisi madad ki zarurat hai, toh neeche diye gaye menu se intikhab karein ya message bhejein."
-                    )
-                else:
-                    close_msg = (
-                        "💬 *HR Chat Session Ended*\n\n"
-                        "Your HR chat session has been ended. 🙏\n\n"
-                        "If you need further assistance, please select an option from the menu below or reply anytime."
-                    )
-
-                send_text_message(phone, close_msg)
-
-                # Send interactive/text menu right after session end message
-                try:
-                    from ai_workplace.identity.resolver import resolve_identity
-                    from ai_workplace.context.resolver import get_user_context
-                    from ai_workplace.conversation.menu import build_menu
-                    from ai_workplace.whatsapp.sender import send_message
-
-                    identity = resolve_identity(phone)
-                    context = get_user_context(identity)
-                    context["preferred_language"] = lang
-                    menu_out, _ = build_menu(context)
-                    send_message(phone, menu_out)
-                except Exception as menu_err:
-                    frappe.logger("ai_workplace").error(
-                        f"Failed to send menu after session close for {session_name}: {menu_err}"
-                    )
-        except Exception as err:
-            frappe.logger("ai_workplace").error(
-                f"Failed to send session close message for {session_name}: {err}"
+        else:
+            from ai_workplace.conversation.manager import update_conversation
+            from ai_workplace.conversation.state import ConversationState
+            update_conversation(
+                conv,
+                state=ConversationState.AWAITING_SELECTION,
+                current_intent=None,
+                active_service=None,
+                clear_active_hr_chat_session=True,
+                clear_active_fields=False,
             )
 
     frappe.db.commit()
@@ -1168,6 +1126,7 @@ def send_hr_attachment(
             "xpert_chat_reply",
             {
                 "session": session.name,
+                "whatsapp_identity": session.whatsapp_identity,
                 "message": log_message,
                 "media_file": file_doc.file_url,
                 "message_type": message_type,
@@ -1175,6 +1134,8 @@ def send_hr_attachment(
                 "sender_name": frappe.db.get_value("User", user, "full_name") or user,
                 "timestamp": str(_now()),
             },
+            user=session.erp_user or "Guest",
+            after_commit=True,
         )
     else:
         if not phone:
@@ -1279,11 +1240,14 @@ def send_hr_reply(
             "xpert_chat_reply",
             {
                 "session": session.name,
+                "whatsapp_identity": session.whatsapp_identity,
                 "message": text,
                 "sender_type": "HR Agent",
                 "sender_name": frappe.db.get_value("User", user, "full_name") or user,
                 "timestamp": str(_now()),
             },
+            user=session.erp_user or "Guest",
+            after_commit=True,
         )
     else:
         if not phone:
@@ -1292,15 +1256,15 @@ def send_hr_reply(
         from ai_workplace.whatsapp.interactive import build_button_message
         from ai_workplace.whatsapp.sender import send_message
 
-        btn_title = "🔴 End HR Chat"
+        btn_title = "End HR Chat"
         try:
             from ai_workplace.conversation.manager import get_or_create_conversation
             conv = get_or_create_conversation(session.whatsapp_identity)
             lang = conv.preferred_language or "English"
             if lang == "Urdu":
-                btn_title = "🔴 چیٹ ختم کریں"
+                btn_title = "چیٹ ختم کریں"
             elif lang == "Roman Urdu":
-                btn_title = "🔴 Chat Khatam Karein"
+                btn_title = "Chat Khatam Karein"
         except Exception:
             pass
 

@@ -572,7 +572,7 @@
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="/assets/frappe/js/lib/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         let isGuest = {{ "true" if is_guest else "false" }};
         let guestData = JSON.parse(localStorage.getItem("xpert_guest_data") || "null");
@@ -608,6 +608,8 @@
             setupSocketListeners();
         });
 
+        let renderedMessageIds = new Set();
+
         function initSession() {
             if (isGuest && (!guestData || !guestData.phone)) {
                 $("#guest-modal").show();
@@ -641,12 +643,16 @@
                         // Render history if available
                         if (data.history && data.history.length > 0) {
                             data.history.forEach(msg => {
+                                renderedMessageIds.add(msg.name);
                                 renderMessage(msg.message, msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot"), [], msg.sender_type, msg.media_file);
                             });
                         } else {
                             if (data.welcome) renderOutbound(data.welcome, "bot");
                             if (data.menu) renderOutbound(data.menu, "bot");
                         }
+                        
+                        // Start polling fallback loop for 100% reliability
+                        startPollingLoop();
                     }
                 },
                 error: function() {
@@ -654,6 +660,29 @@
                     renderMessage("Failed to connect to XpertChat server.", "bot");
                 }
             });
+        }
+
+        function startPollingLoop() {
+            setInterval(() => {
+                if (!activeSessionId) return;
+                $.ajax({
+                    url: "/api/method/ai_workplace.api.web_chat.get_chat_history",
+                    type: "GET",
+                    data: { wa_identity_name: activeSessionId, limit: 50 },
+                    success: function(res) {
+                        if (res.message && Array.isArray(res.message)) {
+                            res.message.forEach(msg => {
+                                if (!renderedMessageIds.has(msg.name)) {
+                                    renderedMessageIds.add(msg.name);
+                                    if (msg.direction === "Outbound") {
+                                        renderMessage(msg.message, msg.sender_type === "HR Agent" ? "agent" : "bot", [], msg.sender_type, msg.media_file);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+            }, 3000); // 3 seconds polling
         }
 
         function handleGuestSubmit(e) {
@@ -783,11 +812,26 @@
         function setupSocketListeners() {
             if (window.io) {
                 try {
-                    let socket = io();
+                    let siteName = "{{ site_name }}";
+                    console.log("Initializing Socket.IO for namespace: /" + siteName);
+                    let socket = io("/" + siteName, {
+                        withCredentials: true,
+                        reconnection: true
+                    });
+                    
+                    socket.on("connect", function() {
+                        console.log("Socket.IO Connected to /" + siteName);
+                    });
+
                     socket.on("xpert_chat_reply", function(data) {
-                        if (data && data.message) {
+                        console.log("Socket received xpert_chat_reply:", data);
+                        if (data && data.message && data.whatsapp_identity === activeSessionId) {
                             renderMessage(data.message, "agent", [], data.sender_name || "HR Support", data.media_file);
                         }
+                    });
+                    
+                    socket.on("connect_error", function(err) {
+                        console.log("Socket.IO Connect Error:", err.message);
                     });
                 } catch(e) {
                     console.log("Socket listener setup error", e);

@@ -21,4 +21,5 @@ def get_context(context):
     if not is_guest:
         context.user_fullname = frappe.db.get_value("User", user, "full_name") or user
 
+    context.site_name = frappe.local.site
     return context

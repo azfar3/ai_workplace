@@ -74,6 +74,9 @@ def _send_push_notification_job(user, payload):
     vapid_public_key = settings.vapid_public_key or frappe.conf.get("vapid_public_key")
     vapid_subject = settings.vapid_subject or frappe.conf.get("vapid_subject", "mailto:admin@example.com")
     
+    if vapid_subject and not vapid_subject.startswith(("mailto:", "http:", "https:")):
+        vapid_subject = f"mailto:{vapid_subject}"
+    
     if not vapid_private_key or not vapid_public_key:
         return
         
