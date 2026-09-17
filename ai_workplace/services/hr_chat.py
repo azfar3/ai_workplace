@@ -1041,12 +1041,18 @@ def _create_outbound_log(
     message_type: str = "text",
     media_file: str = "",
 ) -> str:
+    session_channel = getattr(session, "channel", "WhatsApp") or "WhatsApp"
+    is_web = session_channel == "Web Chat"
+
     doc = frappe.new_doc("WhatsApp Message Log")
     doc.meta_message_id = meta_message_id or ""
     doc.direction = "Outbound"
     doc.sender = user
     doc.recipient = session.wa_id or ""
-    doc.whatsapp_id = session.wa_id or ""
+    # For Web Chat sessions, whatsapp_id must match the whatsapp_identity docname
+    # because get_chat_history filters by: whatsapp_id LIKE %wa_identity_name%
+    doc.whatsapp_id = session.whatsapp_identity if is_web else (session.wa_id or "")
+    doc.channel = session_channel  # Critical: lets get_chat_history polling filter find these logs
     doc.message_type = message_type or "text"
     doc.message = message
     doc.media_file = media_file or ""
@@ -1236,19 +1242,28 @@ def send_hr_reply(
 
     if getattr(session, "channel", "WhatsApp") == "Web Chat":
         result = {"success": True, "message_id": f"WEB-{frappe.generate_hash(length=8)}"}
-        frappe.publish_realtime(
-            "xpert_chat_reply",
-            {
-                "session": session.name,
-                "whatsapp_identity": session.whatsapp_identity,
-                "message": text,
-                "sender_type": "HR Agent",
-                "sender_name": frappe.db.get_value("User", user, "full_name") or user,
-                "timestamp": str(_now()),
-            },
-            user=session.erp_user or "Guest",
-            after_commit=True,
-        )
+        # Determine the correct socket target user.
+        # For authenticated employees: erp_user is their email → direct socket delivery.
+        # For guests: erp_user is empty; publishing to "Guest" is a no-op because guest
+        # browsers aren't registered under a Frappe socket user. The polling fallback
+        # in startPollingLoop() (get_chat_history) is the reliable path for guests,
+        # now that _create_outbound_log correctly stamps channel & whatsapp_id.
+        socket_target_user = session.erp_user or None
+        realtime_payload = {
+            "session": session.name,
+            "whatsapp_identity": session.whatsapp_identity,
+            "message": text,
+            "sender_type": "HR Agent",
+            "sender_name": frappe.db.get_value("User", user, "full_name") or user,
+            "timestamp": str(_now()),
+        }
+        if socket_target_user:
+            frappe.publish_realtime(
+                "xpert_chat_reply",
+                realtime_payload,
+                user=socket_target_user,
+                after_commit=True,
+            )
     else:
         if not phone:
             frappe.throw(_("No WhatsApp phone number found for this session."))
