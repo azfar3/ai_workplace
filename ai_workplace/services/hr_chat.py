@@ -654,6 +654,16 @@ def handle_contact_hr_connect(
     )
 
     if is_guest_context(context):
+        wa_identity = conv.whatsapp_identity
+        wa_doc = frappe.db.get_value("WhatsApp Identity", wa_identity, ["guest_name", "guest_email"], as_dict=True) if wa_identity else None
+        if wa_doc and wa_doc.get("guest_name") and wa_doc.get("guest_email"):
+            from ai_workplace.services.hr_guest_intake import _complete_guest_intake
+            draft = {
+                "full_name": wa_doc["guest_name"],
+                "email": wa_doc["guest_email"],
+                "query": "Chat requested by returning Guest user.",
+            }
+            return _complete_guest_intake(conv, context, draft)
         return start_guest_intake(conv, context)
 
     person_type = normalize_session_person_type(
@@ -1357,6 +1367,8 @@ def get_session_thread(
     filters_or = []
     if session.whatsapp_identity:
         filters_or.append({"whatsapp_identity": session.whatsapp_identity})
+    if session.guest_email:
+        filters_or.append({"guest_email": session.guest_email})
     if session.employee:
         filters_or.append({"employee": session.employee})
     if session.wa_id:
@@ -1377,6 +1389,9 @@ def get_session_thread(
         if session.wa_id:
             log_or_filters.append({"recipient": session.wa_id})
             log_or_filters.append({"whatsapp_id": session.wa_id})
+        if session.guest_email:
+            log_or_filters.append({"sender": session.guest_email})
+            log_or_filters.append({"recipient": session.guest_email})
         if session.employee:
             log_or_filters.append({"employee": session.employee})
 

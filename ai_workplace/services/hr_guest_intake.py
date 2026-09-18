@@ -144,6 +144,23 @@ def _complete_guest_intake(
     query = draft.get("query", "")
     lang = context.get("preferred_language", "English")
 
+    if conv.whatsapp_identity and frappe.db.exists("WhatsApp Identity", conv.whatsapp_identity):
+        try:
+            wa_doc = frappe.get_doc("WhatsApp Identity", conv.whatsapp_identity)
+            changed = False
+            if full_name and wa_doc.guest_name != full_name:
+                wa_doc.guest_name = full_name
+                changed = True
+            if email and email != "Not Provided" and wa_doc.guest_email != email:
+                wa_doc.guest_email = email
+                changed = True
+            if changed:
+                wa_doc.flags.ignore_links = True
+                wa_doc.save(ignore_permissions=True)
+                frappe.db.commit()
+        except Exception as err:
+            frappe.logger("ai_workplace").error(f"Failed to update WhatsApp Identity guest details: {err}")
+
     session = open_session(
         whatsapp_identity=conv.whatsapp_identity,
         whatsapp_conversation=conv.name,

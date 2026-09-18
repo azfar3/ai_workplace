@@ -61,6 +61,7 @@ class IdentityResult:
     employee: Optional[str] = None      # Employee.name
     full_name: Optional[str] = None     # display name
     whatsapp_identity: Optional[str] = None # Docname of WhatsApp Identity record
+    guest_email: Optional[str] = None   # Guest email address
 
 
     def to_dict(self) -> dict:
@@ -71,6 +72,7 @@ class IdentityResult:
             "employee": self.employee,
             "full_name": self.full_name,
             "whatsapp_identity": self.whatsapp_identity,
+            "guest_email": self.guest_email,
         }
 
 
@@ -153,25 +155,88 @@ def resolve_web_identity(
             except Exception:
                 norm_phone = phone or "+923000000000"
 
+            wa_ident = frappe.db.get_value("WhatsApp Identity", {"erp_user": user_email}, "name")
+
             return IdentityResult(
                 status="matched",
                 normalized_phone=norm_phone,
                 user=usr.get("name"),
                 employee=emp.get("name") if emp else None,
                 full_name=emp.get("employee_name") if emp else usr.get("full_name"),
+                whatsapp_identity=wa_ident,
             )
 
     guest_info = guest_info or {}
-    phone = guest_info.get("phone") or "+923000000000"
+    phone = (guest_info.get("phone") or "").strip()
+    guest_email = (guest_info.get("email") or "").strip()
+    guest_name = (guest_info.get("name") or "").strip()
+
+    if not phone:
+        phone = "+923000000000"
+
     try:
         norm_phone = normalize_phone_number(phone)
     except Exception:
         norm_phone = phone
 
+    matched_wa_ident = None
+
+    # 1. Match by phone if valid phone provided
+    if norm_phone and norm_phone != "+923000000000":
+        matched_wa_ident = frappe.db.get_value(
+            "WhatsApp Identity",
+            {"normalized_phone": norm_phone},
+            ["name", "guest_name", "guest_email", "normalized_phone"],
+            as_dict=True,
+        )
+        if not matched_wa_ident:
+            matched_wa_ident = frappe.db.get_value(
+                "WhatsApp Identity",
+                {"phone_number": phone},
+                ["name", "guest_name", "guest_email", "normalized_phone"],
+                as_dict=True,
+            )
+
+    # 2. Match by guest_email if not matched by phone
+    if not matched_wa_ident and guest_email:
+        matched_wa_ident = frappe.db.get_value(
+            "WhatsApp Identity",
+            {"guest_email": guest_email},
+            ["name", "guest_name", "guest_email", "normalized_phone"],
+            as_dict=True,
+        )
+
+    if matched_wa_ident:
+        wa_doc = frappe.get_doc("WhatsApp Identity", matched_wa_ident["name"])
+        updated = False
+        if guest_name and wa_doc.guest_name != guest_name:
+            wa_doc.guest_name = guest_name
+            updated = True
+        if guest_email and wa_doc.guest_email != guest_email:
+            wa_doc.guest_email = guest_email
+            updated = True
+        if norm_phone and norm_phone != "+923000000000" and wa_doc.normalized_phone != norm_phone:
+            wa_doc.normalized_phone = norm_phone
+            wa_doc.phone_number = norm_phone
+            updated = True
+        if updated:
+            wa_doc.flags.ignore_links = True
+            wa_doc.save(ignore_permissions=True)
+            frappe.db.commit()
+
+        return IdentityResult(
+            status="guest",
+            normalized_phone=norm_phone if norm_phone != "+923000000000" else (wa_doc.normalized_phone or "+923000000000"),
+            full_name=guest_name or wa_doc.guest_name or "Web Guest",
+            guest_email=guest_email or wa_doc.guest_email or None,
+            whatsapp_identity=wa_doc.name,
+        )
+
     return IdentityResult(
         status="guest",
         normalized_phone=norm_phone,
-        full_name=guest_info.get("name") or "Web Guest",
+        full_name=guest_name or "Web Guest",
+        guest_email=guest_email or None,
     )
 
 
@@ -185,11 +250,17 @@ def get_or_create_whatsapp_identity(identity: IdentityResult | dict, wa_id: str 
         normalized_phone = identity.get("normalized_phone", "")
         user = identity.get("user")
         employee = identity.get("employee")
+        guest_email = identity.get("guest_email")
+        full_name = identity.get("full_name")
+        wa_identity_name = identity.get("whatsapp_identity")
     else:
         status = identity.status
         normalized_phone = identity.normalized_phone
         user = identity.user
         employee = identity.employee
+        guest_email = identity.guest_email
+        full_name = identity.full_name
+        wa_identity_name = identity.whatsapp_identity
 
     if not wa_id:
         import re
@@ -203,11 +274,13 @@ def get_or_create_whatsapp_identity(identity: IdentityResult | dict, wa_id: str 
     }
     db_status = status_map.get(status, "Guest")
 
-    docname = None
-    if wa_id:
+    docname = wa_identity_name
+    if not docname and wa_id:
         docname = frappe.db.get_value("WhatsApp Identity", {"whatsapp_id": wa_id}, "name")
     if not docname and normalized_phone:
         docname = frappe.db.get_value("WhatsApp Identity", {"normalized_phone": normalized_phone}, "name")
+    if not docname and guest_email:
+        docname = frappe.db.get_value("WhatsApp Identity", {"guest_email": guest_email}, "name")
 
     if docname:
         doc = frappe.get_doc("WhatsApp Identity", docname)
@@ -216,6 +289,13 @@ def get_or_create_whatsapp_identity(identity: IdentityResult | dict, wa_id: str 
             doc.erp_user = user
         if employee:
             doc.employee = employee
+        if guest_email:
+            doc.guest_email = guest_email
+        if full_name and db_status == "Guest":
+            doc.guest_name = full_name
+        if normalized_phone and not doc.normalized_phone:
+            doc.normalized_phone = normalized_phone
+            doc.phone_number = normalized_phone
         doc.last_seen_at = frappe.utils.now_datetime()
         doc.flags.ignore_links = True
         doc.save(ignore_permissions=True)
@@ -229,6 +309,10 @@ def get_or_create_whatsapp_identity(identity: IdentityResult | dict, wa_id: str 
         doc.status = db_status
         doc.erp_user = user or None
         doc.employee = employee or None
+        if guest_email:
+            doc.guest_email = guest_email
+        if full_name and db_status == "Guest":
+            doc.guest_name = full_name
         doc.preferred_language = "en"
         doc.last_seen_at = frappe.utils.now_datetime()
         doc.flags.ignore_links = True
@@ -450,6 +534,32 @@ def _classify(candidates: list[_Candidate], normalized_phone: str) -> IdentityRe
         return IdentityResult(
             status="inactive",
             normalized_phone=normalized_phone,
+        )
+
+    # Rule 4: Guest — check if existing WhatsApp Identity record has guest details
+    wa_ident = None
+    if normalized_phone:
+        wa_ident = frappe.db.get_value(
+            "WhatsApp Identity",
+            {"normalized_phone": normalized_phone},
+            ["name", "guest_name", "guest_email"],
+            as_dict=True,
+        )
+        if not wa_ident:
+            wa_ident = frappe.db.get_value(
+                "WhatsApp Identity",
+                {"phone_number": normalized_phone},
+                ["name", "guest_name", "guest_email"],
+                as_dict=True,
+            )
+
+    if wa_ident:
+        return IdentityResult(
+            status="guest",
+            normalized_phone=normalized_phone,
+            full_name=wa_ident.get("guest_name") or None,
+            guest_email=wa_ident.get("guest_email") or None,
+            whatsapp_identity=wa_ident.get("name"),
         )
 
     return IdentityResult(

@@ -104,16 +104,26 @@ def init_session(
             "success": True,
             "is_guest": True,
             "needs_intake": False,
-            "full_name": guest_name,
-            "email": guest_email,
+            "full_name": identity.full_name or guest_name,
+            "email": identity.guest_email or guest_email,
             "phone": guest_phone,
             "user_image": user_img,
             "whatsapp_identity": wa_identity_name,
             "welcome": _outbound_to_dict(welcome_msg),
             "menu": _outbound_to_dict(menu_msg),
             "active_hr_session": active_hr_session,
-            "previous_sessions": get_user_sessions(guest_phone=guest_phone),
-            "history": get_chat_history(wa_identity_name=wa_identity_name, start=0, limit=10),
+            "previous_sessions": get_user_sessions(
+                guest_phone=guest_phone,
+                guest_email=guest_email or identity.guest_email,
+                wa_identity_name=wa_identity_name,
+            ),
+            "history": get_chat_history(
+                wa_identity_name=wa_identity_name,
+                guest_phone=guest_phone,
+                guest_email=guest_email or identity.guest_email,
+                start=0,
+                limit=10,
+            ),
         }
 
     return {
@@ -235,6 +245,8 @@ def send_message(
 @frappe.whitelist(allow_guest=True)
 def get_user_sessions(
     guest_phone: Optional[str] = None,
+    guest_email: Optional[str] = None,
+    wa_identity_name: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """
     Get all previous chat sessions for the logged-in user or guest.
@@ -252,11 +264,24 @@ def get_user_sessions(
         if identity.whatsapp_identity:
             or_filters.append({"whatsapp_identity": identity.whatsapp_identity})
         or_filters.append({"wa_id": f"WEB-{user_email}"})
-    elif guest_phone:
-        wa_id = f"WEB-GUEST-{guest_phone}"
-        or_filters.append({"wa_id": wa_id})
-        or_filters.append({"whatsapp_identity": wa_id})
     else:
+        if wa_identity_name:
+            or_filters.append({"whatsapp_identity": wa_identity_name})
+            or_filters.append({"wa_id": wa_identity_name})
+        if guest_email:
+            or_filters.append({"guest_email": guest_email})
+        if guest_phone:
+            wa_id = f"WEB-GUEST-{guest_phone}"
+            or_filters.append({"wa_id": wa_id})
+            try:
+                from ai_workplace.identity.phone import normalize_phone_number
+                norm = normalize_phone_number(guest_phone)
+                or_filters.append({"wa_id": norm})
+            except Exception:
+                pass
+            or_filters.append({"wa_id": guest_phone})
+
+    if not or_filters:
         return []
 
     sessions = frappe.get_all(
@@ -309,6 +334,8 @@ def get_user_sessions(
 def get_chat_history(
     wa_identity_name: str = "",
     session_name: str = "",
+    guest_phone: str = "",
+    guest_email: str = "",
     start: int = 0,
     limit: int = 10,
 ) -> list[dict[str, Any]]:
@@ -331,10 +358,47 @@ def get_chat_history(
     else:
         user_email = frappe.session.user
         is_logged_in = user_email and user_email != "Guest"
+
+        session_names = []
+        if is_logged_in:
+            identity = resolve_web_identity(user_email=user_email)
+            s_or_filters = [{"erp_user": user_email}]
+            if identity.employee:
+                s_or_filters.append({"employee": identity.employee})
+            if identity.whatsapp_identity:
+                s_or_filters.append({"whatsapp_identity": identity.whatsapp_identity})
+            session_names = frappe.get_all("HR Live Chat Session", or_filters=s_or_filters, pluck="name")
+        elif wa_identity_name or guest_email or guest_phone:
+            s_or_filters = []
+            if wa_identity_name:
+                s_or_filters.append({"whatsapp_identity": wa_identity_name})
+                s_or_filters.append({"wa_id": wa_identity_name})
+            if guest_email:
+                s_or_filters.append({"guest_email": guest_email})
+            if guest_phone:
+                s_or_filters.append({"wa_id": f"WEB-GUEST-{guest_phone}"})
+                s_or_filters.append({"wa_id": guest_phone})
+            session_names = frappe.get_all("HR Live Chat Session", or_filters=s_or_filters, pluck="name")
+
         or_filters = []
+        if session_names:
+            or_filters.append({"hr_live_chat_session": ["in", session_names]})
         if wa_identity_name:
             or_filters.append({"whatsapp_id": ["like", f"%{wa_identity_name}%"]})
-        
+            or_filters.append({"whatsapp_id": wa_identity_name})
+        if guest_email:
+            or_filters.append({"sender": guest_email})
+            or_filters.append({"recipient": guest_email})
+        if guest_phone:
+            or_filters.append({"whatsapp_id": f"WEB-GUEST-{guest_phone}"})
+            or_filters.append({"whatsapp_id": guest_phone})
+            try:
+                from ai_workplace.identity.phone import normalize_phone_number
+                norm = normalize_phone_number(guest_phone)
+                or_filters.append({"whatsapp_id": norm})
+            except Exception:
+                pass
+
         if is_logged_in:
             identity = resolve_web_identity(user_email=user_email)
             or_filters.append({"erp_user": user_email})
@@ -342,7 +406,7 @@ def get_chat_history(
                 or_filters.append({"employee": identity.employee})
             if identity.whatsapp_identity:
                 or_filters.append({"whatsapp_id": identity.whatsapp_identity})
-        
+
         if not or_filters:
             return []
 

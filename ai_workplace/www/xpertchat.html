@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{{ title }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -699,19 +700,152 @@
         }
 
         @media (max-width: 768px) {
+
+            html,
             body {
-                background: linear-gradient(180deg, var(--bg-left) 120px, var(--bg-right) 120px);
+                height: 100%;
+                height: 100dvh;
+                overflow: hidden;
+            }
+
+            body {
+                background: #efeae2;
                 padding: 0;
             }
 
             .chat-app-container {
-                height: 100vh;
+                height: 100%;
+                height: 100dvh;
+                max-height: 100dvh;
                 border-radius: 0;
                 border: none;
+                box-shadow: none;
+            }
+
+            .chat-header {
+                padding: 10px 12px;
+                gap: 8px;
+            }
+
+            .header-brand {
+                gap: 8px;
+                min-width: 0;
+                flex: 1;
+            }
+
+            .brand-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 11px;
+            }
+
+            .brand-info {
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .brand-title img {
+                width: 75px !important;
+                height: auto;
+            }
+
+            .brand-subtitle {
+                font-size: 10.5px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .header-actions {
+                gap: 6px;
+                flex-shrink: 0;
+            }
+
+            .status-badge {
+                padding: 4px 8px;
+                font-size: 11px;
+                gap: 5px;
+            }
+
+            .icon-btn {
+                width: 34px;
+                height: 34px;
+                font-size: 13px;
+            }
+
+            .chat-body {
+                padding: 12px 10px;
+                gap: 12px;
             }
 
             .message-row {
-                max-width: 92%;
+                max-width: 90%;
+                gap: 8px;
+            }
+
+            .avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+            }
+
+            .bubble {
+                padding: 10px 14px;
+                font-size: 14px;
+                border-radius: 14px;
+            }
+
+            .chat-footer {
+                padding: 8px 10px;
+                gap: 8px;
+                padding-bottom: max(10px, env(safe-area-inset-bottom));
+            }
+
+            .chat-input {
+                padding: 10px 14px;
+                font-size: 15px;
+                border-radius: 10px;
+            }
+
+            .send-btn {
+                width: 42px;
+                height: 42px;
+                border-radius: 10px;
+                font-size: 15px;
+            }
+
+            .scroll-down-btn {
+                right: 14px;
+                bottom: 70px;
+                width: 34px;
+                height: 34px;
+                font-size: 12px;
+            }
+
+            .modal-overlay {
+                padding: 14px;
+            }
+
+            .intake-card {
+                padding: 24px 18px 20px 18px;
+                max-width: 100%;
+                border-radius: 16px;
+                gap: 14px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .brand-subtitle {
+                display: none;
+            }
+
+            .status-badge span {
+                display: none;
+            }
+
+            .status-badge {
+                padding: 6px;
+                border-radius: 50%;
             }
         }
     </style>
@@ -749,13 +883,6 @@
             <!-- Scroll-Up History Loader -->
             <div class="history-loader" id="history-loader">
                 <i class="fa-solid fa-spinner fa-spin"></i> Loading older messages...
-            </div>
-
-            <!-- Dynamic Messages -->
-            <div class="typing-indicator" id="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
             </div>
         </div>
 
@@ -824,7 +951,7 @@
                         </div>
                     </div>
                     <button type="submit" class="submit-btn-theme" style="margin-top: 16px;">
-                        Sign In & Start Chat
+                        Start Chat
                     </button>
                 </form>
 
@@ -853,14 +980,26 @@
         let hasMoreHistory = true;
         let loadingHistory = false;
 
+        let swRegistration = null;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/assets/ai_workplace/js/sw.js')
+                .then(function(reg) {
+                    swRegistration = reg;
+                }).catch(function(err) {
+                    console.error('SW registration failed:', err);
+                });
+        }
+
         $(document).ready(function () {
             initSession();
 
             $("#send-btn").on("click", function () {
+                requestNotificationPermission();
                 sendMessage();
             });
 
             $("#message-input").on("keypress", function (e) {
+                requestNotificationPermission();
                 if (e.which === 13) {
                     sendMessage();
                 }
@@ -905,6 +1044,22 @@
 
             setupSocketListeners();
         });
+
+        function requestNotificationPermission() {
+            if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
+
+        function triggerNotification(title, options) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                if (swRegistration && swRegistration.showNotification) {
+                    swRegistration.showNotification(title, options);
+                } else {
+                    new Notification(title, options);
+                }
+            }
+        }
 
         function formatDateKey(ts) {
             if (!ts) {
@@ -1059,14 +1214,20 @@
             let stream = document.getElementById("chat-stream");
             let oldScrollHeight = stream.scrollHeight;
 
+            let queryData = {
+                wa_identity_name: activeSessionId,
+                start: historyOffset,
+                limit: historyLimit
+            };
+            if (isGuest && guestData) {
+                if (guestData.email) queryData.guest_email = guestData.email;
+                if (guestData.phone) queryData.guest_phone = guestData.phone;
+            }
+
             $.ajax({
                 url: "/api/method/ai_workplace.api.web_chat.get_chat_history",
                 type: "GET",
-                data: {
-                    wa_identity_name: activeSessionId,
-                    start: historyOffset,
-                    limit: historyLimit
-                },
+                data: queryData,
                 success: function (res) {
                     $("#history-loader").hide();
                     if (res.message && Array.isArray(res.message)) {
@@ -1114,10 +1275,15 @@
         function startPollingLoop() {
             setInterval(() => {
                 if (!activeSessionId) return;
+                let pollData = { wa_identity_name: activeSessionId, start: 0, limit: 15 };
+                if (isGuest && guestData) {
+                    if (guestData.email) pollData.guest_email = guestData.email;
+                    if (guestData.phone) pollData.guest_phone = guestData.phone;
+                }
                 $.ajax({
                     url: "/api/method/ai_workplace.api.web_chat.get_chat_history",
                     type: "GET",
-                    data: { wa_identity_name: activeSessionId, start: 0, limit: 15 },
+                    data: pollData,
                     success: function (res) {
                         if (res.message && Array.isArray(res.message)) {
                             res.message.forEach(msg => {
@@ -1130,6 +1296,9 @@
 
                                     if (msg.direction === "Outbound" && (!latestRenderedTimestamp || msgTime >= latestRenderedTimestamp - 5000)) {
                                         renderMessage(msg.message, msg.sender_type === "HR Agent" ? "agent" : "bot", [], msg.sender_type, msg.media_file, msg.timestamp);
+                                        if (document.hidden) {
+                                            triggerNotification("New message", { body: msg.message || "You have a new message", icon: "/assets/frappe/images/frappe-framework-logo.svg" });
+                                        }
                                     }
                                 }
                             });
@@ -1234,6 +1403,14 @@
                 formattedText += `<div style="margin-top: 8px;"><a href="${mediaFile}" target="_blank" style="color: #004d34; font-weight: 600; text-decoration: underline;"><i class="fa-solid fa-paperclip"></i> View Attachment</a></div>`;
             }
 
+            if (role === "agent") {
+                buttons = buttons || [];
+                let hasEndChat = buttons.some(b => b.id === "svc_end_hr_chat" || b.id === "end_hr_chat");
+                if (!hasEndChat) {
+                    buttons.push({ id: "svc_end_hr_chat", title: "End HR Chat" });
+                }
+            }
+
             let buttonsHtml = "";
             if (buttons && buttons.length > 0) {
                 buttonsHtml = `<div class="button-chips">`;
@@ -1248,8 +1425,8 @@
                 <div class="message-row ${role}">
                     ${avatarHtml}
                     <div class="message-content">
-                        ${senderTag && !isUser ? `<div class="sender-tag">${escapeHtml(senderTag)}</div>` : ''}
                         <div class="bubble">
+                            ${senderTag && !isUser ? `<div class="sender-tag">${escapeHtml(senderTag)}</div>` : ''}
                             ${formattedText}
                             ${buttonsHtml}
                             <div class="msg-time">${timeStr}</div>
@@ -1275,12 +1452,7 @@
         }
 
         function showTyping(show) {
-            if (show) {
-                $("#typing-indicator").css("display", "flex");
-                scrollToBottom();
-            } else {
-                $("#typing-indicator").css("display", "none");
-            }
+            // Typing indicator has been removed
         }
 
         function scrollToBottom(smooth = false) {
@@ -1324,6 +1496,9 @@
                         console.log("Socket received xpert_chat_reply:", data);
                         if (data && data.message && data.whatsapp_identity === activeSessionId) {
                             renderMessage(data.message, "agent", [], data.sender_name || "HR Support", data.media_file);
+                            if (document.hidden) {
+                                triggerNotification(data.sender_name || "HR Support", { body: data.message || "You have a new message", icon: "/assets/frappe/images/frappe-framework-logo.svg" });
+                            }
                         }
                     });
 
