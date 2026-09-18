@@ -1104,6 +1104,14 @@
         let lastRenderedDateKey = null;
         let latestRenderedTimestamp = null;
 
+        function getCsrfToken() {
+            if (typeof window !== "undefined" && window.frappe && window.frappe.csrf_token) {
+                return window.frappe.csrf_token;
+            }
+            let match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+            return match ? decodeURIComponent(match[1]) : "";
+        }
+
         // History Pagination State
         let historyOffset = 0;
         let historyLimit = 20;
@@ -1164,22 +1172,28 @@
                 let uploadBtn = $("#attach-btn");
                 uploadBtn.prop("disabled", true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
 
-                $.ajax({
-                    url: "/api/method/upload_file",
-                    type: "POST",
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(res) {
-                        uploadBtn.prop("disabled", false).text('📎');
-                        if (res.message && res.message.file_url) {
-                            sendMessage(null, res.message.file_url);
-                        }
-                    },
-                    error: function() {
-                        uploadBtn.prop("disabled", false).text('📎');
-                        alert("File upload failed.");
+                fetch("/api/method/upload_file", {
+                    method: "POST",
+                    body: formData,
+                    credentials: "include",
+                    headers: {
+                        "X-Frappe-CSRF-Token": getCsrfToken()
                     }
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error(`Upload failed with status: ${res.status}`);
+                    return res.json();
+                })
+                .then(res => {
+                    uploadBtn.prop("disabled", false).text('📎');
+                    if (res.message && res.message.file_url) {
+                        sendMessage(null, res.message.file_url);
+                    }
+                })
+                .catch(err => {
+                    console.error("Upload error:", err);
+                    uploadBtn.prop("disabled", false).text('📎');
+                    alert("File upload failed.");
                 });
                 $(this).val("");
             });
@@ -1355,79 +1369,96 @@
                 };
             }
 
-            $.ajax({
-                url: "/api/method/ai_workplace.api.web_chat.init_session",
-                type: "POST",
-                data: reqData,
-                xhrFields: { withCredentials: true },
-                headers: { "X-Frappe-CSRF-Token": frappe && frappe.csrf_token ? frappe.csrf_token : (document.cookie.match(/csrf_token=([^;]+)/) || [])[1] || "" },
-                success: function (res) {
-                    if (res.message && res.message.success) {
-                        let data = res.message;
-                        if (data.needs_intake) {
-                            $("#guest-modal").show();
-                            return;
+            let formData = new FormData();
+            Object.keys(reqData).forEach(k => {
+                if (reqData[k] !== undefined && reqData[k] !== null) {
+                    formData.append(k, reqData[k]);
+                }
+            });
+
+            fetch("/api/method/ai_workplace.api.web_chat.init_session", {
+                method: "POST",
+                body: formData,
+                credentials: "include",
+                headers: {
+                    "X-Frappe-CSRF-Token": getCsrfToken()
+                }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                return res.json();
+            })
+            .then(res => {
+                if (res.message && res.message.success) {
+                    let data = res.message;
+                    if (data.needs_intake) {
+                        $("#guest-modal").show();
+                        return;
+                    }
+                    activeSessionId = data.whatsapp_identity;
+
+                    if (data.user_image) {
+                        userAvatarUrl = data.user_image;
+                    }
+
+                    if (data.history && data.history.length > 0) {
+                        historyOffset = data.history.length;
+                        if (data.history.length < historyLimit) {
+                            hasMoreHistory = false;
                         }
-                        activeSessionId = data.whatsapp_identity;
-
-                        if (data.user_image) {
-                            userAvatarUrl = data.user_image;
+                        if (isGuest) {
+                            hasMoreHistory = false;
                         }
 
-                        if (data.history && data.history.length > 0) {
-                            historyOffset = data.history.length;
-                            if (data.history.length < historyLimit) {
-                                hasMoreHistory = false;
-                            }
-                            if (isGuest) {
-                                hasMoreHistory = false;
-                            }
+                        let initialHtml = "";
+                        let lastDateInBatch = null;
 
-                            let initialHtml = "";
-                            let lastDateInBatch = null;
-
-                            data.history.forEach(msg => {
-                                renderedMessageIds.add(msg.name);
-                                let msgDateKey = formatDateKey(msg.timestamp);
-                                
-                                let tsStr = msg.timestamp || msg.creation;
-                                if (tsStr) {
-                                    let t = new Date(tsStr).getTime();
-                                    if (!isNaN(t) && (!latestRenderedTimestamp || t > latestRenderedTimestamp)) {
-                                        latestRenderedTimestamp = t;
-                                    }
+                        data.history.forEach(msg => {
+                            renderedMessageIds.add(msg.name);
+                            let msgDateKey = formatDateKey(msg.timestamp);
+                            
+                            let tsStr = msg.timestamp || msg.creation;
+                            if (tsStr) {
+                                let t = new Date(tsStr).getTime();
+                                if (!isNaN(t) && (!latestRenderedTimestamp || t > latestRenderedTimestamp)) {
+                                    latestRenderedTimestamp = t;
                                 }
-
-                                if (!isGuest) {
-                                    if (msgDateKey && msgDateKey !== lastDateInBatch) {
-                                        lastDateInBatch = msgDateKey;
-                                        initialHtml += buildDateSeparatorHtml(msgDateKey);
-                                    }
-                                    let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
-                                    initialHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
-                                }
-                            });
+                            }
 
                             if (!isGuest) {
-                                lastRenderedDateKey = lastDateInBatch;
-                                $("#history-loader").after(initialHtml);
-                                scrollToBottom();
-                            } else {
-                                if (data.welcome) renderOutbound(data.welcome, "bot");
-                                if (data.menu) renderOutbound(data.menu, "bot");
+                                if (msgDateKey && msgDateKey !== lastDateInBatch) {
+                                    lastDateInBatch = msgDateKey;
+                                    initialHtml += buildDateSeparatorHtml(msgDateKey);
+                                }
+                                let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
+                                initialHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
                             }
+                        });
+
+                        if (!isGuest) {
+                            lastRenderedDateKey = lastDateInBatch;
+                            $("#history-loader").after(initialHtml);
+                            scrollToBottom();
                         } else {
-                            hasMoreHistory = false;
                             if (data.welcome) renderOutbound(data.welcome, "bot");
                             if (data.menu) renderOutbound(data.menu, "bot");
                         }
-
-                        startPollingLoop();
+                    } else {
+                        hasMoreHistory = false;
+                        if (data.welcome) renderOutbound(data.welcome, "bot");
+                        if (data.menu) renderOutbound(data.menu, "bot");
                     }
-                },
-                error: function () {
-                    renderMessage("Failed to connect to XpertChat server.", "bot");
+
+                    startPollingLoop();
+                } else {
+                    if (isGuest) {
+                        $("#guest-modal").show();
+                    }
                 }
+            })
+            .catch(err => {
+                console.error("initSession error:", err);
+                renderMessage("Failed to connect to XpertChat server.", "bot");
             });
         }
 
@@ -1449,52 +1480,57 @@
                 if (guestData.phone) queryData.guest_phone = guestData.phone;
             }
 
-            $.ajax({
-                url: "/api/method/ai_workplace.api.web_chat.get_chat_history",
-                type: "GET",
-                data: queryData,
-                xhrFields: { withCredentials: true },
-                success: function (res) {
-                    $("#history-loader").hide();
-                    if (res.message && Array.isArray(res.message)) {
-                        let olderMsgs = res.message;
-                        if (olderMsgs.length < historyLimit) {
-                            hasMoreHistory = false;
-                        }
+            const params = new URLSearchParams(queryData);
 
-                        if (olderMsgs.length > 0) {
-                            historyOffset += olderMsgs.length;
-                            let prependedHtml = "";
-                            let lastPrependedDateKey = null;
+            fetch(`/api/method/ai_workplace.api.web_chat.get_chat_history?${params.toString()}`, {
+                method: "GET",
+                credentials: "include"
+            })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                return res.json();
+            })
+            .then(res => {
+                $("#history-loader").hide();
+                if (res.message && Array.isArray(res.message)) {
+                    let olderMsgs = res.message;
+                    if (olderMsgs.length < historyLimit) {
+                        hasMoreHistory = false;
+                    }
 
-                            olderMsgs.forEach(msg => {
-                                if (!renderedMessageIds.has(msg.name)) {
-                                    renderedMessageIds.add(msg.name);
-                                    let msgDateKey = formatDateKey(msg.timestamp);
-                                    if (msgDateKey && msgDateKey !== lastPrependedDateKey) {
-                                        if ($(`#chat-stream .date-separator[data-date="${msgDateKey}"]`).length === 0) {
-                                            lastPrependedDateKey = msgDateKey;
-                                            prependedHtml += buildDateSeparatorHtml(msgDateKey);
-                                        }
+                    if (olderMsgs.length > 0) {
+                        historyOffset += olderMsgs.length;
+                        let prependedHtml = "";
+                        let lastPrependedDateKey = null;
+
+                        olderMsgs.forEach(msg => {
+                            if (!renderedMessageIds.has(msg.name)) {
+                                renderedMessageIds.add(msg.name);
+                                let msgDateKey = formatDateKey(msg.timestamp);
+                                if (msgDateKey && msgDateKey !== lastPrependedDateKey) {
+                                    if ($(`#chat-stream .date-separator[data-date="${msgDateKey}"]`).length === 0) {
+                                        lastPrependedDateKey = msgDateKey;
+                                        prependedHtml += buildDateSeparatorHtml(msgDateKey);
                                     }
-                                    let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
-                                    prependedHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
                                 }
-                            });
-
-                            if (prependedHtml) {
-                                $("#history-loader").after(prependedHtml);
-                                let newScrollHeight = stream.scrollHeight;
-                                stream.scrollTop = newScrollHeight - oldScrollHeight;
+                                let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
+                                prependedHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
                             }
+                        });
+
+                        if (prependedHtml) {
+                            $("#history-loader").after(prependedHtml);
+                            let newScrollHeight = stream.scrollHeight;
+                            stream.scrollTop = newScrollHeight - oldScrollHeight;
                         }
                     }
-                    loadingHistory = false;
-                },
-                error: function () {
-                    $("#history-loader").hide();
-                    loadingHistory = false;
                 }
+                loadingHistory = false;
+            })
+            .catch(err => {
+                console.error("loadOlderMessages error:", err);
+                $("#history-loader").hide();
+                loadingHistory = false;
             });
         }
 
@@ -1506,31 +1542,38 @@
                     if (guestData.email) pollData.guest_email = guestData.email;
                     if (guestData.phone) pollData.guest_phone = guestData.phone;
                 }
-                $.ajax({
-                    url: "/api/method/ai_workplace.api.web_chat.get_chat_history",
-                    type: "GET",
-                    data: pollData,
-                    xhrFields: { withCredentials: true },
-                    success: function (res) {
-                        if (res.message && Array.isArray(res.message)) {
-                            res.message.forEach(msg => {
-                                let contentKey = "msg:" + (msg.message || "").trim().toLowerCase();
-                                if (!renderedMessageIds.has(msg.name) && !renderedMessageIds.has(contentKey)) {
-                                    renderedMessageIds.add(msg.name);
-                                    renderedMessageIds.add(contentKey);
-                                    let tsStr = msg.timestamp || msg.creation;
-                                    let msgTime = tsStr ? new Date(tsStr).getTime() : Date.now();
+                const params = new URLSearchParams(pollData);
 
-                                    if (msg.direction === "Outbound" && (!latestRenderedTimestamp || msgTime >= latestRenderedTimestamp - 5000)) {
-                                        renderMessage(msg.message, msg.sender_type === "HR Agent" ? "agent" : "bot", [], msg.sender_type, msg.media_file, msg.timestamp);
-                                        if (document.hidden) {
-                                            triggerNotification("New message", { body: msg.message || "You have a new message", icon: "/assets/frappe/images/frappe-framework-logo.svg" });
-                                        }
+                fetch(`/api/method/ai_workplace.api.web_chat.get_chat_history?${params.toString()}`, {
+                    method: "GET",
+                    credentials: "include"
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                    return res.json();
+                })
+                .then(res => {
+                    if (res.message && Array.isArray(res.message)) {
+                        res.message.forEach(msg => {
+                            let contentKey = "msg:" + (msg.message || "").trim().toLowerCase();
+                            if (!renderedMessageIds.has(msg.name) && !renderedMessageIds.has(contentKey)) {
+                                renderedMessageIds.add(msg.name);
+                                renderedMessageIds.add(contentKey);
+                                let tsStr = msg.timestamp || msg.creation;
+                                let msgTime = tsStr ? new Date(tsStr).getTime() : Date.now();
+
+                                if (msg.direction === "Outbound" && (!latestRenderedTimestamp || msgTime >= latestRenderedTimestamp - 5000)) {
+                                    renderMessage(msg.message, msg.sender_type === "HR Agent" ? "agent" : "bot", [], msg.sender_type, msg.media_file, msg.timestamp);
+                                    if (document.hidden) {
+                                        triggerNotification("New message", { body: msg.message || "You have a new message", icon: "/assets/frappe/images/frappe-framework-logo.svg" });
                                     }
                                 }
-                            });
-                        }
+                            }
+                        });
                     }
+                })
+                .catch(err => {
+                    console.error("Polling error:", err);
                 });
             }, 3000);
         }
@@ -1573,20 +1616,37 @@
                 reqData.guest_phone = guestData.phone;
             }
 
-            $.ajax({
-                url: "/api/method/ai_workplace.api.web_chat.send_message",
-                type: "POST",
-                data: reqData,
-                xhrFields: { withCredentials: true },
-                headers: { "X-Frappe-CSRF-Token": frappe && frappe.csrf_token ? frappe.csrf_token : (document.cookie.match(/csrf_token=([^;]+)/) || [])[1] || "" },
-                success: function (res) {
-                    if (res.message && res.message.success) {
-                        renderOutbound(res.message.response, "bot");
-                    }
-                },
-                error: function () {
-                    renderMessage("Sorry, message could not be sent.", "bot");
+            let formData = new FormData();
+            Object.keys(reqData).forEach(k => {
+                if (reqData[k] !== undefined && reqData[k] !== null) {
+                    formData.append(k, reqData[k]);
                 }
+            });
+
+            fetch("/api/method/ai_workplace.api.web_chat.send_message", {
+                method: "POST",
+                body: formData,
+                credentials: "include",
+                headers: {
+                    "X-Frappe-CSRF-Token": getCsrfToken()
+                }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(res => {
+                if (res.message && res.message.success) {
+                    renderOutbound(res.message.response, "bot");
+                } else {
+                    renderMessage(res.message && res.message.error ? res.message.error : "Sorry, something went wrong.", "bot");
+                }
+            })
+            .catch(err => {
+                console.error("send_message error:", err);
+                renderMessage("Sorry, message could not be sent.", "bot");
             });
         }
 
