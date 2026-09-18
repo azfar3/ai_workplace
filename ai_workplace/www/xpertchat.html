@@ -1359,6 +1359,8 @@
                 url: "/api/method/ai_workplace.api.web_chat.init_session",
                 type: "POST",
                 data: reqData,
+                xhrFields: { withCredentials: true },
+                headers: { "X-Frappe-CSRF-Token": frappe && frappe.csrf_token ? frappe.csrf_token : (document.cookie.match(/csrf_token=([^;]+)/) || [])[1] || "" },
                 success: function (res) {
                     if (res.message && res.message.success) {
                         let data = res.message;
@@ -1451,6 +1453,7 @@
                 url: "/api/method/ai_workplace.api.web_chat.get_chat_history",
                 type: "GET",
                 data: queryData,
+                xhrFields: { withCredentials: true },
                 success: function (res) {
                     $("#history-loader").hide();
                     if (res.message && Array.isArray(res.message)) {
@@ -1507,6 +1510,7 @@
                     url: "/api/method/ai_workplace.api.web_chat.get_chat_history",
                     type: "GET",
                     data: pollData,
+                    xhrFields: { withCredentials: true },
                     success: function (res) {
                         if (res.message && Array.isArray(res.message)) {
                             res.message.forEach(msg => {
@@ -1561,6 +1565,8 @@
 
             let reqData = { message_text: text || "" };
             if (mediaUrl) reqData.media_url = mediaUrl;
+            // Always send the stored identity as a backend fallback (Tier 2 resolver)
+            if (activeSessionId) reqData.wa_identity_name = activeSessionId;
             if (isGuest && guestData) {
                 reqData.guest_name = guestData.name;
                 reqData.guest_email = guestData.email;
@@ -1571,6 +1577,8 @@
                 url: "/api/method/ai_workplace.api.web_chat.send_message",
                 type: "POST",
                 data: reqData,
+                xhrFields: { withCredentials: true },
+                headers: { "X-Frappe-CSRF-Token": frappe && frappe.csrf_token ? frappe.csrf_token : (document.cookie.match(/csrf_token=([^;]+)/) || [])[1] || "" },
                 success: function (res) {
                     if (res.message && res.message.success) {
                         renderOutbound(res.message.response, "bot");

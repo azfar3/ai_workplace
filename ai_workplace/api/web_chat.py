@@ -27,6 +27,47 @@ from ai_workplace.services.hr_chat import get_active_session_for_identity, get_s
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
 
+def _resolve_identity_from_wa_identity_name(wa_identity_name: str) -> tuple[Optional["IdentityResult"], str]:
+    """
+    Fallback resolver: given a WhatsApp Identity docname, reconstruct the
+    IdentityResult and wa_id without relying on frappe.session.user.
+
+    Returns (identity, wa_id) or (None, "") if lookup fails.
+    """
+    try:
+        wi = frappe.db.get_value(
+            "WhatsApp Identity",
+            wa_identity_name,
+            ["name", "erp_user", "employee", "guest_name", "guest_email",
+             "normalized_phone", "phone_number", "whatsapp_id", "status"],
+            as_dict=True,
+        )
+        if not wi:
+            return None, ""
+
+        erp_user = wi.get("erp_user") or ""
+        if erp_user and erp_user != "Guest":
+            # Reconstruct as a matched (logged-in) identity
+            identity = resolve_web_identity(user_email=erp_user)
+            wa_id = f"WEB-{erp_user}"
+            return identity, wa_id
+
+        # Guest identity
+        guest_phone = wi.get("normalized_phone") or wi.get("phone_number") or ""
+        guest_email = wi.get("guest_email") or ""
+        guest_name = wi.get("guest_name") or "Web Guest"
+        if not guest_phone:
+            return None, ""
+
+        guest_info = {"name": guest_name, "email": guest_email, "phone": guest_phone}
+        identity = resolve_web_identity(guest_info=guest_info)
+        wa_id = wi.get("whatsapp_id") or f"WEB-GUEST-{guest_phone}"
+        return identity, wa_id
+    except Exception:
+        frappe.log_error(title="XpertChat: wa_identity fallback failed", message=frappe.get_traceback())
+        return None, ""
+
+
 @frappe.whitelist(allow_guest=True)
 def init_session(
     guest_name: Optional[str] = None,
@@ -139,10 +180,18 @@ def send_message(
     guest_name: Optional[str] = None,
     guest_email: Optional[str] = None,
     guest_phone: Optional[str] = None,
+    wa_identity_name: Optional[str] = None,
     media_url: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Process an inbound text or button command from XpertChat.
+
+    Identity resolution priority:
+      1. frappe.session.user  — normal authenticated flow (session cookie present)
+      2. wa_identity_name     — fallback when session cookie is missing but the
+                                frontend supplies the stored WhatsApp Identity name
+      3. guest_phone          — explicit guest flow
+      4. Error                — cannot resolve identity
     """
     clean_text = (message_text or "").strip()
     if not clean_text and not media_url:
@@ -153,11 +202,20 @@ def send_message(
     trace_id = str(uuid.uuid4())
 
     if is_logged_in:
+        # ── Tier 1: Normal authenticated session ───────────────────────────────
         identity = resolve_web_identity(user_email=user_email)
         wa_id = f"WEB-{user_email}"
-    else:
-        if not guest_phone:
-            return {"success": False, "error": _("Guest phone number required.")}
+
+    elif wa_identity_name:
+        # ── Tier 2: Session cookie missing — reconstruct from stored identity ──
+        identity, wa_id = _resolve_identity_from_wa_identity_name(wa_identity_name)
+        if not identity:
+            return {"success": False, "error": _("Could not resolve identity. Please refresh and try again.")}
+        # Promote is_logged_in flag if we resolved a real ERP user
+        is_logged_in = bool(identity.user and identity.user != "Guest")
+
+    elif guest_phone:
+        # ── Tier 3: Explicit guest data ────────────────────────────────────────
         guest_info = {
             "name": guest_name or "Web Guest",
             "email": guest_email or "",
@@ -165,6 +223,10 @@ def send_message(
         }
         identity = resolve_web_identity(guest_info=guest_info)
         wa_id = f"WEB-GUEST-{guest_phone}"
+
+    else:
+        # ── Tier 4: Unresolvable ───────────────────────────────────────────────
+        return {"success": False, "error": _("Guest phone number required.")}
 
     wa_identity_name = get_or_create_whatsapp_identity(identity, wa_id=wa_id)
     identity.whatsapp_identity = wa_identity_name
