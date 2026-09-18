@@ -295,10 +295,14 @@ def send_message(
         wa_id=identity.normalized_phone or wa_id,
     )
 
-    # If active HR session exists and channel is Web Chat, set channel field
+    # If active HR session exists and channel is Web Chat, set channel field safely
     if active_hr_session:
-        frappe.db.set_value("HR Live Chat Session", active_hr_session, "channel", "Web Chat", update_modified=False)
-        frappe.db.commit()
+        try:
+            if frappe.db.has_column("HR Live Chat Session", "channel"):
+                frappe.db.set_value("HR Live Chat Session", active_hr_session, "channel", "Web Chat", update_modified=False)
+                frappe.db.commit()
+        except Exception as e:
+            frappe.logger("ai_workplace").warning(f"Could not update channel on HR Live Chat Session {active_hr_session}: {e}")
 
     return {
         "success": True,
@@ -349,20 +353,23 @@ def get_user_sessions(
     if not or_filters:
         return []
 
+    fields = [
+        "name",
+        "status",
+        "display_name",
+        "initial_query",
+        "opened_at",
+        "modified",
+        "assigned_to",
+        "whatsapp_identity",
+    ]
+    if frappe.db.has_column("HR Live Chat Session", "channel"):
+        fields.append("channel")
+
     sessions = frappe.get_all(
         "HR Live Chat Session",
         or_filters=or_filters,
-        fields=[
-            "name",
-            "status",
-            "display_name",
-            "initial_query",
-            "opened_at",
-            "modified",
-            "channel",
-            "assigned_to",
-            "whatsapp_identity",
-        ],
+        fields=fields,
         order_by="modified desc",
         limit_page_length=30,
     )
