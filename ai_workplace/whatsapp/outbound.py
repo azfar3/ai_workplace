@@ -49,7 +49,27 @@ class OutboundMessage:
             itype = self.interactive.get("type", "")
             if itype == "location_request_message":
                 return f"{self.body_text}\n\n[location request: send current location]"
-            return f"{self.body_text}\n\n[{itype} menu]"
+            buttons = []
+            action = self.interactive.get("action", {})
+            for b in action.get("buttons", []):
+                reply = b.get("reply", {})
+                if reply.get("id") and reply.get("title"):
+                    buttons.append({"id": reply.get("id"), "title": reply.get("title")})
+            for s in action.get("sections", []):
+                for r in s.get("rows", []):
+                    if r.get("id") and r.get("title"):
+                        buttons.append({"id": r.get("id"), "title": r.get("title")})
+            
+            base_text = f"{self.body_text}\n\n[{itype} menu]"
+            if buttons:
+                import json
+                try:
+                    btns_json = json.dumps(buttons)
+                    return f"{base_text}\n<!-- _WEB_BUTTONS_: {btns_json} -->"
+                except Exception:
+                    pass
+                    
+            return base_text
         return self.body_text
 
     def __str__(self) -> str:

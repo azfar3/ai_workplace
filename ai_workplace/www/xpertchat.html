@@ -892,8 +892,18 @@
         </button>
 
         <!-- Footer Input -->
-        <footer class="chat-footer">
+        <footer class="chat-footer" style="position: relative;">
+            <div class="emoji-picker" id="emoji-picker" style="display: none; position: absolute; bottom: 100%; left: 24px; background: white; border: 1px solid #dce4f0; border-radius: 12px; padding: 10px; width: 300px; height: 200px; overflow-y: auto; box-shadow: 0 -4px 12px rgba(0,0,0,0.1); z-index: 100;">
+                <div id="emoji-grid" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            </div>
+            <button class="icon-btn" id="emoji-btn" title="Insert Emoji">
+                <i class="fa-regular fa-face-smile"></i>
+            </button>
+            <button class="icon-btn" id="attach-btn" title="Attach File">
+                <i class="fa-solid fa-paperclip"></i>
+            </button>
             <div class="input-wrapper">
+                <input type="file" id="file-upload-input" style="display: none;" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip">
                 <input type="text" class="chat-input" id="message-input"
                     placeholder="Type your message or select an option..." autocomplete="off">
             </div>
@@ -930,7 +940,7 @@
                         <label>Full Name *</label>
                         <div class="styled-input-group">
                             <i class="fa-regular fa-user"></i>
-                            <input type="text" id="guest-name" class="form-input-theme" placeholder="e.g. John Doe"
+                            <input type="text" id="guest-name" class="form-input-theme" placeholder="e.g. Haroon Abbas"
                                 required>
                         </div>
                     </div>
@@ -983,15 +993,76 @@
         let swRegistration = null;
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/assets/ai_workplace/js/sw.js')
-                .then(function(reg) {
+                .then(function (reg) {
                     swRegistration = reg;
-                }).catch(function(err) {
+                }).catch(function (err) {
                     console.error('SW registration failed:', err);
                 });
         }
 
         $(document).ready(function () {
             initSession();
+
+            const EMOJIS = ["😀","😃","😄","😁","😆","😅","😂","🤣","🥲","🥹","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🫡","🤐","🤨","😐","😑","😶","🫥","😏","😒","🙄","😬","🤥","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","🤯","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","😮","😯","😲","😳","🥺","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","💀","☠️","💩","🤡","👹","👺","👻","👽","👾","🤖", "👋","🤚","🖐️","✋","🖖","👍","👎","✊","👊","🤛","🤜","👏","🙌","🫶","👐","🤲","🤝","🙏", "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝"];
+            let emojiGrid = $("#emoji-grid");
+            EMOJIS.forEach(emoji => {
+                let span = $(`<span style="cursor: pointer; font-size: 20px; padding: 4px; transition: transform 0.1s;">${emoji}</span>`);
+                span.hover(function() { $(this).css("transform", "scale(1.2)"); }, function() { $(this).css("transform", "scale(1)"); });
+                span.on("click", function() {
+                    let input = $("#message-input");
+                    input.val(input.val() + emoji);
+                    input.focus();
+                });
+                emojiGrid.append(span);
+            });
+
+            $("#emoji-btn").on("click", function(e) {
+                e.stopPropagation();
+                $("#emoji-picker").toggle();
+            });
+
+            $(document).on("click", function() {
+                $("#emoji-picker").hide();
+            });
+            $("#emoji-picker").on("click", function(e) {
+                e.stopPropagation();
+            });
+
+            $("#attach-btn").on("click", function() {
+                $("#file-upload-input").click();
+            });
+
+            $("#file-upload-input").on("change", function(e) {
+                let file = e.target.files[0];
+                if (!file) return;
+
+                let formData = new FormData();
+                formData.append("file", file, file.name);
+                formData.append("is_private", 0);
+                formData.append("folder", "Home/Attachments");
+
+                let uploadBtn = $("#attach-btn");
+                uploadBtn.prop("disabled", true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+
+                $.ajax({
+                    url: "/api/method/upload_file",
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(res) {
+                        uploadBtn.prop("disabled", false).html('<i class="fa-solid fa-paperclip"></i>');
+                        if (res.message && res.message.file_url) {
+                            sendMessage(null, res.message.file_url);
+                        }
+                    },
+                    error: function() {
+                        uploadBtn.prop("disabled", false).html('<i class="fa-solid fa-paperclip"></i>');
+                        alert("File upload failed.");
+                    }
+                });
+                $(this).val("");
+            });
 
             $("#send-btn").on("click", function () {
                 requestNotificationPermission();
@@ -1164,6 +1235,9 @@
                             if (data.history.length < historyLimit) {
                                 hasMoreHistory = false;
                             }
+                            if (isGuest) {
+                                hasMoreHistory = false;
+                            }
 
                             let initialHtml = "";
                             let lastDateInBatch = null;
@@ -1171,13 +1245,7 @@
                             data.history.forEach(msg => {
                                 renderedMessageIds.add(msg.name);
                                 let msgDateKey = formatDateKey(msg.timestamp);
-                                if (msgDateKey && msgDateKey !== lastDateInBatch) {
-                                    lastDateInBatch = msgDateKey;
-                                    initialHtml += buildDateSeparatorHtml(msgDateKey);
-                                }
-                                let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
-                                initialHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
-
+                                
                                 let tsStr = msg.timestamp || msg.creation;
                                 if (tsStr) {
                                     let t = new Date(tsStr).getTime();
@@ -1185,11 +1253,25 @@
                                         latestRenderedTimestamp = t;
                                     }
                                 }
+
+                                if (!isGuest) {
+                                    if (msgDateKey && msgDateKey !== lastDateInBatch) {
+                                        lastDateInBatch = msgDateKey;
+                                        initialHtml += buildDateSeparatorHtml(msgDateKey);
+                                    }
+                                    let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
+                                    initialHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
+                                }
                             });
 
-                            lastRenderedDateKey = lastDateInBatch;
-                            $("#history-loader").after(initialHtml);
-                            scrollToBottom();
+                            if (!isGuest) {
+                                lastRenderedDateKey = lastDateInBatch;
+                                $("#history-loader").after(initialHtml);
+                                scrollToBottom();
+                            } else {
+                                if (data.welcome) renderOutbound(data.welcome, "bot");
+                                if (data.menu) renderOutbound(data.menu, "bot");
+                            }
                         } else {
                             hasMoreHistory = false;
                             if (data.welcome) renderOutbound(data.welcome, "bot");
@@ -1207,7 +1289,7 @@
         }
 
         function loadOlderMessages() {
-            if (loadingHistory || !hasMoreHistory || !activeSessionId) return;
+            if (loadingHistory || !hasMoreHistory || !activeSessionId || isGuest) return;
             loadingHistory = true;
             $("#history-loader").show();
 
@@ -1323,18 +1405,22 @@
             initSession();
         }
 
-        function sendMessage(textOverride) {
-            let text = textOverride || $("#message-input").val().trim();
-            if (!text) return;
+        function sendMessage(textOverride, mediaUrl = null, displayLabel = null) {
+            let text = textOverride;
+            if (text === undefined || text === null) {
+                text = $("#message-input").val().trim();
+            }
+            if (!text && !mediaUrl) return;
 
-            if (!textOverride) {
+            if (!textOverride && !mediaUrl) {
                 $("#message-input").val("");
             }
 
-            renderMessage(text, "user");
+            renderMessage(displayLabel || text, "user", [], "", mediaUrl);
             showTyping(true);
 
-            let reqData = { message_text: text };
+            let reqData = { message_text: text || "" };
+            if (mediaUrl) reqData.media_url = mediaUrl;
             if (isGuest && guestData) {
                 reqData.guest_name = guestData.name;
                 reqData.guest_email = guestData.email;
@@ -1374,7 +1460,21 @@
 
         function buildMessageHtml(text, role, buttons = [], senderTag = "", mediaFile = "", timestamp = null) {
             let rawText = text ? String(text).trim() : "";
-            let formattedText = formatMarkdown(rawText);
+            
+            let btnMatch = rawText.match(/<!-- _WEB_BUTTONS_: (.*?) -->/);
+            if (btnMatch) {
+                try {
+                    let parsedBtns = JSON.parse(btnMatch[1]);
+                    if (parsedBtns && Array.isArray(parsedBtns) && (!buttons || buttons.length === 0)) {
+                        buttons = parsedBtns;
+                    }
+                } catch(e) {}
+                rawText = rawText.replace(btnMatch[0], "");
+                rawText = rawText.replace("[list menu]", "");
+                rawText = rawText.replace("[button menu]", "");
+            }
+            
+            let formattedText = formatMarkdown(rawText.trim());
 
             // Prevent rendering empty message bubbles without text, buttons, or media
             if (!formattedText && !mediaFile && (!buttons || buttons.length === 0)) {
@@ -1415,8 +1515,10 @@
             if (buttons && buttons.length > 0) {
                 buttonsHtml = `<div class="button-chips">`;
                 buttons.forEach(btn => {
-                    let label = format_message_text(btn.title || btn.id);
-                    buttonsHtml += `<button class="chip-btn" onclick="sendMessage('${btn.id || btn.title}')">${escapeHtml(label)}</button>`;
+                    let label = btn.title || format_message_text(btn.id);
+                    let safeId = (btn.id || btn.title).replace(/'/g, "\\'");
+                    let safeLabel = label.replace(/'/g, "\\'");
+                    buttonsHtml += `<button class="chip-btn" onclick="sendMessage('${safeId}', null, '${safeLabel}')">${escapeHtml(label)}</button>`;
                 });
                 buttonsHtml += `</div>`;
             }

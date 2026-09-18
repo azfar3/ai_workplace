@@ -108,6 +108,7 @@ def get_user_context(identity: IdentityResult | dict) -> dict[str, Any]:
         full_name = identity.get("full_name")
         wa_identity_doc = identity.get("whatsapp_identity")
         normalized_phone = identity.get("normalized_phone")
+        is_web_chat = identity.get("is_web_chat", False)
     else:
         status = identity.status
         user = identity.user
@@ -115,6 +116,7 @@ def get_user_context(identity: IdentityResult | dict) -> dict[str, Any]:
         full_name = identity.full_name
         wa_identity_doc = identity.whatsapp_identity
         normalized_phone = identity.normalized_phone
+        is_web_chat = getattr(identity, "is_web_chat", False)
 
     # Guest or inactive identities — return public / former employee service context
     if status != "matched":
@@ -159,6 +161,7 @@ def get_user_context(identity: IdentityResult | dict) -> dict[str, Any]:
             "image_url": image_url,
             "employment_type": "",
             "staff_category": "",
+            "is_web_chat": is_web_chat,
         }
 
     # Retrieve user roles if user is present
@@ -205,6 +208,7 @@ def get_user_context(identity: IdentityResult | dict) -> dict[str, Any]:
         "whatsapp_identity": wa_identity_doc,
         "normalized_phone": normalized_phone,
         "image_url": image_url,
+        "is_web_chat": is_web_chat,
     }
 
 

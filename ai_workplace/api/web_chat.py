@@ -139,13 +139,14 @@ def send_message(
     guest_name: Optional[str] = None,
     guest_email: Optional[str] = None,
     guest_phone: Optional[str] = None,
+    media_url: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Process an inbound text or button command from XpertChat.
     """
     clean_text = (message_text or "").strip()
-    if not clean_text:
-        return {"success": False, "error": _("Message text cannot be empty.")}
+    if not clean_text and not media_url:
+        return {"success": False, "error": _("Message text or media cannot be empty.")}
 
     user_email = frappe.session.user
     is_logged_in = user_email and user_email != "Guest"
@@ -183,6 +184,7 @@ def send_message(
         identity_status=identity.status,
         status="Processing",
         trace_id=trace_id,
+        media_url=media_url,
     )
 
     # Execute orchestrator logic
@@ -193,6 +195,7 @@ def send_message(
             message_id=meta_msg_id,
             trace_id=trace_id,
             wa_id=wa_id,
+            media_url=media_url,
         )
     except Exception as exc:
         frappe.log_error(title=f"XpertChat Orchestrator Failed [{trace_id}]", message=frappe.get_traceback())
@@ -461,9 +464,10 @@ def _create_web_message_log(
     status: str = "Sent",
     trace_id: str = "",
     sender_type: str = "",
+    media_url: str = "",
 ) -> "frappe.Document":
     """Helper to insert a Web Chat entry into WhatsApp Message Log."""
-    if not (message or "").strip():
+    if not (message or "").strip() and not media_url:
         return None
 
     doc = frappe.new_doc("WhatsApp Message Log")
@@ -473,8 +477,10 @@ def _create_web_message_log(
     doc.sender = sender
     doc.recipient = recipient
     doc.whatsapp_id = wa_id
-    doc.message_type = "text"
+    doc.message_type = "image" if media_url else "text"
     doc.message = message
+    if media_url:
+        doc.media_file = media_url
     doc.erp_user = erp_user or ""
     doc.employee = employee or ""
     doc.identity_status = identity_status or ""

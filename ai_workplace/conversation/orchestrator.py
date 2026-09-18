@@ -379,9 +379,10 @@ def process_message(
     trace_id: Optional[str] = None,
     wa_id: Optional[str] = None,
     skip_pin_check: bool = False,
+    media_url: Optional[str] = None,
 ) -> Union[OutboundMessage, str]:
     shared = {}
-    result = _process_message_internal(message_text, identity, message_id, trace_id, wa_id, skip_pin_check, shared)
+    result = _process_message_internal(message_text, identity, message_id, trace_id, wa_id, skip_pin_check, shared, media_url=media_url)
     if shared.get("prepend_welcome_text") and isinstance(result, OutboundMessage):
         if result.body_text:
             result.body_text = f"{shared['prepend_welcome_text']}\n\n{result.body_text}"
@@ -401,6 +402,7 @@ def _process_message_internal(
     wa_id: Optional[str] = None,
     skip_pin_check: bool = False,
     shared_state: Optional[dict] = None,
+    media_url: Optional[str] = None,
 ) -> Union[OutboundMessage, str]:
     """
     Orchestrate incoming WhatsApp message through context, language, menu, and routing.

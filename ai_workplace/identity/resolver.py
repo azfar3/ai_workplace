@@ -62,6 +62,7 @@ class IdentityResult:
     full_name: Optional[str] = None     # display name
     whatsapp_identity: Optional[str] = None # Docname of WhatsApp Identity record
     guest_email: Optional[str] = None   # Guest email address
+    is_web_chat: bool = False           # Channel origin flag
 
 
     def to_dict(self) -> dict:
@@ -73,6 +74,7 @@ class IdentityResult:
             "full_name": self.full_name,
             "whatsapp_identity": self.whatsapp_identity,
             "guest_email": self.guest_email,
+            "is_web_chat": self.is_web_chat,
         }
 
 
@@ -164,6 +166,7 @@ def resolve_web_identity(
                 employee=emp.get("name") if emp else None,
                 full_name=emp.get("employee_name") if emp else usr.get("full_name"),
                 whatsapp_identity=wa_ident,
+                is_web_chat=True,
             )
 
     guest_info = guest_info or {}
@@ -230,6 +233,7 @@ def resolve_web_identity(
             full_name=guest_name or wa_doc.guest_name or "Web Guest",
             guest_email=guest_email or wa_doc.guest_email or None,
             whatsapp_identity=wa_doc.name,
+            is_web_chat=True,
         )
 
     return IdentityResult(
@@ -237,6 +241,7 @@ def resolve_web_identity(
         normalized_phone=norm_phone,
         full_name=guest_name or "Web Guest",
         guest_email=guest_email or None,
+        is_web_chat=True,
     )
 
 

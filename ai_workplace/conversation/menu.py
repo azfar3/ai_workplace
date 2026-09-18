@@ -33,12 +33,26 @@ def build_menu(
     Build clickable list menu (top-level or submenu) and return available service list.
     """
     services = get_available_services_for_context(context, parent_key=parent_key)
+    is_web = context.get("is_web_chat", False)
+
     if not parent_key:
+        if is_web:
+            list_out = build_grouped_service_list_message(context, services, header_prefix=header_prefix)
+            return list_out, services
+            
         quick_out = build_quick_action_buttons_message(context, services, header_prefix=header_prefix)
         list_out = build_grouped_service_list_message(context, services)
         if quick_out:
             quick_out.follow_up = [list_out]
             return quick_out, services
+
+    if is_web:
+        list_out = build_submenu_remaining_list_message(context, services)
+        if header_prefix:
+            list_out.body_text = f"{header_prefix}\n\n{list_out.body_text}"
+            if list_out.interactive and "body" in list_out.interactive:
+                list_out.interactive["body"]["text"] = list_out.body_text
+        return list_out, services
 
     quick_out = build_submenu_quick_buttons_message(context, services, header_prefix=header_prefix)
     list_out = build_submenu_remaining_list_message(context, services)
