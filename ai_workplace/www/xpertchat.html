@@ -601,7 +601,104 @@
             font-size: 10px;
         }
 
-        /* Button Chips / Options */
+        /* =========================================================
+           RICH MESSAGE CONTENT
+        ========================================================= */
+
+        .msg-body {
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        .msg-body p {
+            margin: 0 0 8px 0;
+        }
+
+        .msg-body p:last-child {
+            margin-bottom: 0;
+        }
+
+        .msg-ul {
+            list-style: none;
+            margin: 6px 0;
+            padding: 0;
+        }
+
+        .msg-ul li {
+            position: relative;
+            padding-left: 16px;
+            margin-bottom: 4px;
+            line-height: 1.55;
+        }
+
+        .msg-ul li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--blue-600);
+            font-weight: 700;
+        }
+
+        .msg-ol {
+            list-style: none;
+            margin: 6px 0;
+            padding: 0;
+            counter-reset: ol-counter;
+        }
+
+        .msg-ol li {
+            position: relative;
+            padding-left: 22px;
+            margin-bottom: 4px;
+            line-height: 1.55;
+            counter-increment: ol-counter;
+        }
+
+        .msg-ol li::before {
+            content: counter(ol-counter) ".";
+            position: absolute;
+            left: 0;
+            color: var(--blue-600);
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .msg-heading {
+            font-size: 13px;
+            font-weight: 750;
+            color: var(--blue-800);
+            margin: 10px 0 4px 0;
+        }
+
+        .msg-heading:first-child {
+            margin-top: 0;
+        }
+
+        .msg-divider {
+            border: none;
+            border-top: 1px solid #e8eef8;
+            margin: 8px 0;
+        }
+
+        .msg-bold {
+            font-weight: 700;
+            color: inherit;
+        }
+
+        .msg-italic {
+            font-style: italic;
+        }
+
+        .msg-code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            background: #f0f4fa;
+            border: 1px solid #dce5f0;
+            border-radius: 4px;
+            padding: 1px 4px;
+        }
+
+
         .button-chips {
             display: flex;
             flex-wrap: wrap;
@@ -1779,12 +1876,105 @@
 
         function formatMarkdown(text) {
             if (!text) return "";
-            let translated = format_message_text(text);
-            let html = escapeHtml(translated);
-            html = html.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
-            html = html.replace(/\n/g, "<br>");
-            return html;
+            let raw = format_message_text(String(text).trim());
+            return richTextToHtml(raw);
         }
+
+        /**
+         * richTextToHtml — converts WhatsApp / plain-text bot responses into
+         * clean, readable HTML for the web chat bubble.
+         *
+         * Handles:
+         *  - *bold* / **bold**  →  <strong>
+         *  - _italic_           →  <em>
+         *  - `code`             →  <code>
+         *  - Bullet lines (•, -, *) → <ul><li>
+         *  - Numbered lines (1.) → <ol><li>
+         *  - Heading lines (# or ## prefix) → .msg-heading
+         *  - Blank lines → paragraph breaks
+         *  - --- / === dividers → <hr>
+         *
+         * Security: all user-visible text is HTML-escaped before processing.
+         */
+        function richTextToHtml(raw) {
+            if (!raw) return "";
+
+            // Split into lines
+            const lines = raw.split(/\n/);
+            let html = "";
+            let inUl = false;
+            let inOl = false;
+
+            const closeLists = () => {
+                if (inUl) { html += "</ul>"; inUl = false; }
+                if (inOl) { html += "</ol>"; inOl = false; }
+            };
+
+            // Inline formatter — runs AFTER escaping
+            const inline = (str) => {
+                let s = escapeHtml(str);
+                // **bold** or *bold*
+                s = s.replace(/\*\*(.*?)\*\*/g, '<strong class="msg-bold">$1</strong>');
+                s = s.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<strong class="msg-bold">$1</strong>');
+                // _italic_
+                s = s.replace(/_(.*?)_/g, '<em class="msg-italic">$1</em>');
+                // `code`
+                s = s.replace(/`([^`]+)`/g, '<code class="msg-code">$1</code>');
+                return s;
+            };
+
+            lines.forEach((line) => {
+                const trimmed = line.trim();
+
+                // Blank line → close lists / start new paragraph
+                if (!trimmed) {
+                    closeLists();
+                    html += '<div style="height:6px"></div>';
+                    return;
+                }
+
+                // Horizontal rule --- or ===
+                if (/^[-=]{3,}$/.test(trimmed)) {
+                    closeLists();
+                    html += '<hr class="msg-divider">';
+                    return;
+                }
+
+                // Heading ## or #
+                const hMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
+                if (hMatch) {
+                    closeLists();
+                    html += `<div class="msg-heading">${inline(hMatch[2])}</div>`;
+                    return;
+                }
+
+                // Bullet list: starts with • or - or * (but not **)
+                const bulletMatch = trimmed.match(/^([•\-]|\*(?!\*))\s+(.+)$/);
+                if (bulletMatch) {
+                    if (inOl) { html += "</ol>"; inOl = false; }
+                    if (!inUl) { html += '<ul class="msg-ul">'; inUl = true; }
+                    html += `<li>${inline(bulletMatch[2])}</li>`;
+                    return;
+                }
+
+                // Numbered list: 1. 2. 3.
+                const numMatch = trimmed.match(/^(\d+)[.)\s]\s*(.+)$/);
+                if (numMatch) {
+                    if (inUl) { html += "</ul>"; inUl = false; }
+                    if (!inOl) { html += '<ol class="msg-ol">'; inOl = true; }
+                    html += `<li>${inline(numMatch[2])}</li>`;
+                    return;
+                }
+
+                // Regular line
+                closeLists();
+                html += `<p style="margin:0 0 5px 0;line-height:1.6">${inline(trimmed)}</p>`;
+            });
+
+            closeLists();
+            return `<div class="msg-body">${html}</div>`;
+        }
+
 
         function escapeHtml(str) {
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

@@ -136,8 +136,18 @@ def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any]) -> Outbou
 
     try:
         text = ResponseFormatter.format_response(intent_key, raw_data)
+        # Safety net: if format_response returned a raw dict/list str, use friendly fallback
+        if text and (text.strip().startswith("{") or text.strip().startswith("[")):
+            # It looks like raw data slipped through - try knowledge_matches formatter
+            if isinstance(raw_data, (dict, list)):
+                try:
+                    text = ResponseFormatter.format_knowledge_matches(raw_data)
+                except Exception:
+                    text = "I could not retrieve that information right now. Please contact HR for assistance."
+            else:
+                text = "I could not retrieve that information right now. Please contact HR for assistance."
     except Exception:
-        text = str(raw_data) if raw_data else "I could not retrieve that information right now."
+        text = "I could not retrieve that information right now. Please contact HR for assistance."
 
     return build_button_message(
         text,

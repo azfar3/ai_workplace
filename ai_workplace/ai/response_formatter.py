@@ -74,6 +74,55 @@ class ResponseFormatter:
         return res.strip()
 
     @staticmethod
+    def format_knowledge_matches(data: Any) -> str:
+        """Format search_knowledge tool results into readable text."""
+        matches = []
+        if isinstance(data, dict):
+            matches = data.get("knowledge_matches", [])
+        elif isinstance(data, list):
+            matches = data
+
+        if not matches:
+            return (
+                "I'm sorry, but I don't have a specific policy or information on that topic "
+                "in our knowledge base.\n\n"
+                "For the most accurate and up-to-date guidance, please reach out to HR directly — "
+                "you can use the *Chat with HR* option or contact your HR representative."
+            )
+
+        # Build a clean readable answer from the knowledge excerpts
+        parts = []
+        seen_titles = set()
+        INTERNAL_SOURCES = {"menu catalog", "menu_catalog", "service catalog", "service_catalog"}
+        for match in matches:
+            if not isinstance(match, dict):
+                continue
+            title = (match.get("source_title") or "").strip()
+            text = (match.get("text") or "").strip()
+            if not text:
+                continue
+            # Skip internal system catalog chunks — they contain service keys, not readable policies
+            if title.lower() in INTERNAL_SOURCES:
+                continue
+            # Skip chunks that look like raw key:value system data (e.g. "svc_key: Label\n...")
+            if text.count(":") > 3 and "\n" in text and any(c in text for c in ("svc_", "nformer_", "ncontact_", "npay_")):
+                continue
+            if title and title not in seen_titles:
+                seen_titles.add(title)
+                parts.append(f"📌 *{title}*\n{text}")
+            else:
+                parts.append(text)
+
+        if not parts:
+            return (
+                "I'm sorry, but I don't have a specific policy on that topic in our knowledge base.\n\n"
+                "For the most accurate and up-to-date guidance, please reach out to HR directly — "
+                "you can use the *Chat with HR* option or contact your HR representative."
+            )
+
+        return "\n\n".join(parts)
+
+    @staticmethod
     def format_policy_list(data: Any) -> str:
         if not data:
             return "📚 I'm not seeing any published policies in our system. If you were looking for a specific policy, feel free to let me know."
@@ -256,7 +305,19 @@ class ResponseFormatter:
                 return data["careers_guide_response"]
             return str(data)
         else:
-            return str(data)
+            # Generic fallback: handle knowledge_matches dict gracefully
+            if isinstance(data, dict) and "knowledge_matches" in data:
+                return ResponseFormatter.format_knowledge_matches(data)
+            if isinstance(data, list):
+                # Could be raw search_knowledge list result
+                if data and isinstance(data[0], dict) and ("text" in data[0] or "source_title" in data[0]):
+                    return ResponseFormatter.format_knowledge_matches(data)
+            # Last resort: stringify, but only if it's a reasonable string
+            if isinstance(data, str):
+                return data
+            if not data:
+                return "I could not retrieve that information right now. Please contact HR for assistance."
+            return "I could not retrieve that information right now. Please contact HR for assistance."
 
     @staticmethod
     def sanitize_whatsapp_text(text: str) -> str:
