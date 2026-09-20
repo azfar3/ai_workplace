@@ -445,6 +445,8 @@ def run_tool(tool_name: str, context: dict[str, Any], **kwargs) -> Any:
             raw = meta["handler"](context)
         elif tool_name == "get_portal_url":
             raw = meta["handler"](clean_kwargs.get("route", "/hrms"))
+        elif tool_name == "get_careers_guide":
+            raw = meta["handler"](clean_kwargs.get("service_key", "guest_careers"), context=context)
         elif tool_name == "search_knowledge":
             raw = meta["handler"](
                 clean_kwargs.get("query", ""),

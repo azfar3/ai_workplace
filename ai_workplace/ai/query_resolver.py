@@ -147,6 +147,23 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
         r"(procedure|process|steps?) (for |to )?(apply|applying|get|take) (leave|chutti)",
         r"leave (application|apply) (process|procedure|steps?|kaise)",
     ],
+    # ── Careers / Jobs ────────────────────────────────────────────────────────
+    "guest_careers": [
+        r"(where|how|can i|want to|looking to).{0,25}(apply|get|find|look for).{0,25}(job|jobs|position|work|career)",
+        r"(where|how) (can|to|do) i apply",
+        r"(apply|applying).{0,15}(for|to).{0,15}(a |)?(job|jobs|career|position)",
+        r"job (vacancies|openings|portal|website|link|hiring|recruitment|apply|application)",
+        r"(job|jobs|career|careers|vacancy|vacancies|hiring|recruitment) (kahan|kaise|say|se|batao|chahiye|mileygi)",
+        r"^jobs?$",
+        r"^careers?$",
+        r"^vacanc(y|ies)$",
+        r"^hiring$",
+    ],
+    "guest_job_status": [
+        r"job (application |applied |)?status",
+        r"(check|track) (my |)?job (application|status)",
+        r"maine job apply ki",
+    ],
     # ── Profile / Navigation ───────────────────────────────────────────────────
     "menu_help": [
         r"what (can you do|do you do|are your capabilities|services do you offer)",

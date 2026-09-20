@@ -23,7 +23,8 @@ class TestCareersGuide(unittest.TestCase):
     def test_guest_careers_english(self):
         res = build_careers_guide_response("guest_careers", self.context_en)
         self.assertIn("Careers at MicroMerger", res)
-        self.assertIn(XPERTJOBS_URL, res)
+        self.assertEqual(XPERTJOBS_URL, "https://xpertjobs.pk/")
+        self.assertIn("https://xpertjobs.pk/", res)
         self.assertIn("How to apply", res)
         self.assertIn("does not accept job applications via WhatsApp", res)
 

@@ -167,6 +167,9 @@ def reindex_source(source_name: str) -> int:
         doc.content_hash = c_hash
         doc.document_name = chunk_info.get("document_name") or source_name
         doc.document_type = source.source_type
+        # Stable source tracking
+        doc.source_type = "Knowledge Source"
+        doc.source_id   = source_name
         doc.section = chunk_info.get("section") or ""
         doc.embedding_model = emb_model
         doc.embedding_dimensions = len(json.loads(emb_json)) if emb_json else 128
@@ -178,6 +181,7 @@ def reindex_source(source_name: str) -> int:
         doc.target_location = source.get("target_location")
         doc.policy_version = source.get("version")
         doc.effective_date = source.get("effective_from")
+        doc.source_date    = source.get("effective_from") or source.get("last_indexed")
         
         doc.insert(ignore_permissions=True)
 
@@ -357,7 +361,8 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
     """
     Hybrid RAG Search — Merges keyword (BM25) and dense vector semantic scores.
     Formula: final_score = rag_keyword_weight * norm_kw_score + rag_semantic_weight * norm_sem_score
-    Returns rich metadata and source citations.
+             + freshness_boost (mild, configurable, relevance-first)
+    Returns rich metadata and source citations for the LLM to reason over.
     """
     if not query or not frappe.db.exists("DocType", "AI Workplace Knowledge Chunk"):
         return []
@@ -365,18 +370,18 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
     words = [w.lower() for w in query.split() if len(w) > 2]
     query_vector = generate_embedding(query)
 
-    # Add new fields for enterprise metadata filtering
     fields = [
         "name", "chunk_text", "knowledge_source", "document_name", "section",
         "content_hash", "embedding_json", "target_employment_type",
-        "target_department", "target_location", "policy_version", "effective_date"
+        "target_department", "target_location", "policy_version", "effective_date",
+        "source_type", "source_id", "source_date",
     ]
 
     chunks = frappe.get_all(
         "AI Workplace Knowledge Chunk",
         filters={"knowledge_source": ["in", _active_source_names()]},
         fields=fields,
-        limit=500,  # Increased for reranking phase
+        limit=500,
     )
 
     if not chunks:
@@ -384,13 +389,14 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
 
     user_emp_type = (employment_type or "").strip()
     user_dept = (context or {}).get("department", "") if context else ""
-    user_loc = (context or {}).get("location", "") if context else ""
+    user_loc  = (context or {}).get("location", "") if context else ""
+    today_str = frappe.utils.today()
 
     # Phase C: Pre-filtering via metadata scopes
     filtered_chunks = []
     for chunk in chunks:
-        # Effective Date filtering (if set)
-        if chunk.effective_date and frappe.utils.getdate(chunk.effective_date) > frappe.utils.getdate(frappe.utils.today()):
+        # Effective Date filtering (if set, chunk must be effective already)
+        if chunk.effective_date and frappe.utils.getdate(chunk.effective_date) > frappe.utils.getdate(today_str):
             continue
             
         # Hard Scoping (if fields are set on chunk, user MUST match)
@@ -406,14 +412,11 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
     if not filtered_chunks:
         return []
 
-    # Phase C: True BM25 Scoring
-    # Calculate corpus stats
-    N = len(filtered_chunks)
+    # BM25 Scoring
+    N    = len(filtered_chunks)
     avgdl = sum(len((c.chunk_text or "").split()) for c in filtered_chunks) / float(N) if N else 1.0
-    k1 = 1.5
-    b = 0.75
+    k1, b = 1.5, 0.75
 
-    # Document frequency for IDF
     df = {}
     for w in words:
         df[w] = sum(1 for c in filtered_chunks if w in (c.chunk_text or "").lower())
@@ -423,33 +426,48 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
         n_qi = df[w]
         idf[w] = math.log(1 + (N - n_qi + 0.5) / (n_qi + 0.5))
 
-    kw_weight = float(_get_setting("rag_keyword_weight", 0.5) or 0.5)
+    kw_weight  = float(_get_setting("rag_keyword_weight", 0.5) or 0.5)
     sem_weight = float(_get_setting("rag_semantic_weight", 0.5) or 0.5)
     if (kw_weight + sem_weight) <= 0.001:
         kw_weight, sem_weight = 0.5, 0.5
 
-    raw_candidates = []
-    max_kw_score = 0.0001
-    
+    # Freshness boost — mild (0.05 max) so relevance always dominates
+    freshness_weight = float(_get_setting("rag_freshness_weight", 0.05) or 0.05)
+
+    raw_candidates  = []
+    max_kw_score    = 0.0001
+
+    # Pre-compute min/max source_date for normalisation
+    source_dates = []
     for chunk in filtered_chunks:
-        text = chunk.chunk_text or ""
+        sd = chunk.get("source_date") or chunk.get("effective_date")
+        if sd:
+            try:
+                source_dates.append(frappe.utils.getdate(sd))
+            except Exception:
+                pass
+    min_date = min(source_dates) if source_dates else None
+    max_date = max(source_dates) if source_dates else None
+
+    for chunk in filtered_chunks:
+        text       = chunk.chunk_text or ""
         text_lower = text.lower()
         chunk_words = text_lower.split()
-        doc_len = len(chunk_words)
+        doc_len    = len(chunk_words)
 
-        # 1. Okapi BM25 Score
+        # Okapi BM25 Score
         kw_score = 0.0
         for w in words:
             if w in text_lower:
-                freq = text_lower.count(w) # rough term freq
-                numerator = freq * (k1 + 1)
+                freq       = text_lower.count(w)
+                numerator  = freq * (k1 + 1)
                 denominator = freq + k1 * (1 - b + b * (doc_len / avgdl))
-                kw_score += idf[w] * (numerator / denominator)
+                kw_score  += idf[w] * (numerator / denominator)
 
         if kw_score > max_kw_score:
             max_kw_score = kw_score
 
-        # 2. Semantic Vector Score
+        # Semantic Vector Score
         sem_score = 0.0
         if chunk.embedding_json:
             try:
@@ -458,40 +476,68 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
             except Exception:
                 sem_score = 0.0
 
+        # Freshness score (normalised 0-1, older=0, newest=1)
+        freshness_score = 0.0
+        if min_date and max_date and min_date != max_date:
+            sd = chunk.get("source_date") or chunk.get("effective_date")
+            if sd:
+                try:
+                    chunk_date = frappe.utils.getdate(sd)
+                    date_range = (max_date - min_date).days or 1
+                    freshness_score = (chunk_date - min_date).days / date_range
+                except Exception:
+                    freshness_score = 0.0
+
         raw_candidates.append({
-            "chunk": chunk,
-            "kw_score": float(kw_score),
-            "sem_score": float(sem_score),
+            "chunk":          chunk,
+            "kw_score":       float(kw_score),
+            "sem_score":      float(sem_score),
+            "freshness_score": float(freshness_score),
         })
 
-    # Phase C: Reranking (Reciprocal Rank Fusion / Weighted Normalized Score)
+    # Reranking: Relevance-first, then freshness
     scored = []
     for item in raw_candidates:
-        norm_kw = item["kw_score"] / max_kw_score
+        norm_kw  = item["kw_score"] / max_kw_score
         norm_sem = item["sem_score"]
-        
-        # Boost semantic score slightly if exact keyword match is high
-        final_score = (kw_weight * norm_kw) + (sem_weight * norm_sem)
+        fresh    = item["freshness_score"]
+
+        final_score = (kw_weight * norm_kw) + (sem_weight * norm_sem) + (freshness_weight * fresh)
 
         if final_score > 0.05 or item["kw_score"] > 0:
-            scored.append((final_score, norm_kw, norm_sem, item["chunk"]))
+            scored.append((final_score, norm_kw, norm_sem, fresh, item["chunk"]))
 
     scored.sort(key=lambda x: x[0], reverse=True)
 
     results = []
-    for final_s, kw_s, sem_s, c in scored[:limit]:
+    for final_s, kw_s, sem_s, fresh_s, c in scored[:limit]:
         doc_title = c.document_name or _extract_source_title(c.chunk_text or "") or c.knowledge_source
+
+        # Build source_date string for LLM
+        s_date = None
+        raw_sd = c.get("source_date") or c.get("effective_date")
+        if raw_sd:
+            try:
+                s_date = str(frappe.utils.getdate(raw_sd))
+            except Exception:
+                s_date = str(raw_sd)
+
         results.append({
-            "chunk_id": c.name,
-            "text": c.chunk_text,
-            "source": c.knowledge_source,
-            "source_title": doc_title,
-            "document": doc_title,
-            "section": c.section or "General",
-            "version": c.policy_version or "1.0",
-            "score": round(final_s, 4),
-            "keyword_score": round(kw_s, 4),
+            "chunk_id":       c.name,
+            "text":           c.chunk_text,
+            "source":         c.knowledge_source,
+            "source_title":   doc_title,
+            "source_type":    c.get("source_type") or "Knowledge Source",
+            "source_id":      c.get("source_id") or c.knowledge_source,
+            "document":       doc_title,
+            "section":        c.section or "General",
+            "version":        c.policy_version or "1.0",
+            "source_date":    s_date,
+            "effective_date": str(c.effective_date) if c.effective_date else None,
+            "score":          round(final_s, 4),
+            "keyword_score":  round(kw_s, 4),
             "semantic_score": round(sem_s, 4),
+            "freshness_score": round(fresh_s, 4),
         })
 
     return results

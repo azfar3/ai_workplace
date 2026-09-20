@@ -182,15 +182,29 @@ def _minimize_published_policies(data: Any) -> dict[str, Any]:
 
 
 def _minimize_knowledge_search(data: Any) -> dict[str, Any]:
+    """
+    Exposes knowledge chunk content and provenance metadata to the LLM.
+
+    The LLM uses source_date / effective_date to prefer the latest applicable
+    policy and to resolve conflicts between multiple relevant chunks.
+    The source_title is returned as metadata AFTER retrieval, not used as the
+    retrieval key — retrieval is purely content-based.
+    """
     if not isinstance(data, list):
         return {"knowledge_matches": []}
-    
+
     matches = []
-    for k in data[:5]:
+    for k in data[:8]:  # up to 8 so multi-policy synthesis is possible
         if isinstance(k, dict):
             matches.append({
-                "source_title": k.get("source_title") or k.get("source", "Policy"),
-                "text": redact_sensitive_text((k.get("text") or "")[:500]),
+                "source_title":   k.get("source_title") or k.get("source", "Policy"),
+                "source_type":    k.get("source_type", ""),
+                "source_date":    k.get("source_date") or "",
+                "effective_date": k.get("effective_date") or "",
+                "section":        k.get("section") or "",
+                "version":        k.get("version") or "",
+                "relevance_score": k.get("score", 0),
+                "text":           redact_sensitive_text((k.get("text") or "")[:800]),
             })
     return {"knowledge_matches": matches}
 
