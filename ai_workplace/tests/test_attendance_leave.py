@@ -182,6 +182,26 @@ class TestAttendanceLeaveServices(unittest.TestCase):
         self.assertIn("Casual Leave", res_en)
         self.assertIn("Remaining: 8.0", res_en)
 
+    @patch("frappe.db.exists")
+    @patch("frappe.db.get_all")
+    def test_get_leave_balance_data_filters_by_period(self, mock_get_all, mock_exists):
+        from ai_workplace.services.attendance_leave import get_leave_balance_data
+        mock_exists.return_value = True
+        mock_get_all.side_effect = [
+            [{"leave_type": "Casual Leave", "total_leaves_allocated": 10.0, "from_date": "2026-01-01", "to_date": "2026-12-31"}],
+            [{"total_leave_days": 2.0, "status": "Approved"}]
+        ]
+        res = get_leave_balance_data("EMP-001")
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]["leave_type"], "Casual Leave")
+        self.assertEqual(res[0]["taken"], "2.0")
+        self.assertEqual(res[0]["remaining"], "8.0")
+        
+        call_args = mock_get_all.call_args_list[1]
+        filters = call_args[1]["filters"]
+        self.assertEqual(filters["from_date"], ["<=", "2026-12-31"])
+        self.assertEqual(filters["to_date"], [">=", "2026-01-01"])
+
     def test_build_apply_leave_response(self):
         res_en = build_apply_leave_response(self.context_en)
         self.assertIn("Apply for Leave", res_en)

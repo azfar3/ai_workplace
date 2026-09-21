@@ -226,7 +226,7 @@ def get_missing_attendance_data(employee_id: Optional[str]) -> list[dict[str, An
 
 
 def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
-    """Fetch active leave allocations and remaining balances accurately."""
+    """Fetch active leave allocations and remaining balances accurately for the current allocation period."""
     balances: list[dict[str, Any]] = []
     try:
         if not employee_id or not getattr(frappe, "db", None) or not frappe.db.exists("Employee", employee_id):
@@ -243,16 +243,27 @@ def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
         for alloc in allocations:
             leave_type = alloc.get("leave_type")
             allocated = flt(alloc.get("total_leaves_allocated", 0))
-            
-            # Query all non-cancelled Leave Application records for this allocation period
+            from_d = alloc.get("from_date")
+            to_d = alloc.get("to_date")
+
+            # Query non-cancelled Leave Application records within the current allocation period
+            app_filters: dict[str, Any] = {
+                "employee": employee_id,
+                "leave_type": leave_type,
+                "docstatus": ["!=", 2],
+                "status": ["!=", "Rejected"],
+            }
+            if from_d and to_d:
+                app_filters["from_date"] = ["<=", to_d]
+                app_filters["to_date"] = [">=", from_d]
+            elif from_d:
+                app_filters["to_date"] = [">=", from_d]
+            elif to_d:
+                app_filters["from_date"] = ["<=", to_d]
+
             leave_apps = frappe.db.get_all(
                 "Leave Application",
-                filters={
-                    "employee": employee_id,
-                    "leave_type": leave_type,
-                    "docstatus": ["!=", 2],
-                    "status": ["!=", "Rejected"],
-                },
+                filters=app_filters,
                 fields=["total_leave_days", "status", "from_date", "to_date"]
             )
             
