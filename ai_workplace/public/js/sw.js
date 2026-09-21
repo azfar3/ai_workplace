@@ -8,9 +8,9 @@ self.addEventListener('push', function(event) {
         }
         const sender = payload.sender_name || 'WhatsApp';
         const msg = payload.message_preview || 'You have a new message';
-        const title = `${sender}: ${msg}`;
+        const title = `${sender} (WhatsApp HR Inbox)`;
         const options = {
-            body: 'HR Inbox',
+            body: msg,
             icon: '/assets/frappe/images/frappe-framework-logo.svg',
             data: {
                 url: payload.url || '/app/whatsapp-hr-inbox'

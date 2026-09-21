@@ -1374,16 +1374,18 @@ frappe.whatsapp_hr_inbox = {
 		localStorage.setItem(notif_id, "1");
 		setTimeout(() => localStorage.removeItem(notif_id), 10000);
 
+		const safe_title = frappe.utils.escape_html(title);
+		const safe_body = frappe.utils.escape_html(body);
+
 		if (!document.hidden) {
 			frappe.show_alert({
-				message: `🟢 <b>${title}</b><br>${body}`,
+				message: `🟢 <b>${safe_title}</b><br>${safe_body}`,
 				indicator: "green"
 			}, 5);
 		} else if (!this.isSubscribed && Notification.permission === "granted") {
-			const text = body || "";
-			const n_title = text ? `${title}: ${text}` : title;
+			const n_title = `${title} (WhatsApp HR Inbox)`;
 			const n = new Notification(n_title, {
-				body: `WhatsApp HR Inbox`,
+				body: body,
 				icon: "/assets/frappe/images/frappe-framework-logo.svg",
 				tag: notif_id
 			});

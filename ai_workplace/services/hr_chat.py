@@ -255,7 +255,7 @@ def publish_session_update(
                         "message_preview": msg_preview,
                         "message_type": extra.get("message_type") if extra else "text",
                         "timestamp": str((extra.get("timestamp") if extra else None) or frappe.utils.now()),
-                        "url": f"/app/ai-workplace-admin?conversation={session.name}"
+                        "url": f"/app/whatsapp-hr-inbox?conversation={session.name}"
                     }
                     send_push_notification(u, push_payload)
                 except Exception as push_err:
