@@ -56,11 +56,21 @@ def generate_embedding(text: str, provider: str = "", model: str = "") -> List[f
     return _generate_fallback_vector(clean_text)
 
 
+# Providers that do NOT support the OpenAI /embeddings endpoint.
+# We skip them entirely and rely on the deterministic fallback vector.
+_EMBEDDING_UNSUPPORTED_HOSTS = (
+    "api.groq.com",
+    "groq.com",
+    "api.mistral.ai",
+    "api.anthropic.com",
+)
+
+
 def _get_embedding_credentials(provider_name: str) -> Tuple[str, str]:
     if not frappe.db.exists("DocType", "AI Workplace Provider"):
-        return "", "https://api.openai.com/v1"
+        return "", ""
 
-    # Find active OpenAI or embedding provider
+    # Find an active provider whose base URL is a *real* embeddings endpoint
     providers = frappe.get_all(
         "AI Workplace Provider",
         filters={"is_active": 1},
@@ -68,26 +78,20 @@ def _get_embedding_credentials(provider_name: str) -> Tuple[str, str]:
         order_by="priority asc",
     )
     for p_row in providers:
+        base_url = (p_row.get("api_base_url") or "https://api.openai.com/v1").rstrip("/")
+        # Skip providers that are known NOT to serve embeddings
+        if any(host in base_url for host in _EMBEDDING_UNSUPPORTED_HOSTS):
+            continue
         p_doc = frappe.get_doc("AI Workplace Provider", p_row.name)
         try:
             key = p_doc.get_password("api_key") or p_doc.get("api_key") or ""
         except Exception:
             key = p_doc.get("api_key") or ""
         if key:
-            base_url = (p_doc.api_base_url or "https://api.openai.com/v1").rstrip("/")
             return key, base_url
 
-    # Fallback to Groq AI Settings if configured
-    if frappe.db.exists("DocType", "Groq AI Settings"):
-        try:
-            settings = frappe.get_single("Groq AI Settings")
-            key = settings.get_password("api_key") or ""
-            if key:
-                return key, "https://api.groq.com/openai/v1"
-        except Exception:
-            pass
-
-    return "", "https://api.openai.com/v1"
+    # No suitable embedding provider found — use deterministic fallback
+    return "", ""
 
 
 def _normalize_vector(vec: List[float]) -> List[float]:
@@ -97,29 +101,62 @@ def _normalize_vector(vec: List[float]) -> List[float]:
     return [x / norm for x in vec]
 
 
-def _generate_fallback_vector(text: str, dim: int = 128) -> List[float]:
-    """Generates a 128-dimensional term/character 3-gram hash projection vector."""
+def _generate_fallback_vector(text: str, dim: int = 512) -> List[float]:
+    """
+    512-dimensional hash-projection vector using unigrams + bigrams + 3-grams.
+
+    Improvements over the previous 128-dim version:
+    • Higher dimensionality reduces hash collisions significantly.
+    • Bigrams capture adjacent-word context ("dual job", "work home").
+    • Term-frequency capping (max 3) prevents a single frequent word from
+      drowning out semantically important but rarer terms.
+    • Character 3-grams still handle morphological similarity.
+    """
     vec = [0.0] * dim
     words = re.findall(r"\w+", text.lower())
-    for word in words:
-        # Word hash
-        h = int(hashlib.md5(word.encode("utf-8")).hexdigest(), 16)
-        idx = h % dim
-        vec[idx] += 1.0
-        # 3-gram character hashes
-        for i in range(len(word) - 2):
-            gram = word[i : i + 3]
+
+    # Per-term caps to avoid domination by high-frequency terms
+    term_count: dict = {}
+
+    for i, word in enumerate(words):
+        if len(word) < 2:
+            continue
+
+        # --- Unigram ---
+        term_count[word] = term_count.get(word, 0) + 1
+        if term_count[word] <= 3:  # TF cap
+            h = int(hashlib.md5(word.encode("utf-8")).hexdigest(), 16)
+            vec[h % dim] += 1.0
+
+        # --- Bigram (current + next word) ---
+        if i + 1 < len(words):
+            bigram = f"{word}_{words[i + 1]}"
+            bh = int(hashlib.md5(bigram.encode("utf-8")).hexdigest(), 16)
+            vec[bh % dim] += 0.8
+
+        # --- Character 3-grams ---
+        for j in range(len(word) - 2):
+            gram = word[j : j + 3]
             gh = int(hashlib.md5(gram.encode("utf-8")).hexdigest(), 16)
-            vec[gh % dim] += 0.5
+            vec[gh % dim] += 0.3
 
     return _normalize_vector(vec)
 
 
 def cosine_similarity(v1: List[float], v2: List[float]) -> float:
-    if not v1 or not v2 or len(v1) != len(v2):
+    if not v1 or not v2:
         return 0.0
-    dot = sum(a * b for a, b in zip(v1, v2))
-    return max(0.0, min(1.0, dot))
+    # Tolerate dimension mismatches (e.g. old 128-dim stored chunks vs new
+    # 512-dim query vectors during a reindex window): compare over shared prefix.
+    min_len = min(len(v1), len(v2))
+    if min_len == 0:
+        return 0.0
+    a, b = v1[:min_len], v2[:min_len]
+    # Re-normalise both slices so the dot product is a valid cosine estimate
+    norm_a = math.sqrt(sum(x * x for x in a)) or 1.0
+    norm_b = math.sqrt(sum(x * x for x in b)) or 1.0
+    dot = sum(ai * bi for ai, bi in zip(a, b))
+    return max(0.0, min(1.0, dot / (norm_a * norm_b)))
 
 
 def reindex_source(source_name: str) -> int:
@@ -255,13 +292,32 @@ def _extract_text_from_file(file_url: str) -> str:
 
 
 def _chunk_text_with_overlap(content: str, doc_name: str = "", chunk_size: int = 300, overlap: int = 50) -> list[dict[str, Any]]:
+    """
+    Section-aware chunker.  Tries to split on Markdown / numeric headings first
+    so that each section stays in its own chunk(s).  Falls back to word-count
+    sliding-window only when no headings are detected.
+    """
     if not content:
         return []
 
+    # ── 1. Try heading-aware split ────────────────────────────────────────────
+    # Reuse the same section-aware logic used by policy_notifications so all
+    # document types benefit from heading isolation.
+    try:
+        from ai_workplace.services.policy_notifications import build_section_chunks
+        section_chunks = build_section_chunks(content, doc_name)
+        if section_chunks and len(section_chunks) > 1:
+            # build_section_chunks already returns {text, section, document_name}
+            return section_chunks
+    except Exception:
+        pass  # Fall through to word-count fallback
+
+    # ── 2. Short-document fast path ───────────────────────────────────────────
     words = content.split()
     if len(words) <= chunk_size:
         return [{"text": content, "document_name": doc_name, "section": _extract_section_title(content)}]
 
+    # ── 3. Word-count sliding-window fallback ─────────────────────────────────
     chunks = []
     step = chunk_size - overlap
     for i in range(0, len(words), step):
@@ -357,6 +413,35 @@ def _load_portal_guides_from_disk() -> str:
     return "\n\n".join(parts)
 
 
+# ── Stop-word list for BM25 query cleaning ────────────────────────────────────
+# These terms appear in almost every chunk in this knowledge base (company name,
+# policy boilerplate, English connectives) and produce noisy IDF scores.  They
+# are removed from the BM25 token list only — the full original query is still
+# used for semantic embedding.
+_BM25_STOP_WORDS = frozenset({
+    # English function words
+    "the", "and", "for", "are", "but", "not", "you", "all", "can", "has",
+    "was", "who", "had", "her", "his", "she", "him", "its", "our", "out",
+    "one", "two", "any", "will", "from", "this", "that", "with", "they",
+    "have", "been", "your", "what", "when", "where", "how", "which", "into",
+    "each", "more", "also", "may", "shall", "must", "does", "did", "such",
+    "than", "then", "them", "been", "their", "there", "these", "those",
+    # Domain-ubiquitous terms (present in virtually every chunk → IDF ≈ 0)
+    "micromerger", "policy", "policies", "company", "pvt", "ltd", "staff",
+    "employee", "employees", "management", "human", "resources",
+})
+
+
+def _clean_query_tokens(query: str) -> list[str]:
+    """Tokenise query for BM25: lowercase, strip punctuation, drop stop-words."""
+    # Strip leading/trailing punctuation from each token
+    tokens = re.findall(r"[a-z0-9]+(?:'[a-z]+)?", query.lower())
+    return [
+        t for t in tokens
+        if len(t) > 2 and t not in _BM25_STOP_WORDS
+    ]
+
+
 def search_knowledge(query: str, limit: int = 5, employment_type: str = "", context: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
     """
     Hybrid RAG Search — Merges keyword (BM25) and dense vector semantic scores.
@@ -367,7 +452,8 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
     if not query or not frappe.db.exists("DocType", "AI Workplace Knowledge Chunk"):
         return []
 
-    words = [w.lower() for w in query.split() if len(w) > 2]
+    # BM25 uses cleaned, stop-word-free tokens; embedding uses the full raw query
+    words = _clean_query_tokens(query)
     query_vector = generate_embedding(query)
 
     fields = [
@@ -386,6 +472,10 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
 
     if not chunks:
         return []
+
+    # Exclude menu catalog chunks — they contain navigation labels ("job", "work",
+    # "home") that score well on policy queries but contain zero policy content.
+    chunks = [c for c in chunks if c.get("knowledge_source") != "menu_catalog"]
 
     user_emp_type = (employment_type or "").strip()
     user_dept = (context or {}).get("department", "") if context else ""
@@ -419,7 +509,10 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
 
     df = {}
     for w in words:
-        df[w] = sum(1 for c in filtered_chunks if w in (c.chunk_text or "").lower())
+        # Use whole-word check in df to keep IDF consistent with the scoring loop
+        df[w] = sum(1 for c in filtered_chunks
+                    if any(cw == w or cw.rstrip(".,;:!?'\")") == w
+                       for cw in (c.chunk_text or "").lower().split()))
 
     idf = {}
     for w in words:
@@ -455,14 +548,16 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
         chunk_words = text_lower.split()
         doc_len    = len(chunk_words)
 
-        # Okapi BM25 Score
+        # Okapi BM25 Score — use whole-word boundary matching to avoid
+        # substring false positives (e.g. "job" matching inside "subject").
         kw_score = 0.0
         for w in words:
-            if w in text_lower:
-                freq       = text_lower.count(w)
-                numerator  = freq * (k1 + 1)
+            # Count whole-word occurrences using a simple split-based approach
+            freq = sum(1 for cw in chunk_words if cw == w or cw.rstrip(".,;:!?'\")") == w)
+            if freq > 0:
+                numerator   = freq * (k1 + 1)
                 denominator = freq + k1 * (1 - b + b * (doc_len / avgdl))
-                kw_score  += idf[w] * (numerator / denominator)
+                kw_score   += idf[w] * (numerator / denominator)
 
         if kw_score > max_kw_score:
             max_kw_score = kw_score
@@ -504,7 +599,11 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
 
         final_score = (kw_weight * norm_kw) + (sem_weight * norm_sem) + (freshness_weight * fresh)
 
-        if final_score > 0.05 or item["kw_score"] > 0:
+        # Require a meaningful combined score — avoids surfacing chunks that
+        # only matched a single ubiquitous word after stop-word stripping.
+        # A chunk must score > 0.15 combined OR have a keyword score > 0.1
+        # (i.e., genuine keyword overlap, not just a faint semantic bleed).
+        if final_score > 0.15 or (item["kw_score"] > 0 and norm_kw > 0.1):
             scored.append((final_score, norm_kw, norm_sem, fresh, item["chunk"]))
 
     scored.sort(key=lambda x: x[0], reverse=True)
