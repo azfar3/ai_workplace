@@ -197,12 +197,17 @@ def _start_workflow_from_intent(
 
     if workflow_intent == "leave_apply":
         from ai_workplace.services.leave_apply import start_leave_application
+
         update_conversation(
             conv,
             state=ConversationState.PROCESSING,
             current_intent="leave_apply",
         )
         return start_leave_application(conv, context)
+
+    if workflow_intent == "att_request_apply":
+        from ai_workplace.services.attendance_request_apply import start_attendance_request_application
+        return start_attendance_request_application(conv, context)
 
     if workflow_intent == "att_exception":
         update_conversation(
@@ -913,6 +918,12 @@ def _process_message_internal(
         from ai_workplace.services.leave_apply import handle_leave_apply_message
 
         return handle_leave_apply_message(conv, clean_text, context)
+
+    if current_state == ConversationState.PROCESSING and conv.current_intent == "att_request_apply":
+        from ai_workplace.services.attendance_request_apply import handle_attendance_request_message
+
+        return handle_attendance_request_message(conv, clean_text, context)
+
 
     if current_state == ConversationState.PROCESSING and conv.current_intent == "concern_report":
         from ai_workplace.services.concern_report import handle_concern_report_message

@@ -33,7 +33,8 @@ def get_menu_seed_items() -> list[dict[str, Any]]:
                 {"menu_key": "att_missing", "title": "⚠️ Missing Attendance", "title_urdu": "⚠️ گمشدہ حاضری", "title_roman_urdu": "⚠️ Missing Attendance", "description": "Review missing attendance days.", "sequence": 5, "security_level": SEC_NONE},
                 {"menu_key": "leave_balance", "title": "📊 Leave Balance", "title_urdu": "📊 رخصت کا بیلنس", "title_roman_urdu": "📊 Leave Balance", "description": "Remaining leave balance.", "sequence": 6, "security_level": SEC_NONE},
                 {"menu_key": "leave_apply", "title": "📝 Apply for Leave", "title_urdu": "📝 رخصت کی درخواست", "title_roman_urdu": "📝 Apply Leave", "description": "Submit a leave application.", "sequence": 7, "security_level": SEC_NONE},
-                {"menu_key": "leave_requests", "title": "📋 My Leave Requests", "title_urdu": "📋 میری رخصت کی درخواستیں", "title_roman_urdu": "📋 My Leave Requests", "description": "Track leave request status.", "sequence": 8, "security_level": SEC_NONE},
+                {"menu_key": "att_request_apply", "title": "⏱️ Attendance Request", "title_urdu": "⏱️ حاضری کی درخواست", "title_roman_urdu": "⏱️ Attendance Request", "description": "Submit attendance correction request.", "sequence": 8, "security_level": SEC_NONE},
+                {"menu_key": "leave_requests", "title": "📋 My Leave Requests", "title_urdu": "📋 میری رخصت کی درخواستیں", "title_roman_urdu": "📋 My Leave Requests", "description": "Track leave request status.", "sequence": 9, "security_level": SEC_NONE},
             ],
         },
         {

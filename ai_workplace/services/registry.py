@@ -285,6 +285,17 @@ def get_available_services_for_context(
                             results = [r for r in results if r["key"] not in ("att_checkin", "att_checkout")]
                     except Exception:
                         pass
+
+                # Dynamic Attendance Request permission check
+                if parent_key == "attendance_leave" or any(r["key"] == "att_request_apply" for r in results):
+                    try:
+                        from ai_workplace.services.attendance_request_apply import check_attendance_request_permission
+                        user_for_perm = context.get("user") or frappe.session.user
+                        if not check_attendance_request_permission(user_for_perm):
+                            results = [r for r in results if r["key"] != "att_request_apply"]
+                    except Exception:
+                        pass
+
                 
                 if not any(r["key"] == "main_menu" for r in results):
                     results.append(BACK_TO_MAIN_MENU_ITEM)

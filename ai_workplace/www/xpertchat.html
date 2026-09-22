@@ -58,7 +58,8 @@
                 0 3px 10px rgba(14, 40, 85, 0.08);
         }
 
-        html, body {
+        html,
+        body {
             margin: 0;
             min-height: 100%;
             height: 100vh;
@@ -200,22 +201,22 @@
             display: grid;
             place-items: center;
             border-radius: 12px;
-            background: linear-gradient(145deg, rgba(255,255,255,.99), rgba(215,238,255,.92));
-            border: 1px solid rgba(255,255,255,.72);
-            box-shadow: 0 5px 14px rgba(0,0,0,.19), inset 0 0 9px rgba(255,255,255,.75);
+            background: linear-gradient(145deg, rgba(255, 255, 255, .99), rgba(215, 238, 255, .92));
+            border: 1px solid rgba(255, 255, 255, .72);
+            box-shadow: 0 5px 14px rgba(0, 0, 0, .19), inset 0 0 9px rgba(255, 255, 255, .75);
         }
 
         .xpert-ai-icon svg {
             width: 31px;
             height: 31px;
-            filter: drop-shadow(0 2px 2px rgba(9,54,125,.12));
+            filter: drop-shadow(0 2px 2px rgba(9, 54, 125, .12));
         }
 
         .logo-sparkle {
             position: absolute;
             line-height: 1;
             color: var(--cyan);
-            text-shadow: 0 0 8px rgba(67,231,255,.90);
+            text-shadow: 0 0 8px rgba(67, 231, 255, .90);
         }
 
         .sparkle-one {
@@ -253,17 +254,17 @@
 
         .brand-name span {
             color: var(--cyan);
-            text-shadow: 0 0 10px rgba(72,228,250,.28);
+            text-shadow: 0 0 10px rgba(72, 228, 250, .28);
         }
 
         .header-divider {
-            color: rgba(255,255,255,.36);
+            color: rgba(255, 255, 255, .36);
             font-size: 9px;
         }
 
         .header-subtitle {
             font-size: 11.5px;
-            color: rgba(255,255,255,.76);
+            color: rgba(255, 255, 255, .76);
         }
 
         .online-pill {
@@ -273,9 +274,9 @@
             padding: 3px 8px;
             border-radius: 12px;
             font-size: 10px;
-            color: rgba(255,255,255,.94);
-            background: rgba(255,255,255,.10);
-            border: 1px solid rgba(255,255,255,.16);
+            color: rgba(255, 255, 255, .94);
+            background: rgba(255, 255, 255, .10);
+            border: 1px solid rgba(255, 255, 255, .16);
             backdrop-filter: blur(6px);
         }
 
@@ -284,7 +285,7 @@
             height: 6px;
             border-radius: 50%;
             background: #21df8d;
-            box-shadow: 0 0 0 2px rgba(33,223,141,.14), 0 0 8px rgba(33,223,141,.55);
+            box-shadow: 0 0 0 2px rgba(33, 223, 141, .14), 0 0 8px rgba(33, 223, 141, .55);
         }
 
         .header-actions {
@@ -305,7 +306,7 @@
             border: 0;
             border-radius: 8px;
             background: transparent;
-            color: rgba(255,255,255,.90);
+            color: rgba(255, 255, 255, .90);
             font-family: inherit;
             font-size: 15px;
             line-height: 1;
@@ -314,7 +315,7 @@
         }
 
         .header-btn:hover {
-            background: rgba(255,255,255,.14);
+            background: rgba(255, 255, 255, .14);
         }
 
         .header-btn:active {
@@ -322,7 +323,7 @@
         }
 
         .header-btn.close:hover {
-            background: rgba(255,86,103,.25);
+            background: rgba(255, 86, 103, .25);
         }
 
         /* =========================================================
@@ -376,7 +377,7 @@
             overflow-y: auto;
             scroll-behavior: smooth;
             background:
-                linear-gradient(rgba(247,249,252,.965), rgba(247,249,252,.965)),
+                linear-gradient(rgba(247, 249, 252, .965), rgba(247, 249, 252, .965)),
                 radial-gradient(circle, #dbe3ed 1px, transparent 1.2px);
             background-size: auto, 19px 19px;
             position: relative;
@@ -432,7 +433,7 @@
         .scroll-down-btn {
             position: absolute;
             right: 20px;
-            bottom: 85px;
+            bottom: 105px;
             width: 36px;
             height: 36px;
             border-radius: 50%;
@@ -469,8 +470,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message-row.user {
@@ -502,9 +510,9 @@
             overflow: hidden;
             color: #fff;
             background:
-                radial-gradient(circle at 75% 20%, rgba(69,229,251,.45), transparent 32%),
+                radial-gradient(circle at 75% 20%, rgba(69, 229, 251, .45), transparent 32%),
                 linear-gradient(140deg, #0877da, #1552cc 57%, #6636dc);
-            box-shadow: 0 4px 14px rgba(35,80,185,.25);
+            box-shadow: 0 4px 14px rgba(35, 80, 185, .25);
             border: 2px solid #ffffff;
         }
 
@@ -520,7 +528,7 @@
         .agent-avatar {
             color: #fff;
             background: linear-gradient(140deg, #059669, #047857);
-            box-shadow: 0 4px 14px rgba(5,150,105,.25);
+            box-shadow: 0 4px 14px rgba(5, 150, 105, .25);
             border: 2px solid #ffffff;
         }
 
@@ -804,7 +812,7 @@
 
         .composer:focus-within {
             border-color: #8eb8f2;
-            box-shadow: 0 0 0 3px rgba(23,105,232,.07);
+            box-shadow: 0 0 0 3px rgba(23, 105, 232, .07);
         }
 
         .composer input[type="text"] {
@@ -842,7 +850,7 @@
         }
 
         .attach-btn:hover {
-            background: rgba(23,105,232,.08);
+            background: rgba(23, 105, 232, .08);
             color: var(--blue-600);
         }
 
@@ -871,12 +879,12 @@
             color: #fff;
             cursor: pointer;
             background: linear-gradient(140deg, #1878ed, #0754c8);
-            box-shadow: 0 6px 14px rgba(16,98,216,.27);
+            box-shadow: 0 6px 14px rgba(16, 98, 216, .27);
             transition: transform .15s ease, box-shadow .15s ease;
         }
 
         .send-btn:hover {
-            box-shadow: 0 7px 17px rgba(16,98,216,.34);
+            box-shadow: 0 7px 17px rgba(16, 98, 216, .34);
         }
 
         .send-btn:active {
@@ -906,7 +914,10 @@
 
         .modal-overlay {
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background: rgba(8, 46, 112, 0.4);
             backdrop-filter: blur(6px);
             z-index: 100;
@@ -932,8 +943,15 @@
         }
 
         @keyframes popIn {
-            from { opacity: 0; transform: scale(0.94); }
-            to { opacity: 1; transform: scale(1); }
+            from {
+                opacity: 0;
+                transform: scale(0.94);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         .intake-header {
@@ -1013,7 +1031,7 @@
         .form-input-theme:focus {
             border-color: var(--blue-600);
             background: #ffffff;
-            box-shadow: 0 0 0 3px rgba(23,105,232,.10);
+            box-shadow: 0 0 0 3px rgba(23, 105, 232, .10);
         }
 
         .submit-btn-theme {
@@ -1053,7 +1071,9 @@
         ========================================================= */
 
         @media (max-width: 768px) {
-            html, body {
+
+            html,
+            body {
                 height: 100%;
                 height: 100dvh;
                 overflow: hidden;
@@ -1077,7 +1097,8 @@
                 padding: 0 12px;
             }
 
-            .header-subtitle, .header-divider {
+            .header-subtitle,
+            .header-divider {
                 display: none;
             }
 
@@ -1098,14 +1119,15 @@
                 <!-- XPERT AI ROBOT LOGO -->
                 <div class="xpert-ai-icon">
                     <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M32 17V11" stroke="#0c4da2" stroke-width="4" stroke-linecap="round"/>
-                        <circle cx="32" cy="8" r="4" fill="#1769e8"/>
-                        <rect x="8" y="17" width="48" height="37" rx="15" fill="#ffffff"/>
-                        <path d="M17 51L13 59L23 54" fill="#ffffff"/>
-                        <rect x="15" y="24" width="34" height="22" rx="10" fill="#103f94"/>
-                        <circle cx="26" cy="35" r="3.3" fill="#38e5fb"/>
-                        <circle cx="38" cy="35" r="3.3" fill="#38e5fb"/>
-                        <path d="M25 41c4 3 10 3 14 0" stroke="#38e5fb" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                        <path d="M32 17V11" stroke="#0c4da2" stroke-width="4" stroke-linecap="round" />
+                        <circle cx="32" cy="8" r="4" fill="#1769e8" />
+                        <rect x="8" y="17" width="48" height="37" rx="15" fill="#ffffff" />
+                        <path d="M17 51L13 59L23 54" fill="#ffffff" />
+                        <rect x="15" y="24" width="34" height="22" rx="10" fill="#103f94" />
+                        <circle cx="26" cy="35" r="3.3" fill="#38e5fb" />
+                        <circle cx="38" cy="35" r="3.3" fill="#38e5fb" />
+                        <path d="M25 41c4 3 10 3 14 0" stroke="#38e5fb" stroke-width="2.5" stroke-linecap="round"
+                            fill="none" />
                     </svg>
                     <span class="logo-sparkle sparkle-one">✦</span>
                     <span class="logo-sparkle sparkle-two">✦</span>
@@ -1125,10 +1147,14 @@
             </div>
 
             <div class="header-actions">
-                <button id="reset-btn" class="header-btn" type="button" title="Reset Session" aria-label="Reset session">↻</button>
-                <button id="minimizeButton" class="header-btn" type="button" title="Minimize" aria-label="Minimize chat">−</button>
-                <button id="expandButton" class="header-btn" type="button" title="Expand" aria-label="Expand chat">↗</button>
-                <button id="closeButton" class="header-btn close" type="button" title="Close" aria-label="Close chat">×</button>
+                <button id="reset-btn" class="header-btn" type="button" title="Reset Session"
+                    aria-label="Reset session">↻</button>
+                <button id="minimizeButton" class="header-btn" type="button" title="Minimize"
+                    aria-label="Minimize chat">−</button>
+                <button id="expandButton" class="header-btn" type="button" title="Expand"
+                    aria-label="Expand chat">↗</button>
+                <button id="closeButton" class="header-btn close" type="button" title="Close"
+                    aria-label="Close chat">×</button>
             </div>
         </header>
 
@@ -1155,19 +1181,26 @@
 
         <!-- COMPOSER FOOTER -->
         <div class="composer-wrap" style="position: relative;">
-            <div class="emoji-picker" id="emoji-picker" style="display: none; position: absolute; bottom: 100%; left: 12px; background: white; border: 1px solid #dce4f0; border-radius: 14px; padding: 10px; width: 300px; height: 200px; overflow-y: auto; box-shadow: 0 -4px 16px rgba(0,0,0,0.12); z-index: 100;">
+            <div class="emoji-picker" id="emoji-picker"
+                style="display: none; position: absolute; bottom: 100%; left: 12px; background: white; border: 1px solid #dce4f0; border-radius: 14px; padding: 10px; width: 300px; height: 200px; overflow-y: auto; box-shadow: 0 -4px 16px rgba(0,0,0,0.12); z-index: 100;">
                 <div id="emoji-grid" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
             </div>
             <form id="messageForm" class="composer" onsubmit="return false;">
-                <button id="attach-btn" class="composer-btn attach-btn" type="button" title="Attach file" aria-label="Attach file">📎</button>
-                <button id="emoji-btn" class="composer-btn attach-btn" type="button" title="Insert Emoji" aria-label="Insert Emoji">😊</button>
-                <input type="file" id="file-upload-input" style="display: none;" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip">
-                <input type="text" id="message-input" placeholder="Ask Xpert AI..." autocomplete="off" aria-label="Message Xpert AI">
-                <button class="composer-btn ai-mode-btn" type="button" title="AI assistant" aria-label="AI assistant">✦</button>
+                <button id="attach-btn" class="composer-btn attach-btn" type="button" title="Attach file"
+                    aria-label="Attach file">📎</button>
+                <button id="emoji-btn" class="composer-btn attach-btn" type="button" title="Insert Emoji"
+                    aria-label="Insert Emoji">😊</button>
+                <input type="file" id="file-upload-input" style="display: none;"
+                    accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip">
+                <input type="text" id="message-input" placeholder="Ask Xpert AI..." autocomplete="off"
+                    aria-label="Message Xpert AI">
+                <button class="composer-btn ai-mode-btn" type="button" title="AI assistant"
+                    aria-label="AI assistant">✦</button>
                 <button class="send-btn" id="send-btn" type="button" aria-label="Send message">
                     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M21 3L10.5 13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                        <path d="M21 3 L14.2 21 L10.5 13.5 L3 9.8 L21 3Z" fill="currentColor"/>
+                        <path d="M21 3L10.5 13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            fill="none" />
+                        <path d="M21 3 L14.2 21 L10.5 13.5 L3 9.8 L21 3Z" fill="currentColor" />
                     </svg>
                 </button>
             </form>
@@ -1206,21 +1239,24 @@
                         <label>Full Name *</label>
                         <div class="styled-input-group">
                             <i class="fa-regular fa-user"></i>
-                            <input type="text" id="guest-name" class="form-input-theme" placeholder="e.g. Haroon Abbas" required>
+                            <input type="text" id="guest-name" class="form-input-theme" placeholder="e.g. Haroon Abbas"
+                                required>
                         </div>
                     </div>
                     <div class="form-group" style="margin-top: 10px;">
                         <label>Email Address *</label>
                         <div class="styled-input-group">
                             <i class="fa-regular fa-envelope"></i>
-                            <input type="email" id="guest-email" class="form-input-theme" placeholder="e.g. john@example.com" required>
+                            <input type="email" id="guest-email" class="form-input-theme"
+                                placeholder="e.g. john@example.com" required>
                         </div>
                     </div>
                     <div class="form-group" style="margin-top: 10px;">
                         <label>Phone Number *</label>
                         <div class="styled-input-group">
                             <i class="fa-solid fa-phone"></i>
-                            <input type="tel" id="guest-phone" class="form-input-theme" placeholder="e.g. +923001234567" required>
+                            <input type="tel" id="guest-phone" class="form-input-theme" placeholder="e.g. +923001234567"
+                                required>
                         </div>
                     </div>
                     <button type="submit" class="submit-btn-theme" style="margin-top: 16px;">
@@ -1279,12 +1315,12 @@
         $(document).ready(function () {
             initSession();
 
-            const EMOJIS = ["😀","😃","😄","😁","😆","😅","😂","🤣","🥲","🥹","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🫡","🤐","🤨","😐","😑","😶","🫥","😏","😒","🙄","😬","🤥","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","🤯","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","😮","😯","😲","😳","🥺","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","💀","☠️","💩","🤡","👹","👺","👻","👽","👾","🤖", "👋","🤚","🖐️","✋","🖖","👍","👎","✊","👊","🤛","🤜","👏","🙌","🫶","👐","🤲","🤝","🙏", "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝"];
+            const EMOJIS = ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "🥹", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🫡", "🤐", "🤨", "😐", "😑", "😶", "🫥", "😏", "😒", "🙄", "😬", "🤥", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐", "😕", "🫤", "😟", "🙁", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️", "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖", "👋", "🤚", "🖐️", "✋", "🖖", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "🫶", "👐", "🤲", "🤝", "🙏", "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝"];
             let emojiGrid = $("#emoji-grid");
             EMOJIS.forEach(emoji => {
                 let span = $(`<span style="cursor: pointer; font-size: 20px; padding: 4px; transition: transform 0.1s;">${emoji}</span>`);
-                span.hover(function() { $(this).css("transform", "scale(1.2)"); }, function() { $(this).css("transform", "scale(1)"); });
-                span.on("click", function() {
+                span.hover(function () { $(this).css("transform", "scale(1.2)"); }, function () { $(this).css("transform", "scale(1)"); });
+                span.on("click", function () {
                     let input = $("#message-input");
                     input.val(input.val() + emoji);
                     input.focus();
@@ -1292,23 +1328,23 @@
                 emojiGrid.append(span);
             });
 
-            $("#emoji-btn").on("click", function(e) {
+            $("#emoji-btn").on("click", function (e) {
                 e.stopPropagation();
                 $("#emoji-picker").toggle();
             });
 
-            $(document).on("click", function() {
+            $(document).on("click", function () {
                 $("#emoji-picker").hide();
             });
-            $("#emoji-picker").on("click", function(e) {
+            $("#emoji-picker").on("click", function (e) {
                 e.stopPropagation();
             });
 
-            $("#attach-btn").on("click", function() {
+            $("#attach-btn").on("click", function () {
                 $("#file-upload-input").click();
             });
 
-            $("#file-upload-input").on("change", function(e) {
+            $("#file-upload-input").on("change", function (e) {
                 let file = e.target.files[0];
                 if (!file) return;
 
@@ -1328,21 +1364,21 @@
                         "X-Frappe-CSRF-Token": getCsrfToken()
                     }
                 })
-                .then(res => {
-                    if (!res.ok) throw new Error(`Upload failed with status: ${res.status}`);
-                    return res.json();
-                })
-                .then(res => {
-                    uploadBtn.prop("disabled", false).text('📎');
-                    if (res.message && res.message.file_url) {
-                        sendMessage(null, res.message.file_url);
-                    }
-                })
-                .catch(err => {
-                    console.error("Upload error:", err);
-                    uploadBtn.prop("disabled", false).text('📎');
-                    alert("File upload failed.");
-                });
+                    .then(res => {
+                        if (!res.ok) throw new Error(`Upload failed with status: ${res.status}`);
+                        return res.json();
+                    })
+                    .then(res => {
+                        uploadBtn.prop("disabled", false).text('📎');
+                        if (res.message && res.message.file_url) {
+                            sendMessage(null, res.message.file_url);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Upload error:", err);
+                        uploadBtn.prop("disabled", false).text('📎');
+                        alert("File upload failed.");
+                    });
                 $(this).val("");
             });
 
@@ -1477,16 +1513,30 @@
                 "main_menu": "Main Menu",
                 "btn_menu": "Main Menu",
                 "menu": "Main Menu",
+                "svc_attendance_leave": "Attendance & Leave",
+                "svc_salary_payroll": "Salary & Payroll",
+                "svc_travel_dsa": "Travel & DSA",
+                "svc_docs_contract": "Documents & Contract",
+                "svc_my_profile": "My Profile & Documents",
+                "svc_staff_support": "Staff Support",
+                "svc_ai_policy": "AI Policy Assistant",
                 "svc_att_today": "Today's Attendance",
-                "svc_leave_requests": "My Leave",
+                "svc_att_missing": "Missing Attendance",
+                "svc_leave_balance": "Leave Balance",
+                "svc_leave_apply": "Apply for Leave",
+                "svc_leave_requests": "My Leave Requests",
+                "svc_att_request_apply": "Attendance Request",
+                "svc_att_monthly": "Monthly View",
+                "svc_att_checkin": "Check In",
+                "svc_att_checkout": "Check Out",
                 "svc_open_hrmis": "Open Portal",
                 "svc_update_profile": "My Details",
                 "svc_doc_contract": "Contract",
                 "svc_doc_salary_slip": "Salary Slip",
                 "svc_doc_tax_cert": "Tax Certificate",
-                "svc_att_checkin": "Check In",
-                "svc_att_checkout": "Check Out",
-                "svc_att_monthly": "Monthly View",
+                "lang_en": "English",
+                "lang_ur": "اردو",
+                "lang_ru": "Roman Urdu",
                 "restart": "Restart Session"
             };
 
@@ -1494,7 +1544,7 @@
                 return labelMap[cleanText];
             }
 
-            if (cleanText.startsWith("svc_") || cleanText.startsWith("fb_") || cleanText.startsWith("btn_")) {
+            if (cleanText.startsWith("svc_") || cleanText.startsWith("fb_") || cleanText.startsWith("btn_") || cleanText.startsWith("lang_")) {
                 let parts = cleanText.split("_").slice(1);
                 return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
             }
@@ -1532,82 +1582,82 @@
                     "X-Frappe-CSRF-Token": getCsrfToken()
                 }
             })
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                return res.json();
-            })
-            .then(res => {
-                if (res.message && res.message.success) {
-                    let data = res.message;
-                    if (data.needs_intake) {
-                        $("#guest-modal").show();
-                        return;
-                    }
-                    activeSessionId = data.whatsapp_identity;
-
-                    if (data.user_image) {
-                        userAvatarUrl = data.user_image;
-                    }
-
-                    if (data.history && data.history.length > 0) {
-                        historyOffset = data.history.length;
-                        if (data.history.length < historyLimit) {
-                            hasMoreHistory = false;
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                    return res.json();
+                })
+                .then(res => {
+                    if (res.message && res.message.success) {
+                        let data = res.message;
+                        if (data.needs_intake) {
+                            $("#guest-modal").show();
+                            return;
                         }
-                        if (isGuest) {
-                            hasMoreHistory = false;
+                        activeSessionId = data.whatsapp_identity;
+
+                        if (data.user_image) {
+                            userAvatarUrl = data.user_image;
                         }
 
-                        let initialHtml = "";
-                        let lastDateInBatch = null;
-
-                        data.history.forEach(msg => {
-                            renderedMessageIds.add(msg.name);
-                            let msgDateKey = formatDateKey(msg.timestamp);
-                            
-                            let tsStr = msg.timestamp || msg.creation;
-                            if (tsStr) {
-                                let t = new Date(tsStr).getTime();
-                                if (!isNaN(t) && (!latestRenderedTimestamp || t > latestRenderedTimestamp)) {
-                                    latestRenderedTimestamp = t;
-                                }
+                        if (data.history && data.history.length > 0) {
+                            historyOffset = data.history.length;
+                            if (data.history.length < historyLimit) {
+                                hasMoreHistory = false;
                             }
+                            if (isGuest) {
+                                hasMoreHistory = false;
+                            }
+
+                            let initialHtml = "";
+                            let lastDateInBatch = null;
+
+                            data.history.forEach(msg => {
+                                renderedMessageIds.add(msg.name);
+                                let msgDateKey = formatDateKey(msg.timestamp);
+
+                                let tsStr = msg.timestamp || msg.creation;
+                                if (tsStr) {
+                                    let t = new Date(tsStr).getTime();
+                                    if (!isNaN(t) && (!latestRenderedTimestamp || t > latestRenderedTimestamp)) {
+                                        latestRenderedTimestamp = t;
+                                    }
+                                }
+
+                                if (!isGuest) {
+                                    if (msgDateKey && msgDateKey !== lastDateInBatch) {
+                                        lastDateInBatch = msgDateKey;
+                                        initialHtml += buildDateSeparatorHtml(msgDateKey);
+                                    }
+                                    let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
+                                    initialHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
+                                }
+                            });
 
                             if (!isGuest) {
-                                if (msgDateKey && msgDateKey !== lastDateInBatch) {
-                                    lastDateInBatch = msgDateKey;
-                                    initialHtml += buildDateSeparatorHtml(msgDateKey);
-                                }
-                                let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
-                                initialHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
+                                lastRenderedDateKey = lastDateInBatch;
+                                $("#history-loader").after(initialHtml);
+                                scrollToBottom();
+                            } else {
+                                if (data.welcome) renderOutbound(data.welcome, "bot");
+                                if (data.menu) renderOutbound(data.menu, "bot");
                             }
-                        });
-
-                        if (!isGuest) {
-                            lastRenderedDateKey = lastDateInBatch;
-                            $("#history-loader").after(initialHtml);
-                            scrollToBottom();
                         } else {
+                            hasMoreHistory = false;
                             if (data.welcome) renderOutbound(data.welcome, "bot");
                             if (data.menu) renderOutbound(data.menu, "bot");
                         }
-                    } else {
-                        hasMoreHistory = false;
-                        if (data.welcome) renderOutbound(data.welcome, "bot");
-                        if (data.menu) renderOutbound(data.menu, "bot");
-                    }
 
-                    startPollingLoop();
-                } else {
-                    if (isGuest) {
-                        $("#guest-modal").show();
+                        startPollingLoop();
+                    } else {
+                        if (isGuest) {
+                            $("#guest-modal").show();
+                        }
                     }
-                }
-            })
-            .catch(err => {
-                console.error("initSession error:", err);
-                renderMessage("Failed to connect to XpertChat server.", "bot");
-            });
+                })
+                .catch(err => {
+                    console.error("initSession error:", err);
+                    renderMessage("Failed to connect to XpertChat server.", "bot");
+                });
         }
 
         function loadOlderMessages() {
@@ -1634,52 +1684,52 @@
                 method: "GET",
                 credentials: "include"
             })
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                return res.json();
-            })
-            .then(res => {
-                $("#history-loader").hide();
-                if (res.message && Array.isArray(res.message)) {
-                    let olderMsgs = res.message;
-                    if (olderMsgs.length < historyLimit) {
-                        hasMoreHistory = false;
-                    }
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                    return res.json();
+                })
+                .then(res => {
+                    $("#history-loader").hide();
+                    if (res.message && Array.isArray(res.message)) {
+                        let olderMsgs = res.message;
+                        if (olderMsgs.length < historyLimit) {
+                            hasMoreHistory = false;
+                        }
 
-                    if (olderMsgs.length > 0) {
-                        historyOffset += olderMsgs.length;
-                        let prependedHtml = "";
-                        let lastPrependedDateKey = null;
+                        if (olderMsgs.length > 0) {
+                            historyOffset += olderMsgs.length;
+                            let prependedHtml = "";
+                            let lastPrependedDateKey = null;
 
-                        olderMsgs.forEach(msg => {
-                            if (!renderedMessageIds.has(msg.name)) {
-                                renderedMessageIds.add(msg.name);
-                                let msgDateKey = formatDateKey(msg.timestamp);
-                                if (msgDateKey && msgDateKey !== lastPrependedDateKey) {
-                                    if ($(`#chat-stream .date-separator[data-date="${msgDateKey}"]`).length === 0) {
-                                        lastPrependedDateKey = msgDateKey;
-                                        prependedHtml += buildDateSeparatorHtml(msgDateKey);
+                            olderMsgs.forEach(msg => {
+                                if (!renderedMessageIds.has(msg.name)) {
+                                    renderedMessageIds.add(msg.name);
+                                    let msgDateKey = formatDateKey(msg.timestamp);
+                                    if (msgDateKey && msgDateKey !== lastPrependedDateKey) {
+                                        if ($(`#chat-stream .date-separator[data-date="${msgDateKey}"]`).length === 0) {
+                                            lastPrependedDateKey = msgDateKey;
+                                            prependedHtml += buildDateSeparatorHtml(msgDateKey);
+                                        }
                                     }
+                                    let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
+                                    prependedHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
                                 }
-                                let role = msg.direction === "Inbound" ? "user" : (msg.sender_type === "HR Agent" ? "agent" : "bot");
-                                prependedHtml += buildMessageHtml(msg.message, role, [], msg.sender_type, msg.media_file, msg.timestamp);
-                            }
-                        });
+                            });
 
-                        if (prependedHtml) {
-                            $("#history-loader").after(prependedHtml);
-                            let newScrollHeight = stream.scrollHeight;
-                            stream.scrollTop = newScrollHeight - oldScrollHeight;
+                            if (prependedHtml) {
+                                $("#history-loader").after(prependedHtml);
+                                let newScrollHeight = stream.scrollHeight;
+                                stream.scrollTop = newScrollHeight - oldScrollHeight;
+                            }
                         }
                     }
-                }
-                loadingHistory = false;
-            })
-            .catch(err => {
-                console.error("loadOlderMessages error:", err);
-                $("#history-loader").hide();
-                loadingHistory = false;
-            });
+                    loadingHistory = false;
+                })
+                .catch(err => {
+                    console.error("loadOlderMessages error:", err);
+                    $("#history-loader").hide();
+                    loadingHistory = false;
+                });
         }
 
         function startPollingLoop() {
@@ -1696,33 +1746,33 @@
                     method: "GET",
                     credentials: "include"
                 })
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                    return res.json();
-                })
-                .then(res => {
-                    if (res.message && Array.isArray(res.message)) {
-                        res.message.forEach(msg => {
-                            let contentKey = "msg:" + (msg.message || "").trim().toLowerCase();
-                            if (!renderedMessageIds.has(msg.name) && !renderedMessageIds.has(contentKey)) {
-                                renderedMessageIds.add(msg.name);
-                                renderedMessageIds.add(contentKey);
-                                let tsStr = msg.timestamp || msg.creation;
-                                let msgTime = tsStr ? new Date(tsStr).getTime() : Date.now();
+                    .then(res => {
+                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                        return res.json();
+                    })
+                    .then(res => {
+                        if (res.message && Array.isArray(res.message)) {
+                            res.message.forEach(msg => {
+                                let contentKey = "msg:" + (msg.message || "").trim().toLowerCase();
+                                if (!renderedMessageIds.has(msg.name) && !renderedMessageIds.has(contentKey)) {
+                                    renderedMessageIds.add(msg.name);
+                                    renderedMessageIds.add(contentKey);
+                                    let tsStr = msg.timestamp || msg.creation;
+                                    let msgTime = tsStr ? new Date(tsStr).getTime() : Date.now();
 
-                                if (msg.direction === "Outbound" && (!latestRenderedTimestamp || msgTime >= latestRenderedTimestamp - 5000)) {
-                                    renderMessage(msg.message, msg.sender_type === "HR Agent" ? "agent" : "bot", [], msg.sender_type, msg.media_file, msg.timestamp);
-                                    if (document.hidden) {
-                                        triggerNotification("New message", { body: msg.message || "You have a new message", icon: "/assets/frappe/images/frappe-framework-logo.svg" });
+                                    if (msg.direction === "Outbound" && (!latestRenderedTimestamp || msgTime >= latestRenderedTimestamp - 5000)) {
+                                        renderMessage(msg.message, msg.sender_type === "HR Agent" ? "agent" : "bot", [], msg.sender_type, msg.media_file, msg.timestamp);
+                                        if (document.hidden) {
+                                            triggerNotification("New message", { body: msg.message || "You have a new message", icon: "/assets/frappe/images/frappe-framework-logo.svg" });
+                                        }
                                     }
                                 }
-                            }
-                        });
-                    }
-                })
-                .catch(err => {
-                    console.error("Polling error:", err);
-                });
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Polling error:", err);
+                    });
             }, 3000);
         }
 
@@ -1752,9 +1802,10 @@
                 $("#message-input").val("");
             }
 
-            renderMessage(displayLabel || text, "user", [], "", mediaUrl);
+            let userLabel = displayLabel || format_message_text(text);
+            renderMessage(userLabel, "user", [], "", mediaUrl);
 
-            let reqData = { message_text: text || "" };
+            let reqData = { message_text: userLabel || text || "" };
             if (mediaUrl) reqData.media_url = mediaUrl;
             // Always send the stored identity as a backend fallback (Tier 2 resolver)
             if (activeSessionId) reqData.wa_identity_name = activeSessionId;
@@ -1779,23 +1830,23 @@
                     "X-Frappe-CSRF-Token": getCsrfToken()
                 }
             })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
-                return res.json();
-            })
-            .then(res => {
-                if (res.message && res.message.success) {
-                    renderOutbound(res.message.response, "bot");
-                } else {
-                    renderMessage(res.message && res.message.error ? res.message.error : "Sorry, something went wrong.", "bot");
-                }
-            })
-            .catch(err => {
-                console.error("send_message error:", err);
-                renderMessage("Sorry, message could not be sent.", "bot");
-            });
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                    return res.json();
+                })
+                .then(res => {
+                    if (res.message && res.message.success) {
+                        renderOutbound(res.message.response, "bot");
+                    } else {
+                        renderMessage(res.message && res.message.error ? res.message.error : "Sorry, something went wrong.", "bot");
+                    }
+                })
+                .catch(err => {
+                    console.error("send_message error:", err);
+                    renderMessage("Sorry, message could not be sent.", "bot");
+                });
         }
 
         function renderOutbound(outbound, defaultRole) {
@@ -1814,7 +1865,7 @@
 
         function buildMessageHtml(text, role, buttons = [], senderTag = "", mediaFile = "", timestamp = null) {
             let rawText = text ? String(text).trim() : "";
-            
+
             let btnMatch = rawText.match(/<!-- _WEB_BUTTONS_: (.*?) -->/);
             if (btnMatch) {
                 try {
@@ -1822,20 +1873,26 @@
                     if (parsedBtns && Array.isArray(parsedBtns) && (!buttons || buttons.length === 0)) {
                         buttons = parsedBtns;
                     }
-                } catch(e) {}
+                } catch (e) { }
                 rawText = rawText.replace(btnMatch[0], "");
                 rawText = rawText.replace("[list menu]", "");
                 rawText = rawText.replace("[button menu]", "");
             }
-            
-            let formattedText = formatMarkdown(rawText.trim());
+
+            let isUser = role === "user";
+            let isAgent = role === "agent";
+
+            let formattedText = "";
+            if (isUser) {
+                formattedText = `<div class="msg-body"><p style="margin:0 0 5px 0;line-height:1.6">${escapeHtml(rawText.trim()).replace(/\n/g, '<br>')}</p></div>`;
+            } else {
+                formattedText = formatMarkdown(rawText.trim());
+            }
 
             if (!formattedText && !mediaFile && (!buttons || buttons.length === 0)) {
                 return "";
             }
 
-            let isUser = role === "user";
-            let isAgent = role === "agent";
             let avatarClass = isUser ? "user-avatar" : (isAgent ? "agent-avatar" : "ai-avatar");
 
             let avatarHtml = "";
@@ -1940,7 +1997,7 @@
          *  - _italic_           →  <em>
          *  - `code`             →  <code>
          *  - Bullet lines (•, -, *) → <ul><li>
-         *  - Numbered lines (1.) → <ol><li>
+         *  - Numbered lines (1.) → <ol start="N"><li>
          *  - Heading lines (# or ## prefix) → .msg-heading
          *  - Blank lines → paragraph breaks
          *  - --- / === dividers → <hr>
@@ -2009,10 +2066,11 @@
                 }
 
                 // Numbered list: 1. 2. 3.
-                const numMatch = trimmed.match(/^(\d+)[.)\s]\s*(.+)$/);
+                const numMatch = trimmed.match(/^(\d+)[.)]\s+(.+)$/);
                 if (numMatch) {
                     if (inUl) { html += "</ul>"; inUl = false; }
-                    if (!inOl) { html += '<ol class="msg-ol">'; inOl = true; }
+                    let startNum = numMatch[1];
+                    if (!inOl) { html += `<ol class="msg-ol" start="${startNum}">`; inOl = true; }
                     html += `<li>${inline(numMatch[2])}</li>`;
                     return;
                 }

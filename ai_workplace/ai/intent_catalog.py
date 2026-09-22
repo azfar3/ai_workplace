@@ -98,6 +98,29 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
         "source_type": "ERP",
     },
 
+    "apply_attendance_request": {
+        "category": "attendance",
+        "intents": ["apply_attendance_request", "create_attendance_request", "submit_attendance_request", "attendance_request"],
+        "aliases": [
+            "apply for attendance request",
+            "apply attendance request",
+            "attendance request",
+            "hazri ki darkhwast",
+            "attendance correction",
+            "submit attendance request",
+            "request attendance",
+            "request attendance correction",
+        ],
+        "tool": None,
+        "requires_authentication": True,
+        "read_only": False,
+        "requires_confirmation": True,
+        "llm_allowed": False,
+        "response_mode": "workflow",
+        "workflow_intent": "att_request_apply",
+        "source_type": "ERP",
+    },
+
     "leave_history": {
         "category": "leave",
         "intents": ["leave_history", "my_leaves_taken", "past_leaves"],

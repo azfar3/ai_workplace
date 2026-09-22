@@ -36,9 +36,18 @@ class TestLeaveApplyHelpers(unittest.TestCase):
 
 
 class TestLeaveApplyFlow(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not getattr(frappe.local, "db", None):
+            import os
+            os.chdir("/home/erp/frappe-v15/sites")
+            frappe.init(site="erp.v15")
+            frappe.connect()
+
     def setUp(self):
-        frappe.db.rollback()
-        frappe.set_user("Administrator")
+        if getattr(frappe.local, "db", None):
+            frappe.db.rollback()
+            frappe.set_user("Administrator")
         self.conv = MagicMock()
         self.conv.name = "CONV-TEST"
         self.conv.employee = "EMP-TEST"

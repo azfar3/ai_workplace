@@ -38,6 +38,9 @@ _DEFAULT_POLICIES: dict[str, str] = {
     "leave_balance": POLICY_NONE,
     "leave_apply": POLICY_NONE,
     "leave_requests": POLICY_NONE,
+    "att_request_apply": POLICY_NONE,
+    "attendance_request_apply": POLICY_NONE,
+    "svc_att_request_apply": POLICY_NONE,
     "att_monthly_last7": POLICY_NONE,
     "att_monthly_download": POLICY_NONE,
     # Profile details (PIN required)
