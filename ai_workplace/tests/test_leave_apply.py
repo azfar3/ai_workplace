@@ -26,12 +26,13 @@ class TestLeaveApplyHelpers(unittest.TestCase):
 
     def test_resolve_leave_type_by_index(self):
         draft = {
+            "custom_leave_reasons": ["Vacations", "Self-Sick Leave"],
             "leave_types": [
                 {"leave_type": "Casual Leave", "remaining": "5.0"},
                 {"leave_type": "Sick Leave", "remaining": "3.0"},
             ]
         }
-        self.assertEqual(_resolve_leave_type(draft, "lt_1"), "Sick Leave")
+        self.assertEqual(_resolve_leave_type(draft, "lt_1"), "Self-Sick Leave")
 
 
 class TestLeaveApplyFlow(unittest.TestCase):
@@ -54,10 +55,10 @@ class TestLeaveApplyFlow(unittest.TestCase):
 
     @patch("ai_workplace.services.leave_apply.update_conversation")
     @patch("ai_workplace.services.leave_apply.get_leave_balance_data")
-    def test_start_requires_leave_types(self, mock_balance, mock_update):
+    def test_start_presents_reasons(self, mock_balance, mock_update):
         mock_balance.return_value = []
         out = start_leave_application(self.conv, self.context)
-        self.assertIn("No active leave allocation", out.body_text)
+        self.assertIn("Apply for Leave", out.body_text)
 
     @patch("ai_workplace.services.leave_apply.update_conversation")
     @patch("ai_workplace.services.leave_apply.get_leave_balance_data")
@@ -74,8 +75,10 @@ class TestLeaveApplyFlow(unittest.TestCase):
     def test_handle_leave_type_step(self, mock_save):
         self.conv.draft_payload = json.dumps({
             "step": "awaiting_leave_type",
+            "custom_leave_reasons": ["Vacations", "Self-Sick Leave"],
             "leave_types": [{"leave_type": "Casual Leave", "remaining": "5.0"}],
         })
         out = handle_leave_apply_message(self.conv, "lt_0", self.context)
         self.assertIn("From Date", out.body_text)
         mock_save.assert_called()
+

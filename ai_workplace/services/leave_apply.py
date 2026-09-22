@@ -28,28 +28,41 @@ _DATE_HINT = "e.g. 01-Sep-2026 or 2026-09-01"
 _CANCEL_WORDS = frozenset({"cancel", "menu", "stop", "exit", "back"})
 
 
+CUSTOM_LEAVE_REASONS = [
+    "Vacations",
+    "Self-Sick Leave",
+    "Sick Leave Immediate Family",
+    "Death in Immediate Family",
+    "Self-Wedding",
+    "Family Wedding",
+    "Maternity",
+    "Study/Exams",
+    "Religious Events",
+    "Ziaraat",
+    "Umrah",
+    "Hajj",
+    "Accident while at work",
+    "Accident while not at work",
+    "Other",
+]
+
+
 def start_leave_application(conv: Any, context: dict[str, Any]) -> OutboundMessage:
-    """Begin leave application — show assigned leave types."""
+    """Begin leave application — show predefined custom_leave_reasons as leave reasons/types."""
     lang = context.get("preferred_language", "English")
     employee_id = context.get("employee") or conv.employee or ""
     if not employee_id:
         err = "معذرت، چھٹی کی درخواست صرف رجسٹرڈ ملازمین کے لیے دستیاب ہے۔" if lang == "Urdu" else "Leave application is only available for linked employees."
         return wrap_with_parent_menu(err, context, "attendance_leave")
 
-    leave_types = get_leave_balance_data(employee_id)
-    if not leave_types:
-        if lang == "Urdu":
-            err = "آپ کے اکاؤنٹ میں کوئی فعال (Active) چھٹی کا کوٹہ نہیں ملا۔\n\nاگر یہ غلط ہے تو براہ کرم HR سے رابطہ کریں۔"
-        elif lang == "Roman Urdu":
-            err = "Aap ke account mein koi active leave allocation nahi mila.\n\nAgar yeh ghalat hai toh HR se rabta karein."
-        else:
-            err = "No active leave allocation was found for your account.\n\nPlease contact HR if you believe this is incorrect."
-        return wrap_with_parent_menu(err, context, "attendance_leave")
+    leave_balances = get_leave_balance_data(employee_id)
+    reasons = CUSTOM_LEAVE_REASONS
 
     draft = {
         "step": "awaiting_leave_type",
         "employee": employee_id,
-        "leave_types": leave_types,
+        "custom_leave_reasons": reasons,
+        "leave_types": leave_balances,
     }
     update_conversation(
         conv,
@@ -63,24 +76,22 @@ def start_leave_application(conv: Any, context: dict[str, Any]) -> OutboundMessa
         header = (
             "📝 *چھٹی کی درخواست (Apply for Leave)*\n\n"
             "آئیے آپ کی چھٹی کی درخواست مرحلہ وار جمع کروائیں۔\n\n"
-            "مرحلہ 1 تا 4 — اپنی *چھٹی کی قسم* منتخب کریں:"
+            "مرحلہ 1 تا 4 — اپنی *چھٹی کی وجہ (Leave Reason)* منتخب کریں:"
         )
     elif lang == "Roman Urdu":
         header = (
             "📝 *Apply for Leave*\n\n"
             "Aap ki leave application step by step submit karte hain.\n\n"
-            "Step 1 of 4 — Apni *Leave Type* select karein:"
+            "Step 1 of 4 — Apni *Leave Reason (Type)* select karein:"
         )
     else:
         header = (
             "📝 *Apply for Leave*\n\n"
             "Let's submit your leave step by step.\n\n"
-            "Step 1 of 4 — Select your *Leave Type*:"
+            "Step 1 of 4 — Select your *Leave Reason (Type)*:"
         )
 
-    if len(leave_types) <= 3:
-        return _build_leave_type_buttons(header, leave_types)
-    return build_leave_type_list_message(context, leave_types, header)
+    return _build_leave_reason_list_message(context, reasons, header)
 
 
 def handle_leave_apply_message(
@@ -141,74 +152,106 @@ def _cancel_flow(conv: Any, context: dict[str, Any]) -> OutboundMessage:
     return wrap_with_parent_menu(msg, context, "attendance_leave")
 
 
-def _build_leave_type_buttons(header: str, leave_types: list[dict[str, Any]]) -> OutboundMessage:
-    buttons = []
-    for idx, item in enumerate(leave_types[:3]):
-        lt = item.get("leave_type") or "Leave"
-        buttons.append({
-            "type": "reply",
-            "reply": {"id": f"lt_{idx}", "title": lt[:20]},
-        })
-    interactive = {
-        "type": "button",
-        "body": {"text": header},
-        "action": {"buttons": buttons},
-    }
-    return OutboundMessage(body_text=header, interactive=interactive)
+def _build_leave_reason_list_message(
+    context: dict[str, Any],
+    reasons: list[str],
+    header: str,
+) -> OutboundMessage:
+    from ai_workplace.whatsapp.interactive import build_option_list_message
+
+    return build_option_list_message(
+        options=reasons,
+        header=header,
+        button_label="Select Reason",
+        section_title="Leave Reasons",
+        id_prefix="lt",
+    )
 
 
 def _resolve_leave_type(draft: dict[str, Any], text: str) -> Optional[str]:
+    reasons = draft.get("custom_leave_reasons") or CUSTOM_LEAVE_REASONS
     leave_types = draft.get("leave_types") or []
     clean = text.strip().lower()
 
+    resolved_reason = None
     if clean.startswith("lt_") and clean[3:].isdigit():
         idx = int(clean[3:])
-        if 0 <= idx < len(leave_types):
-            return leave_types[idx].get("leave_type")
+        if 0 <= idx < len(reasons):
+            resolved_reason = reasons[idx]
+        elif 0 <= idx < len(leave_types):
+            resolved_reason = leave_types[idx].get("leave_type")
+    elif clean.startswith("opt_") and clean[4:].isdigit():
+        idx = int(clean[4:])
+        if 0 <= idx < len(reasons):
+            resolved_reason = reasons[idx]
 
-    for item in leave_types:
-        lt = (item.get("leave_type") or "").lower()
-        if clean == lt or clean in lt or lt in clean:
-            return item.get("leave_type")
-    return None
+    if not resolved_reason:
+        for r in reasons:
+            if clean == r.lower() or clean in r.lower() or r.lower() in clean:
+                resolved_reason = r
+                break
+
+    if not resolved_reason:
+        for item in leave_types:
+            lt = (item.get("leave_type") or "").lower()
+            if clean == lt or clean in lt or lt in clean:
+                resolved_reason = item.get("leave_type")
+                break
+
+    return resolved_reason
 
 
 def _handle_leave_type(conv: Any, context: dict[str, Any], draft: dict, text: str) -> OutboundMessage:
-    leave_type = _resolve_leave_type(draft, text)
+    leave_reason = _resolve_leave_type(draft, text)
     lang = context.get("preferred_language", "English")
 
-    if not leave_type:
+    if not leave_reason:
         if lang == "Urdu":
-            err = "براہ کرم فہرست سے چھٹی کی قسم منتخب کریں، یا منسوخ کرنے کے لیے 'menu' لکھیں۔"
+            err = "براہ کرم فہرست سے چھٹی کی وجہ (Leave Reason) منتخب کریں، یا منسوخ کرنے کے لیے 'menu' لکھیں۔"
         elif lang == "Roman Urdu":
-            err = "Baraaye meharbani list se leave type select karein, ya cancel karne ke liye 'menu' likhein."
+            err = "Baraaye meharbani list se leave reason select karein, ya cancel karne ke liye 'menu' likhein."
         else:
-            err = "Please select a leave type from the list, or type 'menu' to cancel."
+            err = "Please select a leave reason from the list, or type 'menu' to cancel."
         return OutboundMessage(body_text=err)
 
-    draft["leave_type"] = leave_type
+    draft["custom_leave_reason"] = leave_reason
+    leave_balances = draft.get("leave_types") or []
+    mapped_leave_type = None
+    if leave_balances:
+        avail_types = [b.get("leave_type") for b in leave_balances if b.get("leave_type")]
+        for at in avail_types:
+            if ("sick" in leave_reason.lower() and "sick" in at.lower()) or \
+               ("casual" in leave_reason.lower() and "casual" in at.lower()) or \
+               ("vacation" in leave_reason.lower() and "annual" in at.lower()):
+                mapped_leave_type = at
+                break
+        if not mapped_leave_type and avail_types:
+            mapped_leave_type = avail_types[0]
+
+    draft["leave_type"] = mapped_leave_type or leave_reason
     draft["step"] = "awaiting_from_date"
     _save_draft(conv, draft)
 
     if lang == "Urdu":
         body = (
-            f"✅ چھٹی کی قسم: *{leave_type}*\n\n"
+            f"✅ چھٹی کی وجہ: *{leave_reason}*\n\n"
             f"مرحلہ 2 تا 4 — *شروعاتی تاریخ (From Date)* درج کریں\n"
             f"فارمیٹ: 01-Sep-2026 یا 2026-09-01"
         )
     elif lang == "Roman Urdu":
         body = (
-            f"✅ Leave Type: *{leave_type}*\n\n"
+            f"✅ Leave Reason: *{leave_reason}*\n\n"
             f"Step 2 of 4 — Enter *From Date*\n"
             f"Format: 01-Sep-2026 ya 2026-09-01"
         )
     else:
         body = (
-            f"✅ Leave Type: *{leave_type}*\n\n"
+            f"✅ Leave Reason: *{leave_reason}*\n\n"
             f"Step 2 of 4 — Enter *From Date*\n"
             f"Format: {_DATE_HINT}"
         )
     return OutboundMessage(body_text=body)
+
 
 
 def _parse_user_date(text: str) -> Optional[Any]:
@@ -374,36 +417,37 @@ def _build_summary(draft: dict[str, Any], context: dict[str, Any] | None = None)
     lang = (context or {}).get("preferred_language", "English")
     from_date = formatdate(draft.get("from_date"), "dd MMM YYYY")
     to_date = formatdate(draft.get("to_date"), "dd MMM YYYY")
+    reason_label = draft.get("custom_leave_reason") or draft.get("leave_type")
 
     if lang == "Urdu":
         half = "ہاں" if draft.get("half_day") else "نہیں"
         return (
             f"📋 *چھٹی کی درخواست کا خلاصہ*\n\n"
-            f"• *چھٹی کی قسم:* {draft.get('leave_type')}\n"
+            f"• *چھٹی کی وجہ:* {reason_label}\n"
             f"• *شروعاتی تاریخ:* {from_date}\n"
             f"• *آخری تاریخ:* {to_date}\n"
             f"• *نصف دن (Half Day):* {half}\n"
-            f"• *وجہ:* {draft.get('description')}"
+            f"• *تفصیل:* {draft.get('description')}"
         )
     elif lang == "Roman Urdu":
         half = "Haan" if draft.get("half_day") else "Nahi"
         return (
             f"📋 *Leave Application Summary*\n\n"
-            f"• *Leave Type:* {draft.get('leave_type')}\n"
+            f"• *Leave Reason:* {reason_label}\n"
             f"• *From:* {from_date}\n"
             f"• *To:* {to_date}\n"
             f"• *Half Day:* {half}\n"
-            f"• *Reason:* {draft.get('description')}"
+            f"• *Details:* {draft.get('description')}"
         )
     else:
         half = "Yes" if draft.get("half_day") else "No"
         return (
             f"📋 *Leave Application Summary*\n\n"
-            f"• *Leave Type:* {draft.get('leave_type')}\n"
+            f"• *Leave Reason:* {reason_label}\n"
             f"• *From:* {from_date}\n"
             f"• *To:* {to_date}\n"
             f"• *Half Day:* {half}\n"
-            f"• *Reason:* {draft.get('description')}"
+            f"• *Details:* {draft.get('description')}"
         )
 
 
@@ -488,16 +532,15 @@ def _create_leave_application(draft: dict[str, Any], context: dict[str, Any]) ->
         employee = frappe.get_cached_doc("Employee", employee_id)
         doc = frappe.new_doc("Leave Application")
         doc.employee = employee_id
-        doc.leave_type = draft.get("leave_type")
+        doc.custom_leave_reason = draft.get("custom_leave_reason") or draft.get("leave_reason") or draft.get("leave_type") or "Other"
+        doc.leave_type = draft.get("leave_type") or doc.custom_leave_reason
         doc.from_date = draft.get("from_date")
         doc.to_date = draft.get("to_date")
         doc.half_day = cint(draft.get("half_day") or 0)
         doc.custom_short_leave = cint(draft.get("short_leave") or draft.get("custom_short_leave") or 0)
         if doc.half_day and draft.get("half_day_date"):
             doc.half_day_date = draft.get("half_day_date")
-        if draft.get("leave_reason") or draft.get("custom_leave_reason"):
-            doc.custom_leave_reason = draft.get("leave_reason") or draft.get("custom_leave_reason")
-        doc.description = draft.get("description") or ""
+        doc.description = draft.get("description") or doc.custom_leave_reason
         doc.company = employee.company
         doc.leave_approver = employee.get("leave_approver") or None
         doc.posting_date = today()
@@ -517,3 +560,4 @@ def _create_leave_application(draft: dict[str, Any], context: dict[str, Any]) ->
         return doc.name
     finally:
         frappe.set_user(previous_user)
+
