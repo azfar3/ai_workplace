@@ -164,6 +164,18 @@ def _session_payload(session: Any) -> dict[str, Any]:
     tab_counts = get_inbox_tab_counts()
     emp_image = get_employee_image(session.employee, session.erp_user)
 
+    closed_by = getattr(session, "closed_by", None)
+    closed_by_name = ""
+    if closed_by:
+        if closed_by in ("System", "Timeout", "Automatic", "Scheduler"):
+            closed_by_name = "System (Inactive Session)"
+        elif closed_by in ("User", "Guest", "Employee", "Self") or closed_by == session.erp_user or closed_by == session.whatsapp_identity:
+            closed_by_name = "User"
+        elif getattr(frappe, "db", None) and frappe.db.exists("User", closed_by):
+            closed_by_name = frappe.db.get_value("User", closed_by, "full_name") or closed_by
+        else:
+            closed_by_name = closed_by
+
     return {
         "name": session.name,
         "session_name": session.name,
@@ -183,6 +195,9 @@ def _session_payload(session: Any) -> dict[str, Any]:
         "last_user_message_at": str(session.last_user_message_at) if session.last_user_message_at else None,
         "last_hr_reply_at": str(session.last_hr_reply_at) if session.last_hr_reply_at else None,
         "session_window_expires_at": str(session.session_window_expires_at) if session.session_window_expires_at else None,
+        "closed_at": str(session.closed_at) if getattr(session, "closed_at", None) else None,
+        "closed_by": closed_by,
+        "closed_by_name": closed_by_name,
         "last_message": last_message,
         "last_message_preview": last_message,
         "unread_count": unread_count,
@@ -279,6 +294,7 @@ def get_active_session_for_identity(
     whatsapp_identity: str = "",
     employee: str = "",
     wa_id: str = "",
+    channel: Optional[str] = None,
 ) -> Optional[str]:
     filters_or = []
     if whatsapp_identity:
@@ -291,10 +307,14 @@ def get_active_session_for_identity(
     if not filters_or:
         return None
 
+    main_filters = {"status": ["in", list(OPEN_STATUSES)]}
+    if channel:
+        main_filters["channel"] = channel
+
     active = frappe.get_all(
         "HR Live Chat Session",
         or_filters=filters_or,
-        filters={"status": ["in", list(OPEN_STATUSES)]},
+        filters=main_filters,
         fields=["name"],
         order_by="modified desc",
         limit=1,
@@ -408,6 +428,7 @@ def get_existing_session_for_identity(
     whatsapp_identity: str = "",
     employee: str = "",
     wa_id: str = "",
+    channel: Optional[str] = None,
 ) -> Optional[str]:
     """Return active session first, or falling back to the most recent closed/expired session."""
     filters_or = []
@@ -421,10 +442,14 @@ def get_existing_session_for_identity(
     if not filters_or:
         return None
 
+    main_filters = {"status": ["in", list(OPEN_STATUSES)]}
+    if channel:
+        main_filters["channel"] = channel
+
     active = frappe.get_all(
         "HR Live Chat Session",
         or_filters=filters_or,
-        filters={"status": ["in", list(OPEN_STATUSES)]},
+        filters=main_filters,
         fields=["name"],
         order_by="modified desc",
         limit=1,
@@ -432,9 +457,14 @@ def get_existing_session_for_identity(
     if active:
         return active[0]["name"]
 
+    any_filters = {}
+    if channel:
+        any_filters["channel"] = channel
+
     any_session = frappe.get_all(
         "HR Live Chat Session",
         or_filters=filters_or,
+        filters=any_filters,
         fields=["name"],
         order_by="modified desc",
         limit=1,
@@ -463,7 +493,7 @@ def open_session(
 ) -> Any:
     """Create or resume an HR live chat session, merging/reusing existing session for the same employee."""
     existing_name = get_existing_session_for_identity(
-        whatsapp_identity, employee=employee, wa_id=wa_id
+        whatsapp_identity, employee=employee, wa_id=wa_id, channel=channel
     )
     now = _now()
     resolved_name = resolve_display_name(
@@ -745,11 +775,13 @@ def close_session(
     notify_user: bool = True,
     reason: str = "manual",
 ) -> Any:
-    user = user or frappe.session.user
+    user_to_set = user or frappe.session.user
+    if reason == "inactivity":
+        user_to_set = "System"
     session = get_session_doc(session_name)
     session.status = "Closed"
     session.closed_at = _now()
-    session.closed_by = user
+    session.closed_by = user_to_set
     session.flags.ignore_links = True
     session.save(ignore_permissions=True)
 
@@ -998,7 +1030,7 @@ def close_inactive_hr_chat_sessions(inactivity_hours: int = 12) -> dict[str, Any
             try:
                 close_session(
                     s["name"],
-                    user="Administrator",
+                    user="System",
                     reset_conversation=True,
                     notify_user=True,
                     reason="inactivity",

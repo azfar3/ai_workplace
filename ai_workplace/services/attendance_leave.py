@@ -225,14 +225,33 @@ def get_missing_attendance_data(employee_id: Optional[str]) -> list[dict[str, An
         return missing
 
 
+def get_fiscal_year_leave_period(ref_date: Optional[date] = None) -> tuple[str, str]:
+    """
+    Return the fiscal year leave period (1 July to 30 June) for a given reference date.
+    E.g., for 2026-09-22 -> ('2026-07-01', '2027-06-30').
+    For 2026-03-15 -> ('2025-07-01', '2026-06-30').
+    """
+    if not ref_date:
+        ref_date = getdate(today())
+    if ref_date.month >= 7:
+        start_year = ref_date.year
+        end_year = ref_date.year + 1
+    else:
+        start_year = ref_date.year - 1
+        end_year = ref_date.year
+    return f"{start_year}-07-01", f"{end_year}-06-30"
+
+
 def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
-    """Fetch active leave allocations and remaining balances accurately for the current allocation period."""
+    """Fetch active leave allocations and remaining balances accurately for the 1 July to 30 June fiscal leave period."""
     balances: list[dict[str, Any]] = []
     try:
         if not employee_id or not getattr(frappe, "db", None) or not frappe.db.exists("Employee", employee_id):
             return balances
 
         curr_today = today()
+        fy_from, fy_to = get_fiscal_year_leave_period()
+
         allocations = frappe.db.get_all(
             "Leave Allocation",
             filters={"employee": employee_id, "to_date": [">=", curr_today], "docstatus": 1},
@@ -243,10 +262,11 @@ def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
         for alloc in allocations:
             leave_type = alloc.get("leave_type")
             allocated = flt(alloc.get("total_leaves_allocated", 0))
-            from_d = alloc.get("from_date")
-            to_d = alloc.get("to_date")
+            # Use allocation dates if set, falling back to fiscal year (1 July to 30 June)
+            from_d = alloc.get("from_date") or fy_from
+            to_d = alloc.get("to_date") or fy_to
 
-            # Query non-cancelled Leave Application records within the current allocation period
+            # Query non-cancelled Leave Application records within the 1 July - 30 June fiscal leave period
             app_filters: dict[str, Any] = {
                 "employee": employee_id,
                 "leave_type": leave_type,
@@ -281,6 +301,8 @@ def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
                 "allocated": f"{allocated:.1f}",
                 "taken": taken_str,
                 "remaining": f"{remaining:.1f}",
+                "from_date": str(from_d),
+                "to_date": str(to_d),
             })
 
         return balances

@@ -499,7 +499,7 @@ def _process_message_internal(
         ):
             if session_to_use:
                 try:
-                    close_session(session_to_use, reset_conversation=True, notify_user=False)
+                    close_session(session_to_use, user="User", reset_conversation=True, notify_user=False)
                     conv.reload()
                 except Exception as close_err:
                     frappe.logger("ai_workplace").error(f"Failed to close HR session {session_to_use}: {close_err}")
@@ -574,7 +574,7 @@ def _process_message_internal(
         if current_state == ConversationState.LIVE_HR_CHAT and conv.active_hr_chat_session:
             from ai_workplace.services.hr_chat import close_session
 
-            close_session(conv.active_hr_chat_session, reset_conversation=False)
+            close_session(conv.active_hr_chat_session, user="User", reset_conversation=False)
         cancel_conversation(conv)
         log_ai_action(
             trace_id=trace_id,
@@ -606,7 +606,7 @@ def _process_message_internal(
         if current_state == ConversationState.LIVE_HR_CHAT and conv.active_hr_chat_session:
             from ai_workplace.services.hr_chat import close_session
 
-            close_session(conv.active_hr_chat_session, reset_conversation=False)
+            close_session(conv.active_hr_chat_session, user="User", reset_conversation=False)
 
         complete_conversation(conv)
 

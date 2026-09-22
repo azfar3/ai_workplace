@@ -97,6 +97,7 @@ def init_session(
             whatsapp_identity=wa_identity_name,
             employee=identity.employee or "",
             wa_id=identity.normalized_phone or wa_id,
+            channel="Web Chat",
         )
 
         from ai_workplace.services.hr_chat import get_employee_image
@@ -135,7 +136,7 @@ def init_session(
         welcome_msg = build_welcome_message(context)
         menu_msg, _ = build_menu(context)
         active_hr_session = get_active_session_for_identity(
-            whatsapp_identity=wa_identity_name, wa_id=wa_id
+            whatsapp_identity=wa_identity_name, wa_id=wa_id, channel="Web Chat"
         )
 
         from ai_workplace.services.hr_chat import get_employee_image
@@ -293,6 +294,7 @@ def send_message(
         whatsapp_identity=wa_identity_name,
         employee=identity.employee or "",
         wa_id=identity.normalized_phone or wa_id,
+        channel="Web Chat",
     )
 
     # If active HR session exists and channel is Web Chat, set channel field safely
@@ -368,6 +370,7 @@ def get_user_sessions(
 
     sessions = frappe.get_all(
         "HR Live Chat Session",
+        filters={"channel": ["!=", "WhatsApp"]},
         or_filters=or_filters,
         fields=fields,
         order_by="modified desc",
@@ -421,7 +424,7 @@ def get_chat_history(
     if session_name:
         logs = frappe.get_all(
             "WhatsApp Message Log",
-            filters={"hr_live_chat_session": session_name},
+            filters={"hr_live_chat_session": session_name, "channel": ["!=", "WhatsApp"]},
             fields=["name", "direction", "message", "timestamp", "creation", "sender_type", "media_file", "message_type", "hr_live_chat_session"],
             order_by="creation desc, name desc",
             start=start,
@@ -439,7 +442,12 @@ def get_chat_history(
                 s_or_filters.append({"employee": identity.employee})
             if identity.whatsapp_identity:
                 s_or_filters.append({"whatsapp_identity": identity.whatsapp_identity})
-            session_names = frappe.get_all("HR Live Chat Session", or_filters=s_or_filters, pluck="name")
+            session_names = frappe.get_all(
+                "HR Live Chat Session",
+                filters={"channel": ["!=", "WhatsApp"]},
+                or_filters=s_or_filters,
+                pluck="name",
+            )
         elif wa_identity_name or guest_email or guest_phone:
             s_or_filters = []
             if wa_identity_name:
@@ -450,7 +458,12 @@ def get_chat_history(
             if guest_phone:
                 s_or_filters.append({"wa_id": f"WEB-GUEST-{guest_phone}"})
                 s_or_filters.append({"wa_id": guest_phone})
-            session_names = frappe.get_all("HR Live Chat Session", or_filters=s_or_filters, pluck="name")
+            session_names = frappe.get_all(
+                "HR Live Chat Session",
+                filters={"channel": ["!=", "WhatsApp"]},
+                or_filters=s_or_filters,
+                pluck="name",
+            )
 
         or_filters = []
         if session_names:
@@ -484,6 +497,7 @@ def get_chat_history(
 
         logs = frappe.get_all(
             "WhatsApp Message Log",
+            filters={"channel": ["!=", "WhatsApp"]},
             or_filters=or_filters,
             fields=["name", "direction", "message", "timestamp", "creation", "sender_type", "media_file", "message_type", "hr_live_chat_session"],
             order_by="creation desc, name desc",

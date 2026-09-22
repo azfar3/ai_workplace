@@ -2356,24 +2356,39 @@ frappe.whatsapp_hr_inbox = {
 		const pkt_label = data.office_local_time ? `${data.office_local_time} PKT` : __("Pakistan time");
 		const hr_status = data.hr_support_status || (data.is_office_hours ? "OPEN" : "CLOSED");
 
-		if (hr_status === "OPEN") {
-			messages.push(__("HR Support is open ({0}).", [pkt_label]));
-		} else if (data.is_holiday) {
-			messages.push(__("HR Support is closed — holiday ({0}).", [pkt_label]));
-		} else if (!data.is_office_hours) {
-			if (data.can_reply) {
-				messages.push(
-					__(
-						"Outside regular HR hours ({0}). You can still reply — chat stays open.",
-						[pkt_label]
-					)
-				);
-			} else if (data.status === "Queued") {
-				messages.push(__("Outside HR hours ({0}). Take this chat to reply anytime.", [pkt_label]));
+		if (data.status === "Closed" || data.status === "Expired") {
+			const closed_by = data.closed_by || "";
+			const closed_by_name = data.closed_by_name || closed_by;
+
+			if (data.status === "Expired" || closed_by === "System" || closed_by === "Timeout" || closed_by === "Automatic" || closed_by === "Scheduler") {
+				messages.push(__("This chat session was automatically closed due to inactivity."));
+			} else if (closed_by === "User" || closed_by === "Guest" || closed_by === "Self" || closed_by === data.erp_user || closed_by === data.whatsapp_identity) {
+				messages.push(__("This chat session was closed by the user."));
+			} else if (closed_by_name && closed_by_name !== "User" && closed_by_name !== "Guest") {
+				messages.push(__("This chat session was closed by HR ({0}).", [closed_by_name]));
+			} else {
+				messages.push(__("This chat session was closed by HR."));
 			}
-		}
-		if (!data.can_reply && data.can_reply_reason) {
-			messages.push(data.can_reply_reason);
+		} else {
+			if (hr_status === "OPEN") {
+				messages.push(__("HR Support is open ({0}).", [pkt_label]));
+			} else if (data.is_holiday) {
+				messages.push(__("HR Support is closed — holiday ({0}).", [pkt_label]));
+			} else if (!data.is_office_hours) {
+				if (data.can_reply) {
+					messages.push(
+						__(
+							"Outside regular HR hours ({0}). You can still reply — chat stays open.",
+							[pkt_label]
+						)
+					);
+				} else if (data.status === "Queued") {
+					messages.push(__("Outside HR hours ({0}). Take this chat to reply anytime.", [pkt_label]));
+				}
+			}
+			if (!data.can_reply && data.can_reply_reason) {
+				messages.push(data.can_reply_reason);
+			}
 		}
 
 		if (messages.length) {

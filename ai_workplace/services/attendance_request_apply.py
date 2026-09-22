@@ -402,6 +402,15 @@ def _create_attendance_request(draft: dict[str, Any], context: dict[str, Any]) -
         doc.explanation = draft.get("explanation") or ""
         doc.company = employee.company
 
+        # Populate mandatory leave_approver field
+        leave_approver = employee.leave_approver
+        if not leave_approver and employee.reports_to:
+            leave_approver = frappe.db.get_value("Employee", employee.reports_to, "user_id")
+        if not leave_approver:
+            hr_user = frappe.db.get_value("Has Role", {"role": ["in", ["HR Manager", "HR User"]]}, "parent")
+            leave_approver = hr_user or "Administrator"
+        doc.leave_approver = leave_approver
+
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
         return doc.name
