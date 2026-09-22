@@ -1,25 +1,42 @@
 import frappe
+from frappe.utils import today
 
-def test_fixes():
-    from ai_workplace.services.hr_agent import handle_hr_agent_message
-    from ai_workplace.context.resolver import get_user_context
+def test_leave_application_creation():
+    frappe.connect()
+    try:
+        from ai_workplace.services.leave_apply import _create_leave_application
+        
+        # Pick an active employee
+        emp = frappe.db.get_value("Employee", {"status": "Active"}, "name")
+        print(f"Testing with Employee: {emp}")
+        
+        draft = {
+            "employee": emp,
+            "leave_type": "Casual Leave",
+            "from_date": "2026-10-15",
+            "to_date": "2026-10-15",
+            "half_day": 0,
+            "short_leave": 0,
+            "description": "Automated Test Leave Application",
+        }
+        
+        context = {
+            "employee": emp,
+            "user": "Administrator",
+            "preferred_language": "English",
+        }
+        
+        doc_name = _create_leave_application(draft, context)
+        print(f"SUCCESS! Created Leave Application: {doc_name}")
+        
+        # Clean up test document
+        frappe.db.rollback()
+        print("Rolled back test Leave Application.")
+    except Exception as e:
+        frappe.db.rollback()
+        print(f"FAILED with error: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
 
-    ctx = get_user_context({
-        "status": "matched",
-        "user": "azfarmurtaaddasdaza34@gmail.com",
-        "employee": "EMP-MM-00796",
-        "full_name": "Azfar Murtaza"
-    })
-    conv = frappe.get_doc("WhatsApp Conversation", "WACN-2026-08-31-05172")
-
-    print("\n--- Test 1: Leaves Query ---")
-    out1 = handle_hr_agent_message(conv, "How many leaves do I have left?", ctx)
-    print("Body:", out1.body_text)
-
-    print("\n--- Test 2: Employment Type Query ---")
-    out2 = handle_hr_agent_message(conv, "what is my employment type?", ctx)
-    print("Body:", out2.body_text)
-
-    print("\n--- Test 3: Interactive Button Click ---")
-    out3 = handle_hr_agent_message(conv, "fb_helpful", ctx)
-    print("Body:", out3.body_text)
+if __name__ == "__main__":
+    test_leave_application_creation()

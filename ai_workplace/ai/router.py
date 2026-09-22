@@ -472,7 +472,17 @@ def _call_provider_single(
         timeout=(connect_timeout, read_timeout),
         proxies={"http": None, "https": None},
     )
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        err_msg = resp.text
+        try:
+            err_json = resp.json()
+            if isinstance(err_json, dict) and "error" in err_json:
+                err_info = err_json["error"]
+                if isinstance(err_info, dict) and "message" in err_info:
+                    err_msg = err_info["message"]
+        except Exception:
+            pass
+        raise requests.exceptions.HTTPError(f"{resp.status_code} Client Error: {err_msg}", response=resp)
     data = resp.json()
 
     choice = data.get("choices", [{}])[0]

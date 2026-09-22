@@ -361,10 +361,16 @@ def handle_hr_agent_message(
                 "I am experiencing technical difficulties.", context
             )
 
-        # Append assistant message
+        # Append assistant message (clean extra non-standard fields like 'reasoning')
         msg_obj = res.get("raw_message", {})
         if msg_obj:
-            messages.append(msg_obj)
+            clean_msg: dict[str, Any] = {
+                "role": msg_obj.get("role", "assistant"),
+                "content": msg_obj.get("content"),
+            }
+            if msg_obj.get("tool_calls"):
+                clean_msg["tool_calls"] = msg_obj["tool_calls"]
+            messages.append(clean_msg)
         else:
             messages.append({"role": "assistant", "content": res.get("text") or ""})
 

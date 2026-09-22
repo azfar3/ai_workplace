@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:",
+ "creation": "2026-09-21 13:40:47.679918",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "session_id",
+  "file_name",
+  "data"
+ ],
+ "fields": [
+  {
+   "description": "Identifier for the WhatsApp session (e.g., 'default')",
+   "fieldname": "session_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Session ID",
+   "reqd": 1
+  },
+  {
+   "description": "The exact name of the Baileys key (e.g., 'creds.json')",
+   "fieldname": "file_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "File Name"
+  },
+  {
+   "description": "The serialized JSON content of the session key",
+   "fieldname": "data",
+   "fieldtype": "Code",
+   "label": "JSON Data",
+   "options": "JSON"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-21 13:44:14.359883",
+ "modified_by": "Administrator",
+ "module": "Ai Workplace",
+ "name": "Whatsapp Session",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

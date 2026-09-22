@@ -12,7 +12,7 @@ from typing import Any, Optional
 
 import frappe
 from frappe import _
-from frappe.utils import formatdate, getdate, today
+from frappe.utils import cint, formatdate, getdate, today
 
 from ai_workplace.conversation.manager import update_conversation
 from ai_workplace.conversation.state import ConversationState
@@ -491,13 +491,27 @@ def _create_leave_application(draft: dict[str, Any], context: dict[str, Any]) ->
         doc.leave_type = draft.get("leave_type")
         doc.from_date = draft.get("from_date")
         doc.to_date = draft.get("to_date")
-        doc.half_day = draft.get("half_day") or 0
+        doc.half_day = cint(draft.get("half_day") or 0)
+        doc.custom_short_leave = cint(draft.get("short_leave") or draft.get("custom_short_leave") or 0)
         if doc.half_day and draft.get("half_day_date"):
             doc.half_day_date = draft.get("half_day_date")
+        if draft.get("leave_reason") or draft.get("custom_leave_reason"):
+            doc.custom_leave_reason = draft.get("leave_reason") or draft.get("custom_leave_reason")
         doc.description = draft.get("description") or ""
         doc.company = employee.company
         doc.leave_approver = employee.get("leave_approver") or None
         doc.posting_date = today()
+
+        from hrms.hr.doctype.leave_application.leave_application import get_number_of_leave_days
+        doc.total_leave_days = get_number_of_leave_days(
+            doc.employee,
+            doc.leave_type,
+            doc.from_date,
+            doc.to_date,
+            doc.half_day,
+            doc.half_day_date if doc.half_day else None,
+        ) or 0
+
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
         return doc.name
