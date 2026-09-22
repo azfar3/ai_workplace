@@ -256,6 +256,29 @@ def get_leave_balance(employee: str) -> list[dict[str, Any]]:
     return get_leave_balance_data(employee)
 
 
+def get_leave_analysis(employee: str) -> dict[str, Any]:
+    from ai_workplace.services.attendance_leave import get_leave_balance_data, get_recent_leave_requests
+    from frappe.utils import flt
+    balances = get_leave_balance_data(employee) or []
+    history = get_recent_leave_requests(employee) or []
+
+    total_allocated = sum(flt(b.get("total_allocated", 0)) for b in balances if isinstance(b, dict))
+    total_used = sum(flt(b.get("leaves_taken", 0)) for b in balances if isinstance(b, dict))
+    total_remaining = sum(flt(b.get("remaining_leaves", 0)) for b in balances if isinstance(b, dict))
+
+    util_rate = f"{round((total_used / total_allocated * 100), 1)}%" if total_allocated > 0 else "0%"
+
+    return {
+        "balances": balances,
+        "history": history,
+        "total_allocated": total_allocated,
+        "total_used": total_used,
+        "total_remaining": total_remaining,
+        "utilization_rate": util_rate,
+    }
+
+
+
 
 def get_published_policies(employee: str = "") -> list[dict[str, Any]]:
     """Fetch active policy documents directly from System Notifications (type=Policy) or Knowledge Chunks."""
@@ -431,7 +454,7 @@ def run_tool(tool_name: str, context: dict[str, Any], **kwargs) -> Any:
             raw = meta["handler"](auth_employee)
         elif tool_name == "get_attendance_summary":
             raw = meta["handler"](auth_employee)
-        elif tool_name == "get_leave_balance":
+        elif tool_name in ("get_leave_balance", "get_leave_analysis"):
             raw = meta["handler"](auth_employee)
         elif tool_name == "get_leave_history":
             raw = meta["handler"](auth_employee)

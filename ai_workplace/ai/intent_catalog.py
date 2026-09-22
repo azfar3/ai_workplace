@@ -24,6 +24,28 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
     # ══════════════════════════════════════════════════════════════════════════
     # LEAVE
     # ══════════════════════════════════════════════════════════════════════════
+    "analyze_leaves": {
+        "category": "leave",
+        "intents": ["analyze_leaves", "leave_analysis", "analyze_leave", "leave_insights"],
+        "aliases": [
+            "analyze my leaves",
+            "analzye my leaves",
+            "analyze leave",
+            "leave analysis",
+            "give me insights on my leaves",
+            "explain my leave status",
+            "how is my leave looking",
+            "leave usage report",
+            "meri chuttiyon ka jaiza",
+        ],
+        "tool": "get_leave_analysis",
+        "requires_authentication": True,
+        "read_only": True,
+        "requires_confirmation": False,
+        "llm_allowed": True,
+        "response_mode": "hybrid",
+        "source_type": "ERP",
+    },
 
     "leave_balance": {
         "category": "leave",

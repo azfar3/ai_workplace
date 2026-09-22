@@ -30,6 +30,42 @@ class ResponseFormatter:
                 taken = item.get("leaves_taken", item.get("taken", "0"))
                 res += f"• *{ltype}*: {rem} days remaining (Allocated: {alloc}, Used: {taken})\n"
         return res.strip()
+
+    @staticmethod
+    def format_leave_analysis(data: Any) -> str:
+        if not data or not isinstance(data, dict):
+            return "📊 I couldn't compute a leave analysis for your profile right now."
+
+        balances = data.get("balances", [])
+        history = data.get("history", [])
+        total_allocated = data.get("total_allocated", 0)
+        total_used = data.get("total_used", 0)
+        total_remaining = data.get("total_remaining", 0)
+        util_rate = data.get("utilization_rate", "0%")
+
+        res = "📊 *Your Leave Analysis & Insights*\n\n"
+        res += f"• *Overall Leave Utilization*: {util_rate} ({total_used} used of {total_allocated} allocated days)\n"
+        res += f"• *Total Days Available*: {total_remaining} days remaining\n\n"
+
+        if balances:
+            res += "*Category Breakdown*:\n"
+            for b in balances:
+                if isinstance(b, dict):
+                    ltype = b.get("leave_type", "Leave")
+                    rem = b.get("remaining_leaves", 0)
+                    alloc = b.get("total_allocated", 0)
+                    used = b.get("leaves_taken", 0)
+                    res += f"  • {ltype}: *{rem} days left* (Allocated: {alloc}, Used: {used})\n"
+
+        if history:
+            res += f"\n*Recent Leave Requests*:\n"
+            for h in history[:3]:
+                if isinstance(h, dict):
+                    status_icon = "✅" if h.get("status") == "Approved" else ("⏳" if h.get("status") in ("Open", "Draft", "Applied") else "❌")
+                    res += f"  • {status_icon} {h.get('leave_type', 'Leave')}: {h.get('total_leave_days', 1)} day(s) from {h.get('from_date')} ({h.get('status')})\n"
+
+        res += "\n💡 *Insight*: You have leave balance available. Make sure to plan your leaves in advance!"
+        return res.strip()
         
     @staticmethod
     def format_attendance_summary(data: dict) -> str:
@@ -274,6 +310,8 @@ class ResponseFormatter:
 
         if intent == "leave_balance":
             return ResponseFormatter.format_leave_balance(data)
+        elif intent == "analyze_leaves":
+            return ResponseFormatter.format_leave_analysis(data)
         elif intent == "today_attendance":
             return ResponseFormatter.format_attendance_summary(data)
         elif intent == "profile_gaps":

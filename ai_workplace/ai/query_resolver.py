@@ -35,6 +35,12 @@ CONFIDENCE_THRESHOLD = 0.70
 
 INTENT_PATTERNS: Dict[str, list[str]] = {
     # ── Leave ──────────────────────────────────────────────────────────────────
+    "analyze_leaves": [
+        r"analy[sz]e (my |)?leaves?",
+        r"leave (analysis|analytics|insights|summary|report|overview)",
+        r"(chutti|leaves?) (ka |ki |)?(jaiza|analysis|overview)",
+        r"how is my leave (looking|status)",
+    ],
     "leave_balance": [
         r"how (many|much) leaves? (do i|i have|have i|are|left|remaining|available)",
         r"(remaining|leftover|pending|available) leaves?",
@@ -263,12 +269,17 @@ class QueryResolver:
 
     @staticmethod
     def _score_keywords(normalized_text: str, intent_data: dict[str, Any]) -> float:
-        """Layer 4: keyword overlap → 0.70."""
+        """Layer 4: keyword overlap → 0.70 (or 0.60 for single-word substring in multi-word prompt)."""
         score = 0.0
+        prompt_words = normalized_text.split()
         for intent_kw in intent_data.get("intents", []):
             norm_kw = QueryResolver.normalize_text(intent_kw.replace("_", " "))
             if norm_kw and norm_kw in normalized_text:
-                score = max(score, 0.70)
+                kw_words = norm_kw.split()
+                if len(kw_words) == 1 and len(prompt_words) > 2:
+                    score = max(score, 0.60)
+                else:
+                    score = max(score, 0.70)
         return score
 
     @classmethod
