@@ -13,6 +13,17 @@ frappe.pages["whatsapp-hr-inbox"].on_page_load = function (wrapper) {
 	});
 };
 
+frappe.pages["whatsapp-hr-inbox"].on_page_show = function (wrapper) {
+	if (frappe.whatsapp_hr_inbox) {
+		const search_str = window.location.search || (window.location.hash.includes("?") ? window.location.hash.split("?")[1] : "");
+		const url_params = new URLSearchParams(search_str);
+		const target_conv = url_params.get("conversation");
+		if (target_conv && target_conv !== frappe.whatsapp_hr_inbox.current_session) {
+			frappe.whatsapp_hr_inbox.load_session(target_conv);
+		}
+	}
+};
+
 const EMOJI_CATEGORIES = {
 	"smileys": {
 		"name": "Smileys & Emotion",
@@ -1391,7 +1402,15 @@ frappe.whatsapp_hr_inbox = {
 			});
 			n.onclick = () => {
 				window.focus();
-				this.load_session(target_session);
+				if (frappe.get_route_str() !== "whatsapp-hr-inbox") {
+					frappe.set_route("whatsapp-hr-inbox").then(() => {
+						if (frappe.whatsapp_hr_inbox) {
+							frappe.whatsapp_hr_inbox.load_session(target_session);
+						}
+					});
+				} else {
+					this.load_session(target_session);
+				}
 				n.close();
 			};
 		}
@@ -1751,7 +1770,14 @@ frappe.whatsapp_hr_inbox = {
 				this.render_list(chats, append);
 				this.update_tab_indicators();
 				if (!silent && !append && !this.current_session && chats.length && !this.is_mobile()) {
-					this.load_session(chats[0].name);
+					const search_str = window.location.search || (window.location.hash.includes("?") ? window.location.hash.split("?")[1] : "");
+					const url_params = new URLSearchParams(search_str);
+					const target_conv = url_params.get("conversation");
+					if (target_conv) {
+						this.load_session(target_conv);
+					} else {
+						this.load_session(chats[0].name);
+					}
 				}
 			},
 			error: () => {

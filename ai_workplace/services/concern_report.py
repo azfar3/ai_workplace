@@ -762,5 +762,11 @@ def _create_employee_grievance(draft: dict[str, Any], context: dict[str, Any]) -
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
         return doc.name
+    except Exception as exc:
+        frappe.log_error(
+            title="Employee Grievance Submission Failed",
+            message=f"Failed to submit Employee Grievance (employee: '{employee_id}'): {exc}\n\nDraft: {json.dumps(draft, default=str)}\n\nTraceback:\n{frappe.get_traceback()}"
+        )
+        raise exc
     finally:
         frappe.set_user(previous_user)

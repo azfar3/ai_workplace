@@ -483,6 +483,10 @@ def run_tool(tool_name: str, context: dict[str, Any], **kwargs) -> Any:
         else:
             raw = meta["handler"](**clean_kwargs)
     except Exception as exc:
+        frappe.log_error(
+            title=f"AI Tool Execution Failed ({tool_name})",
+            message=f"Tool '{tool_name}' failed for employee '{auth_employee}'.\n\nKwargs: {json.dumps(clean_kwargs, default=str)}\n\nError: {exc}\n\nTraceback:\n{frappe.get_traceback()}"
+        )
         raw = {"error": f"Tool execution failed: {str(exc)}"}
 
     # 3. Log to AI Action Log

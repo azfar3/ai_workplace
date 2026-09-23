@@ -328,13 +328,20 @@ def complete(
     if fallback.get("success"):
         return fallback
 
+    error_msg = last_error or "No active AI provider configured"
+    frappe.log_error(
+        title="AI Provider Completion Failed",
+        message=f"All AI providers failed for channel '{channel}', employee '{employee}'.\n\nLast Error ({last_error_type}): {error_msg}\n\nPrompt: {prompt[:500] if prompt else str(messages)[:500]}"
+    )
+
     return {
         "success": False,
         "text": "",
         "tool_calls": [],
-        "error": last_error or "No active AI provider configured",
+        "error": error_msg,
         "error_type": last_error_type,
     }
+
 
 
 def _get_active_providers() -> list[Any]:

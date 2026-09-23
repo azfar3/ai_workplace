@@ -252,11 +252,11 @@ def publish_session_update(
                     if get_hr_agent_role_access(u) == "Main HR User (View & Reply All)":
                         push_target_users.add(u)
 
-        # Publish privately
+        # Publish privately & send notifications
         for u in enabled_users:
             frappe.publish_realtime(REALTIME_EVENT, payload, user=u, after_commit=False)
             
-            # Send Web Push for target users
+            # Send Web Push & Desk Notification Log for target users
             if u in push_target_users:
                 try:
                     from ai_workplace.api.notifications import send_push_notification
@@ -273,8 +273,18 @@ def publish_session_update(
                         "url": f"/app/whatsapp-hr-inbox?conversation={session.name}"
                     }
                     send_push_notification(u, push_payload)
+
+                    if extra and extra.get("event") in ("inbound_message", "session_opened", "queued"):
+                        sender_title = session.display_name or session.wa_id or "HR Chat"
+                        notif = frappe.new_doc("Notification Log")
+                        notif.subject = f"HR Live Chat ({sender_title}): {msg_preview[:60]}"
+                        notif.for_user = u
+                        notif.type = "Alert"
+                        notif.open_in_workspace = 0
+                        notif.link = f"/app/whatsapp-hr-inbox?conversation={session.name}"
+                        notif.insert(ignore_permissions=True)
                 except Exception as push_err:
-                    frappe.logger("ai_workplace").warning(f"Failed to send Web Push to {u}: {push_err}")
+                    frappe.logger("ai_workplace").warning(f"Failed to send notification to {u}: {push_err}")
                     
     except Exception as exc:
         frappe.logger("ai_workplace").warning(
@@ -488,10 +498,18 @@ def open_session(
     person_type: str = "",
     contact_hr_selected: bool = False,
     ready_for_hr: bool = False,
-    channel: str = "WhatsApp",
+    channel: Optional[str] = None,
     context: Optional[dict[str, Any]] = None,
 ) -> Any:
     """Create or resume an HR live chat session, merging/reusing existing session for the same employee."""
+    if not channel or channel == "WhatsApp":
+        if context and context.get("channel"):
+            channel = context.get("channel")
+        elif (wa_id or "").startswith("WEB-") or (whatsapp_identity or "").startswith("WAID-WEB"):
+            channel = "Web Chat"
+        else:
+            channel = channel or "WhatsApp"
+
     existing_name = get_existing_session_for_identity(
         whatsapp_identity, employee=employee, wa_id=wa_id, channel=channel
     )
@@ -1164,6 +1182,17 @@ def send_hr_attachment(
         "WhatsApp Identity", session.whatsapp_identity, "normalized_phone"
     )
 
+    session_channel = getattr(session, "channel", "WhatsApp") or "WhatsApp"
+    is_web = (
+        session_channel == "Web Chat"
+        or (session.wa_id or "").startswith("WEB-")
+        or (session.whatsapp_identity or "").startswith("WAID-WEB")
+    )
+    if is_web and getattr(session, "channel", None) != "Web Chat":
+        session.channel = "Web Chat"
+        session.flags.ignore_links = True
+        session.save(ignore_permissions=True)
+
     file_doc, content, filename, mime_type = _resolve_attachment_file(file_url)
     ext = os.path.splitext(filename or file_doc.file_name or "")[1].lower()
     is_image = ext in IMAGE_EXTENSIONS
@@ -1171,7 +1200,7 @@ def send_hr_attachment(
     log_message = caption_text or file_doc.file_name or "Attachment"
     message_type = "image" if is_image else "document"
 
-    if getattr(session, "channel", "WhatsApp") == "Web Chat":
+    if is_web:
         result = {"success": True, "message_id": f"WEB-{frappe.generate_hash(length=8)}"}
         frappe.publish_realtime(
             "xpert_chat_reply",
@@ -1285,7 +1314,18 @@ def send_hr_reply(
         "WhatsApp Identity", session.whatsapp_identity, "normalized_phone"
     )
 
-    if getattr(session, "channel", "WhatsApp") == "Web Chat":
+    session_channel = getattr(session, "channel", "WhatsApp") or "WhatsApp"
+    is_web = (
+        session_channel == "Web Chat"
+        or (session.wa_id or "").startswith("WEB-")
+        or (session.whatsapp_identity or "").startswith("WAID-WEB")
+    )
+    if is_web and getattr(session, "channel", None) != "Web Chat":
+        session.channel = "Web Chat"
+        session.flags.ignore_links = True
+        session.save(ignore_permissions=True)
+
+    if is_web:
         result = {"success": True, "message_id": f"WEB-{frappe.generate_hash(length=8)}"}
         # Determine the correct socket target user.
         # For authenticated employees: erp_user is their email → direct socket delivery.

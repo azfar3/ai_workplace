@@ -386,16 +386,25 @@ def process_message(
     skip_pin_check: bool = False,
     media_url: Optional[str] = None,
 ) -> Union[OutboundMessage, str]:
-    shared = {}
-    result = _process_message_internal(message_text, identity, message_id, trace_id, wa_id, skip_pin_check, shared, media_url=media_url)
-    if shared.get("prepend_welcome_text") and isinstance(result, OutboundMessage):
-        if result.body_text:
-            result.body_text = f"{shared['prepend_welcome_text']}\n\n{result.body_text}"
-        elif getattr(result, "interactive", None) and isinstance(result.interactive, dict):
-            body_obj = result.interactive.get("body", {})
-            if isinstance(body_obj, dict) and body_obj.get("text"):
-                body_obj["text"] = f"{shared['prepend_welcome_text']}\n\n{body_obj['text']}"
-    return result
+    try:
+        shared = {}
+        result = _process_message_internal(message_text, identity, message_id, trace_id, wa_id, skip_pin_check, shared, media_url=media_url)
+        if shared.get("prepend_welcome_text") and isinstance(result, OutboundMessage):
+            if result.body_text:
+                result.body_text = f"{shared['prepend_welcome_text']}\n\n{result.body_text}"
+            elif getattr(result, "interactive", None) and isinstance(result.interactive, dict):
+                body_obj = result.interactive.get("body", {})
+                if isinstance(body_obj, dict) and body_obj.get("text"):
+                    body_obj["text"] = f"{shared['prepend_welcome_text']}\n\n{body_obj['text']}"
+        return result
+    except Exception as exc:
+        frappe.log_error(
+            title=f"AI Orchestrator Message Failed [{trace_id or ''}]",
+            message=f"Failed to process message '{message_text}' for identity '{identity}': {exc}\n\nTraceback:\n{frappe.get_traceback()}"
+        )
+        return OutboundMessage(
+            body_text=_("Sorry, something went wrong while processing your request. Please try again or type *menu*.")
+        )
 
 
 

@@ -910,6 +910,12 @@ def _create_travel_authorisation(draft: dict[str, Any], context: dict[str, Any])
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
         return doc.name
+    except Exception as exc:
+        frappe.log_error(
+            title="Travel Authorisation Submission Failed",
+            message=f"Failed to submit Travel Authorisation for employee '{employee_id}': {exc}\n\nDraft: {json.dumps(draft, default=str)}\n\nTraceback:\n{frappe.get_traceback()}"
+        )
+        raise exc
     finally:
         frappe.set_user(previous_user)
 

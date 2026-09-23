@@ -91,3 +91,44 @@ class TestLeaveApplyFlow(unittest.TestCase):
         self.assertIn("From Date", out.body_text)
         mock_save.assert_called()
 
+    @patch("frappe.log_error")
+    def test_create_leave_application_logs_error_on_missing_employee(self, mock_log_error):
+        from ai_workplace.services.leave_apply import _create_leave_application
+
+        draft = {"from_date": "2026-10-01", "to_date": "2026-10-02"}
+        context = {}
+        with self.assertRaises(Exception):
+            _create_leave_application(draft, context)
+        mock_log_error.assert_called_once()
+        self.assertEqual(mock_log_error.call_args[1]["title"], "Leave Application Submission Failed")
+
+    @patch("frappe.log_error")
+    @patch("frappe.get_cached_doc")
+    def test_create_leave_application_logs_error_on_insert_failure(self, mock_get_doc, mock_log_error):
+        from ai_workplace.services.leave_apply import _create_leave_application
+
+        mock_emp = MagicMock()
+        mock_emp.company = "Test Company"
+        mock_get_doc.return_value = mock_emp
+
+        draft = {
+            "employee": "EMP-001",
+            "from_date": "2026-10-01",
+            "to_date": "2026-10-02",
+            "leave_type": "Casual Leave",
+            "description": "Test failure",
+        }
+        context = {"employee": "EMP-001"}
+
+        with patch("frappe.new_doc") as mock_new_doc:
+            mock_doc = MagicMock()
+            mock_doc.insert.side_effect = Exception("Database insertion failed")
+            mock_new_doc.return_value = mock_doc
+
+            with self.assertRaises(Exception):
+                _create_leave_application(draft, context)
+
+            mock_log_error.assert_called_once()
+            self.assertEqual(mock_log_error.call_args[1]["title"], "Leave Application Submission Failed")
+
+

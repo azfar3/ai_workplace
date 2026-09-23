@@ -62,6 +62,10 @@ def handle_hybrid(
     try:
         raw_data = run_tool(tool_name, context, query=user_query)
     except Exception as exc:
+        frappe.log_error(
+            title=f"Hybrid Handler Tool Failed ({tool_name})",
+            message=f"HybridHandler tool '{tool_name}' failed for intent '{intent_key}': {exc}\n\nTraceback:\n{frappe.get_traceback()}"
+        )
         frappe.logger("ai_workplace").warning(
             f"HybridHandler: tool {tool_name!r} failed: {exc}"
         )
@@ -106,12 +110,20 @@ def handle_hybrid(
             employee=context.get("employee", ""),
         )
     except Exception as exc:
+        frappe.log_error(
+            title=f"Hybrid Handler LLM Failed ({intent_key})",
+            message=f"LLM synthesis exception for intent '{intent_key}': {exc}\n\nTraceback:\n{frappe.get_traceback()}"
+        )
         frappe.logger("ai_workplace").warning(
             f"HybridHandler: LLM synthesis failed for {intent_key!r}: {exc}"
         )
         return _fallback(intent_key, raw_data, context)
 
     if not res.get("success") or not res.get("text"):
+        frappe.log_error(
+            title=f"Hybrid Handler LLM Empty Response ({intent_key})",
+            message=f"LLM returned no text or success=False for intent '{intent_key}'. Error: {res.get('error')}"
+        )
         frappe.logger("ai_workplace").warning(
             f"HybridHandler: LLM returned no text for {intent_key!r}"
         )
@@ -143,10 +155,12 @@ def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any]) -> Outbou
                 try:
                     text = ResponseFormatter.format_knowledge_matches(raw_data)
                 except Exception:
-                    text = "I could not retrieve that information right now. Please contact HR for assistance."
-            else:
-                text = "I could not retrieve that information right now. Please contact HR for assistance."
-    except Exception:
+                    pass
+    except Exception as exc:
+        frappe.log_error(
+            title=f"Hybrid Handler ResponseFormatter Error ({intent_key})",
+            message=f"ResponseFormatter failed for intent '{intent_key}': {exc}\n\nTraceback:\n{frappe.get_traceback()}"
+        )
         text = "I could not retrieve that information right now. Please contact HR for assistance."
 
     return build_button_message(

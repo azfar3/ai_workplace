@@ -521,6 +521,11 @@ def _handle_confirm(conv: Any, context: dict[str, Any], draft: dict, text: str) 
 def _create_leave_application(draft: dict[str, Any], context: dict[str, Any]) -> str:
     employee_id = draft.get("employee") or context.get("employee")
     if not employee_id:
+        err_msg = "Employee not found."
+        frappe.log_error(
+            title="Leave Application Submission Failed",
+            message=f"Leave Application submission failed from WhatsApp/Web chat.\n\nReason: {err_msg}\n\nDraft: {json.dumps(draft, default=str)}\n\nContext: {json.dumps(context, default=str)}",
+        )
         frappe.throw(_("Employee not found."))
 
     erp_user = context.get("user") or ""
@@ -558,6 +563,18 @@ def _create_leave_application(draft: dict[str, Any], context: dict[str, Any]) ->
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
         return doc.name
+    except Exception as exc:
+        frappe.log_error(
+            title="Leave Application Submission Failed",
+            message=(
+                f"Leave Application submission failed for employee '{employee_id}' via WhatsApp/Web Chat.\n\n"
+                f"Draft Payload: {json.dumps(draft, default=str)}\n\n"
+                f"Error: {str(exc)}\n\n"
+                f"Traceback:\n{frappe.get_traceback()}"
+            ),
+        )
+        raise exc
     finally:
         frappe.set_user(previous_user)
+
 
