@@ -209,5 +209,29 @@ class TestUnknownFallthrough(unittest.TestCase):
         self._unknown("hi")
 
 
+class TestPolicyAndDualJobRouting(unittest.TestCase):
+    """Verify that policy, dual job, and moonlighting queries correctly route to search_knowledge RAG handler."""
+
+    def _check_policy(self, msg):
+        intent, meta, score = QueryResolver.resolve(msg)
+        self.assertEqual(intent, "search_knowledge", f"Failed to route policy query to search_knowledge: {msg!r}")
+        self.assertGreaterEqual(score, 0.7, f"Score too low for policy query: {msg!r}")
+        self.assertEqual(meta["response_mode"], "hybrid", f"Expected hybrid response mode for: {msg!r}")
+
+    def test_dual_job_query_routing(self):
+        self._check_policy("what does micromerger says about the dual job")
+        self._check_policy("is dual job allowed at micromerger")
+        self._check_policy("dual job policy")
+        self._check_policy("can i work a second job")
+
+    def test_moonlighting_query_routing(self):
+        self._check_policy("what does handbook say about moonlighting")
+
+    def test_career_queries_still_route_to_careers(self):
+        intent, meta, score = QueryResolver.resolve("where can i apply for a job")
+        self.assertEqual(intent, "guest_careers")
+        self.assertEqual(meta["response_mode"], "deterministic")
+
+
 if __name__ == "__main__":
     unittest.main()

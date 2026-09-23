@@ -608,23 +608,49 @@ def _process_message_internal(
 
             close_session(conv.active_hr_chat_session, user="User", reset_conversation=False)
 
-        complete_conversation(conv)
+        conv.current_state = ConversationState.AWAITING_FEEDBACK
+        conv.save(ignore_permissions=True)
+        frappe.db.commit()
 
         lang = context.get("preferred_language", "English")
         if lang == "Urdu":
             bye_text = (
                 "خدا حافظ! 👋\n\n"
-                "آپ کا سیشن ختم کر دیا گیا ہے۔ آپ کا دن اچھا گزرے۔"
+                "آپ کا سیشن ختم کر دیا گیا ہے۔ آپ کا دن اچھا گزرے۔\n\n"
+                "⭐ *آج آپ کا تجربہ کیسا رہا؟*\n"
+                "براہ کرم 1 سے 5 تک کی درجہ بندی کریں:\n"
+                "1️⃣ ⭐️ خراب\n"
+                "2️⃣ ⭐️⭐️ مناسب\n"
+                "3️⃣ ⭐️⭐️⭐️ اچھا\n"
+                "4️⃣ ⭐️⭐️⭐️⭐️ بہت اچھا\n"
+                "5️⃣ ⭐️⭐️⭐️⭐️⭐️ بہترین\n\n"
+                "(یا اپنے تاثرات لکھیے!)"
             )
         elif lang == "Roman Urdu":
             bye_text = (
                 "Khuda Hafiz! 👋\n\n"
-                "Aap ka session close kar diya gaya hai. Aap ka din accha guzre."
+                "Aap ka session close kar diya gaya hai. Aap ka din accha guzre.\n\n"
+                "⭐ *Aaj aap ka experience kaisa raha?*\n"
+                "Barah-e-karam 1 se 5 rating dein:\n"
+                "1️⃣ ⭐️ Poor\n"
+                "2️⃣ ⭐️⭐️ Fair\n"
+                "3️⃣ ⭐️⭐️⭐️ Good\n"
+                "4️⃣ ⭐️⭐️⭐️⭐ Very Good\n"
+                "5️⃣ ⭐️⭐️⭐️⭐️⭐️ Excellent\n\n"
+                "(Ya apna feedback likhein!)"
             )
         else:
             bye_text = (
                 "Goodbye! 👋\n\n"
-                "Your session has been closed. Have a great day!"
+                "Your session has been closed. Have a great day!\n\n"
+                "⭐ *How was your experience today?*\n"
+                "Please rate your session from 1 to 5:\n"
+                "1️⃣ ⭐ Poor\n"
+                "2️⃣ ⭐⭐ Fair\n"
+                "3️⃣ ⭐⭐⭐ Good\n"
+                "4️⃣ ⭐⭐⭐⭐ Very Good\n"
+                "5️⃣ ⭐⭐⭐⭐⭐ Excellent\n\n"
+                "(Or reply with any feedback comments!)"
             )
 
         log_ai_action(

@@ -512,13 +512,21 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
 
     "search_knowledge": {
         "category": "policy",
-        "intents": ["search_knowledge", "policy_search", "knowledge_base"],
+        "intents": ["search_knowledge", "policy_search", "knowledge_base", "dual_job"],
         "aliases": [
             "quality policy",
             "what is the quality policy",
             "sick leave policy",
             "what is the policy for sick leave",
             "employee handbook policy",
+            "dual job policy",
+            "dual job",
+            "second job policy",
+            "moonlighting policy",
+            "what does micromerger say about dual job",
+            "can i do a dual job",
+            "policy on dual job",
+            "dual employment policy",
         ],
         "tool": "search_knowledge",
         "requires_authentication": False,

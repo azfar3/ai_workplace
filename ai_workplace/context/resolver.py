@@ -175,15 +175,20 @@ def get_user_context(identity: IdentityResult | dict) -> dict[str, Any]:
     # Retrieve employee data
     manager: Optional[str] = None
     employment_type: str = ""
+    branch: str = ""
+    emp_project: str = ""
     if employee and frappe.db.exists("Employee", employee):
         emp_doc = frappe.get_doc("Employee", employee)
         manager = getattr(emp_doc, "reports_to", None) or None
         employment_type = (getattr(emp_doc, "employment_type", "") or "").strip()
+        branch = (getattr(emp_doc, "branch", "") or "").strip()
+        emp_project = (getattr(emp_doc, "project", "") or "").strip()
         if not full_name and getattr(emp_doc, "employee_name", None):
             full_name = emp_doc.employee_name
 
     person_type = "Employee"
     staff_category = _resolve_staff_category(employment_type)
+    policy_scope = _resolve_policy_scope(employment_type, branch, emp_project)
     has_travel_expense_structure = has_active_expense_claim_structure_assignment(employee)
     allowed_services = _allowed_services_for_staff(staff_category, employee)
 
@@ -199,6 +204,8 @@ def get_user_context(identity: IdentityResult | dict) -> dict[str, Any]:
         "identity_status": status,
         "employment_type": employment_type,
         "staff_category": staff_category,
+        "policy_scope": policy_scope,
+        "branch": branch,
         "has_travel_expense_structure": has_travel_expense_structure,
         "roles": roles,
         "projects": [],
@@ -220,6 +227,40 @@ def _resolve_staff_category(employment_type: str) -> str:
     if et == EMPLOYMENT_TYPE_CONTRACT:
         return "project_contract"
     return "permanent"
+
+
+def _resolve_policy_scope(employment_type: str, branch: str, project: str) -> str:
+    """
+    Determine which policy scope applies to this employee.
+
+    Maps to the ``type`` field on System Notifications:
+      - ``"HO"``      → employee works at Head Office (show HO-only + All policies)
+      - ``"Project"`` → employee is project-based or has an active project assignment
+                        (show Project Base + All policies)
+      - ``"All"``     → fallback when scope cannot be determined (show only All policies)
+
+    Priority:
+      1. Active project assignment → Project
+      2. employment_type indicates contract/deliverable → Project
+      3. branch name contains "head office" or "ho" → HO
+      4. Default → All
+    """
+    et = (employment_type or "").strip().lower()
+    br = (branch or "").strip().lower()
+
+    # Explicit project assignment always wins
+    if (project or "").strip():
+        return "Project"
+
+    # Contract / deliverable staff are project-based by definition
+    if et in (EMPLOYMENT_TYPE_CONTRACT.lower(), EMPLOYMENT_TYPE_DELIVERABLE.lower()):
+        return "Project"
+
+    # Branch-based detection for Head Office staff
+    if "head office" in br or br in ("ho", "hq", "headquarters"):
+        return "HO"
+
+    return "All"
 
 
 def _allowed_services_for_staff(staff_category: str, employee_id: Optional[str] = None) -> list[str]:

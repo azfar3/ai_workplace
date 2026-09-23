@@ -482,21 +482,42 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
     user_loc  = (context or {}).get("location", "") if context else ""
     today_str = frappe.utils.today()
 
+    # Build the allowed scope set from context.policy_scope
+    # Canonical chunk scope values: "All", "HO", "Project"
+    # Canonical employee scope values (from resolver): "HO", "Project", "All"
+    #
+    # Inclusive rule:
+    #   employee scope "HO"      → sees chunks scoped "All" or "HO"
+    #   employee scope "Project" → sees chunks scoped "All" or "Project"
+    #   employee scope "All"     → sees chunks scoped "All" only
+    #   (no employee / guest)    → sees only "All" chunks
+    _employee_policy_scope = (context or {}).get("policy_scope", "") if context else ""
+    if _employee_policy_scope == "HO":
+        _allowed_chunk_scopes: set[str] = {"All", "HO", ""}
+    elif _employee_policy_scope == "Project":
+        _allowed_chunk_scopes = {"All", "Project", ""}
+    else:
+        # "All" scope employees or guests get universal policies only
+        _allowed_chunk_scopes = {"All", ""}
+
     # Phase C: Pre-filtering via metadata scopes
     filtered_chunks = []
     for chunk in chunks:
         # Effective Date filtering (if set, chunk must be effective already)
         if chunk.effective_date and frappe.utils.getdate(chunk.effective_date) > frappe.utils.getdate(today_str):
             continue
-            
-        # Hard Scoping (if fields are set on chunk, user MUST match)
-        if chunk.target_employment_type and user_emp_type and chunk.target_employment_type != user_emp_type:
+
+        # Policy Scope filtering — inclusive allowed-scope check
+        chunk_scope = (chunk.target_employment_type or "").strip()
+        if chunk_scope and chunk_scope not in _allowed_chunk_scopes:
             continue
+
+        # Hard Scoping for department / location (unchanged)
         if chunk.target_department and user_dept and chunk.target_department != user_dept:
             continue
         if chunk.target_location and user_loc and chunk.target_location != user_loc:
             continue
-            
+
         filtered_chunks.append(chunk)
 
     if not filtered_chunks:

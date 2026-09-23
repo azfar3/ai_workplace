@@ -131,7 +131,7 @@ class TestHRChatSession(unittest.TestCase):
             state=ConversationState.LIVE_HR_CHAT,
             active_hr_chat_session=session.name,
         )
-        close_session(session.name, user="Administrator")
+        close_session(session.name, user="Administrator", notify_user=False)
         self.conv.reload()
         self.assertEqual(self.conv.current_state, ConversationState.AWAITING_SELECTION)
         self.assertFalse(self.conv.active_hr_chat_session)
@@ -200,7 +200,7 @@ class TestHRChatSession(unittest.TestCase):
         matching = [s for s in inbox if s.get("whatsapp_identity") == self.wa_identity or s.get("wa_id") == self.wa_id]
         self.assertEqual(len(matching), 1)
 
-    @patch("ai_workplace.services.hr_chat.send_text_message")
+    @patch("ai_workplace.whatsapp.sender.send_message")
     def test_close_inactive_hr_chat_sessions_after_12_hours(self, mock_send):
         from ai_workplace.services.hr_chat import close_inactive_hr_chat_sessions
         session = self._open_test_session()

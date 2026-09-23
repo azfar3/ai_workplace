@@ -348,98 +348,121 @@ def handle_hr_agent_message(
 
     # 4. Agentic Planner Loop (Max 5 Steps)
     MAX_STEPS = 5
-    for step in range(MAX_STEPS):
-        res = complete(
-            messages=messages,
-            tools=tools_schema if tools_schema else None,
-            channel="WhatsApp",
-            employee=context.get("employee"),
-        )
-
-        if not res.get("success"):
-            return _build_feedback_message(
-                "I am experiencing technical difficulties.", context
+    try:
+        for step in range(MAX_STEPS):
+            res = complete(
+                messages=messages,
+                tools=tools_schema if tools_schema else None,
+                channel="WhatsApp",
+                employee=context.get("employee"),
             )
 
-        # Append assistant message (clean extra non-standard fields like 'reasoning')
-        msg_obj = res.get("raw_message", {})
-        if msg_obj:
-            clean_msg: dict[str, Any] = {
-                "role": msg_obj.get("role", "assistant"),
-                "content": msg_obj.get("content"),
-            }
-            if msg_obj.get("tool_calls"):
-                clean_msg["tool_calls"] = msg_obj["tool_calls"]
-            messages.append(clean_msg)
-        else:
-            messages.append({"role": "assistant", "content": res.get("text") or ""})
-
-        tool_calls = res.get("tool_calls", [])
-        if not tool_calls:
-            # Planner has finished reasoning and provided a direct response
-            final_text = res.get("text") or "I couldn't find an answer."
-
-            # 5. Redact sensitive text (like PII) using the evidence gateway
-            from ai_workplace.ai.evidence import redact_sensitive_text
-
-            final_text = redact_sensitive_text(final_text)
-
-            # 6. Sanitize and format for WhatsApp compliance (strip tables, HTML <br>, **bold**)
-            from ai_workplace.ai.response_formatter import ResponseFormatter
-
-            final_text = ResponseFormatter.sanitize_whatsapp_text(final_text)
-
-            # Log final response safely
-            try:
-                import json
-
-                trace_id = getattr(conv, "trace_id", "") or ""
-                from ai_workplace.conversation.orchestrator import log_ai_action
-
-                log_ai_action(
-                    trace_id=trace_id,
-                    conversation_name=getattr(conv, "name", ""),
-                    whatsapp_identity=getattr(conv, "whatsapp_identity", ""),
-                    intent="planner_synthesis",
-                    action="agent_planner_loop",
-                    result=json.dumps(
-                        {"steps": step + 1, "final_text": final_text[:200]}
+            if not res.get("success"):
+                frappe.log_error(
+                    title="HR Agent AI Completion Failed",
+                    message=(
+                        f"AI completion failed during handle_hr_agent_message.\n"
+                        f"User Input: {clean}\n"
+                        f"Error: {res.get('error')}\n"
+                        f"Error Type: {res.get('error_type')}\n"
+                        f"Full Response: {res}"
                     ),
-                    status="Success",
                 )
-            except Exception:
-                pass
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION)
-            return _build_feedback_message(final_text, context)
+                return _build_feedback_message(
+                    "I am experiencing technical difficulties.", context
+                )
 
-        # Execute tools observed by the planner
-        import json
-
-        for tc in tool_calls:
-            t_name = tc.get("function", {}).get("name")
-            try:
-                t_args = json.loads(tc.get("function", {}).get("arguments", "{}"))
-            except Exception:
-                t_args = {}
-
-            raw_res = run_tool(t_name, context, **t_args)
-            messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": tc.get("id"),
-                    "name": t_name,
-                    "content": (
-                        json.dumps(raw_res)
-                        if isinstance(raw_res, dict)
-                        else str(raw_res)
-                    ),
+            # Append assistant message (clean extra non-standard fields like 'reasoning')
+            msg_obj = res.get("raw_message", {})
+            if msg_obj:
+                clean_msg: dict[str, Any] = {
+                    "role": msg_obj.get("role", "assistant"),
+                    "content": msg_obj.get("content"),
                 }
-            )
+                if msg_obj.get("tool_calls"):
+                    clean_msg["tool_calls"] = msg_obj["tool_calls"]
+                messages.append(clean_msg)
+            else:
+                messages.append({"role": "assistant", "content": res.get("text") or ""})
 
-    return _build_feedback_message(
-        "I had to stop because the task took too many steps. Please try asking more specifically.",
-        context,
-    )
+            tool_calls = res.get("tool_calls", [])
+            if not tool_calls:
+                # Planner has finished reasoning and provided a direct response
+                final_text = res.get("text") or "I couldn't find an answer."
+
+                # 5. Redact sensitive text (like PII) using the evidence gateway
+                from ai_workplace.ai.evidence import redact_sensitive_text
+
+                final_text = redact_sensitive_text(final_text)
+
+                # 6. Sanitize and format for WhatsApp compliance (strip tables, HTML <br>, **bold**)
+                from ai_workplace.ai.response_formatter import ResponseFormatter
+
+                final_text = ResponseFormatter.sanitize_whatsapp_text(final_text)
+
+                # Log final response safely
+                try:
+                    import json
+
+                    trace_id = getattr(conv, "trace_id", "") or ""
+                    from ai_workplace.conversation.orchestrator import log_ai_action
+
+                    log_ai_action(
+                        trace_id=trace_id,
+                        conversation_name=getattr(conv, "name", ""),
+                        whatsapp_identity=getattr(conv, "whatsapp_identity", ""),
+                        intent="planner_synthesis",
+                        action="agent_planner_loop",
+                        result=json.dumps(
+                            {"steps": step + 1, "final_text": final_text[:200]}
+                        ),
+                        status="Success",
+                    )
+                except Exception:
+                    pass
+                update_conversation(conv, state=ConversationState.AWAITING_SELECTION)
+                return _build_feedback_message(final_text, context)
+
+            # Execute tools observed by the planner
+            import json
+
+            for tc in tool_calls:
+                t_name = tc.get("function", {}).get("name")
+                try:
+                    t_args = json.loads(tc.get("function", {}).get("arguments", "{}"))
+                except Exception:
+                    t_args = {}
+
+                raw_res = run_tool(t_name, context, **t_args)
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.get("id"),
+                        "name": t_name,
+                        "content": (
+                            json.dumps(raw_res)
+                            if isinstance(raw_res, dict)
+                            else str(raw_res)
+                        ),
+                    }
+                )
+
+        frappe.log_error(
+            title="HR Agent AI Max Steps Exceeded",
+            message=f"HR Agent loop exceeded maximum steps ({MAX_STEPS}) for message: '{clean}'",
+        )
+        return _build_feedback_message(
+            "I had to stop because the task took too many steps. Please try asking more specifically.",
+            context,
+        )
+    except Exception as exc:
+        frappe.log_error(
+            title="HR Agent Exception Fallback",
+            message=f"Exception in handle_hr_agent_message for user message '{clean}': {exc}\n{frappe.get_traceback()}",
+        )
+        return _build_feedback_message(
+            "I am experiencing technical difficulties.", context
+        )
 
 
 def _build_feedback_message(text: str, context: dict) -> OutboundMessage:

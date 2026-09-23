@@ -126,11 +126,13 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
     ],
     # ── Policy / Knowledge ─────────────────────────────────────────────────────
     "search_knowledge": [
+        r"(dual|second|side|part.?time) (job|work|employment)",
+        r"moonlight(ing)?",
         r"(employee |company |staff |hr )?(handbook|manual|guide|guideline|rulebook)",
-        r"what does (the |employee |company |hr )?(handbook|manual|policy) say",
+        r"what does (the |employee |company |hr |micromerger )?.{0,25}(say|says|state|states|mention|contain)",
+        r"(what|tell|explain|show).{0,25}(policy|rule|guideline|rules)",
         r"quality policy",
         r".{0,20}policy.{0,30}",
-        r"(what|tell|explain|show).{0,20}(policy|rule|guideline)",
     ],
     "policy_list": [
         r"(show|list|view|all|get) (the |)?policies",
@@ -159,7 +161,7 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
         r"(where|how) (can|to|do) i apply",
         r"(apply|applying).{0,15}(for|to).{0,15}(a |)?(job|jobs|career|position)",
         r"job (vacancies|openings|portal|website|link|hiring|recruitment|apply|application)",
-        r"(job|jobs|career|careers|vacancy|vacancies|hiring|recruitment) (kahan|kaise|say|se|batao|chahiye|mileygi)",
+        r"(job|jobs|career|careers|vacancy|vacancies|hiring|recruitment) (kahan|kaise|se|sey|batao|chahiye|mileygi)",
         r"^jobs?$",
         r"^careers?$",
         r"^vacanc(y|ies)$",
@@ -256,15 +258,22 @@ class QueryResolver:
     def _score_aliases(normalized_text: str, intent_data: dict[str, Any]) -> float:
         """
         Layer 1 (exact): 1.00
-        Layer 2 (substring): 0.80
+        Layer 2 (substring): 0.80 (multi-word aliases only)
         """
         score = 0.0
+        prompt_words = normalized_text.split()
         for alias in intent_data.get("aliases", []):
             norm_alias = QueryResolver.normalize_text(alias)
             if normalized_text == norm_alias:
                 return 1.0
-            if norm_alias and norm_alias in normalized_text:
-                score = max(score, 0.80)
+            if norm_alias:
+                alias_words = norm_alias.split()
+                # Avoid single-word aliases (e.g. "job", "salary") acting as substring catch-alls
+                # in multi-word prompts like "dual job policy" or "salary advance policy"
+                if len(alias_words) == 1 and len(prompt_words) > 1:
+                    continue
+                if norm_alias in normalized_text:
+                    score = max(score, 0.80)
         return score
 
     @staticmethod
@@ -331,6 +340,19 @@ class QueryResolver:
                 best_score = score
                 best_intent = intent_key
                 best_meta = meta
+
+        # Policy & Rule query safeguard: if prompt is asking about policy/rule/dual job,
+        # redirect from guest_careers to search_knowledge RAG handler
+        policy_keywords = [
+            "policy", "policies", "rule", "rules", "dual job", "second job",
+            "moonlighting", "handbook", "guideline", "guidelines", "restriction"
+        ]
+        is_policy_query = any(pk in normalized for pk in policy_keywords)
+        if is_policy_query and best_intent in ("guest_careers", "guest_job_status"):
+            if "search_knowledge" in INTENT_CATALOG:
+                best_intent = "search_knowledge"
+                best_meta = INTENT_CATALOG["search_knowledge"]
+                best_score = max(best_score, 0.85)
 
         if best_score >= CONFIDENCE_THRESHOLD and best_intent:
             return best_intent, best_meta, best_score

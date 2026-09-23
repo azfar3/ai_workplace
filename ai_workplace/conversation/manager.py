@@ -67,13 +67,19 @@ def get_or_create_conversation(
     ttl_minutes = get_default_ttl_minutes()
     expires_at = now + timedelta(minutes=ttl_minutes)
 
-    # 2. Look up existing active conversation for this identity
+    # 2. Look up existing active conversation for this identity, scoped by channel (Web vs WhatsApp)
+    conv_filters = {
+        "whatsapp_identity": wa_identity_doc,
+        "conversation_status": ConversationStatus.ACTIVE,
+    }
+    if wa_id and wa_id.startswith("WEB-"):
+        conv_filters["wa_id"] = ["like", "WEB-%"]
+    elif wa_id:
+        conv_filters["wa_id"] = ["not like", "WEB-%"]
+
     active_conv_name = frappe.db.get_value(
         "WhatsApp Conversation",
-        {
-            "whatsapp_identity": wa_identity_doc,
-            "conversation_status": ConversationStatus.ACTIVE,
-        },
+        conv_filters,
         "name",
     )
 
@@ -278,14 +284,15 @@ def process_expired_conversation(
     conv.current_state = ConversationState.AWAITING_FEEDBACK
     conv.save(ignore_permissions=True)
 
-    # Get recipient phone number
+    # Get recipient phone number (Only for WhatsApp sessions, not Web Chat)
     phone_number = None
-    if conv.whatsapp_identity:
-        phone_number = frappe.db.get_value(
-            "WhatsApp Identity", conv.whatsapp_identity, "normalized_phone"
-        )
-    if not phone_number and conv.wa_id:
-        phone_number = conv.wa_id
+    if conv.wa_id and not conv.wa_id.startswith("WEB-"):
+        if conv.whatsapp_identity:
+            phone_number = frappe.db.get_value(
+                "WhatsApp Identity", conv.whatsapp_identity, "normalized_phone"
+            )
+        if not phone_number:
+            phone_number = conv.wa_id
 
     if phone_number:
         lang = conv.preferred_language or "English"

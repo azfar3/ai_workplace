@@ -285,6 +285,10 @@ def sync_policy_notification_to_chunks(doc, method=None) -> None:
 
     hash_marker = f"sysnotif:{doc.name}|hash:{content_hash}|ver:{version}"
 
+    # Determine policy scope from System Notification 'type' field
+    # Values: '' / 'All' / 'HO only' / 'Project Base'
+    notification_scope = _normalize_notification_scope(doc.get("type") or "")
+
     errors = []
     for idx, chunk_info in enumerate(raw_chunks):
         text     = chunk_info["text"]
@@ -318,6 +322,8 @@ def sync_policy_notification_to_chunks(doc, method=None) -> None:
             chunk.policy_version    = version
             chunk.effective_date    = effective_date
             chunk.source_date       = source_date
+            # Scope filtering — maps to System Notification 'type'
+            chunk.target_employment_type = notification_scope
             # Legacy access_level carries idempotency hash marker on first chunk
             chunk.access_level      = hash_marker if idx == 0 else f"sysnotif:{doc.name}"
             # Embedding
@@ -339,6 +345,38 @@ def sync_policy_notification_to_chunks(doc, method=None) -> None:
         )
 
     frappe.db.commit()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Scope normalisation
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Maps System Notification 'type' select field values to the canonical scope
+# token stored in AI Workplace Knowledge Chunk.target_employment_type.
+#
+# Search side reads: "", "All", "HO", "Project"
+_SCOPE_NORMALISATION: dict[str, str] = {
+    "": "All",
+    "all": "All",
+    "ho only": "HO",
+    "project base": "Project",
+    "project based": "Project",
+    "project": "Project",
+    "ho": "HO",
+}
+
+
+def _normalize_notification_scope(raw_type: str) -> str:
+    """
+    Map the System Notification ``type`` field value to the canonical
+    scope token stored on the knowledge chunk.
+
+    >>> _normalize_notification_scope('HO only')  → 'HO'
+    >>> _normalize_notification_scope('Project Base')  → 'Project'
+    >>> _normalize_notification_scope('All')  → 'All'
+    >>> _normalize_notification_scope('')  → 'All'
+    """
+    return _SCOPE_NORMALISATION.get((raw_type or "").strip().lower(), "All")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
