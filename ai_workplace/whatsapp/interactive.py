@@ -429,7 +429,8 @@ def build_leave_type_list_message(
 ) -> OutboundMessage:
     """Interactive list for selecting a leave type during apply flow."""
     rows = []
-    for idx, item in enumerate(leave_types[:10]):
+    limit = len(leave_types) if context.get("is_web_chat") else 10
+    for idx, item in enumerate(leave_types[:limit]):
         lt = item.get("leave_type") or "Leave"
         remaining = item.get("remaining", "")
         rows.append({
@@ -481,16 +482,21 @@ def build_option_list_message(
     section_title: str = "Options",
     id_prefix: str = "opt",
     label_key: str = "label",
+    context: dict[str, Any] | None = None,
 ) -> OutboundMessage:
     """Generic interactive list from dict rows or plain strings."""
     rows = []
-    for idx, item in enumerate(options[:10]):
+    limit = len(options) if (context and context.get("is_web_chat")) else 10
+    for idx, item in enumerate(options[:limit]):
+        row_id = f"{id_prefix}_{idx}"
         if isinstance(item, dict):
             label = item.get(label_key) or item.get("title") or ""
+            if "id" in item:
+                row_id = str(item["id"])
         else:
             label = str(item)
         rows.append({
-            "id": f"{id_prefix}_{idx}",
+            "id": row_id,
             "title": _truncate(label, 24),
             "description": _truncate(label, 72),
         })

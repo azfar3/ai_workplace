@@ -156,15 +156,38 @@ def _build_leave_reason_list_message(
     context: dict[str, Any],
     reasons: list[str],
     header: str,
+    page: int = 1,
 ) -> OutboundMessage:
     from ai_workplace.whatsapp.interactive import build_option_list_message
 
+    is_web = context.get("is_web_chat")
+    if is_web or len(reasons) <= 10:
+        return build_option_list_message(
+            options=reasons,
+            header=header,
+            button_label="Select Reason",
+            section_title="Leave Reasons",
+            id_prefix="lt",
+            context=context,
+        )
+
+    options = []
+    if page == 1:
+        for idx, r in enumerate(reasons[:9]):
+            options.append({"id": f"lt_{idx}", "title": r})
+        options.append({"id": "leave_page_2", "title": "➡️ More Options..."})
+    else:
+        for idx, r in enumerate(reasons[9:18], start=9):
+            options.append({"id": f"lt_{idx}", "title": r})
+        options.append({"id": "leave_page_1", "title": "⬅️ Back to Page 1"})
+
     return build_option_list_message(
-        options=reasons,
+        options=options,
         header=header,
         button_label="Select Reason",
         section_title="Leave Reasons",
         id_prefix="lt",
+        context=context,
     )
 
 
@@ -202,6 +225,34 @@ def _resolve_leave_type(draft: dict[str, Any], text: str) -> Optional[str]:
 
 
 def _handle_leave_type(conv: Any, context: dict[str, Any], draft: dict, text: str) -> OutboundMessage:
+    clean = text.strip().lower()
+    
+    if clean in ("leave_page_2", "more options...", "➡️ more options...", "more options"):
+        draft["page"] = 2
+        _save_draft(conv, draft)
+        reasons = draft.get("custom_leave_reasons") or CUSTOM_LEAVE_REASONS
+        lang = context.get("preferred_language", "English")
+        if lang == "Urdu":
+            header = "مرحلہ 1 تا 4 — اپنی *چھٹی کی وجہ (Leave Reason)* منتخب کریں (صفحہ 2):"
+        elif lang == "Roman Urdu":
+            header = "Step 1 of 4 — Apni *Leave Reason (Type)* select karein (Page 2):"
+        else:
+            header = "Step 1 of 4 — Select your *Leave Reason (Type)* (Page 2):"
+        return _build_leave_reason_list_message(context, reasons, header, page=2)
+
+    if clean in ("leave_page_1", "back to page 1", "⬅️ back to page 1", "page 1"):
+        draft["page"] = 1
+        _save_draft(conv, draft)
+        reasons = draft.get("custom_leave_reasons") or CUSTOM_LEAVE_REASONS
+        lang = context.get("preferred_language", "English")
+        if lang == "Urdu":
+            header = "مرحلہ 1 تا 4 — اپنی *چھٹی کی وجہ (Leave Reason)* منتخب کریں:"
+        elif lang == "Roman Urdu":
+            header = "Step 1 of 4 — Apni *Leave Reason (Type)* select karein:"
+        else:
+            header = "Step 1 of 4 — Select your *Leave Reason (Type)*:"
+        return _build_leave_reason_list_message(context, reasons, header, page=1)
+
     leave_reason = _resolve_leave_type(draft, text)
     lang = context.get("preferred_language", "English")
 

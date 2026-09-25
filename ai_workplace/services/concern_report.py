@@ -328,6 +328,7 @@ def _handle_address(conv: Any, context: dict[str, Any], draft: dict, text: str) 
         section_title=_("Provinces"),
         id_prefix="prov",
         label_key="label",
+        context=context,
     )
 
 
@@ -343,6 +344,7 @@ def _handle_province(conv: Any, context: dict[str, Any], draft: dict, text: str)
             section_title=_("Provinces"),
             id_prefix="prov",
             label_key="label",
+            context=context,
         )
 
     province_id = None
@@ -371,6 +373,7 @@ def _handle_province(conv: Any, context: dict[str, Any], draft: dict, text: str)
         section_title=_("Districts"),
         id_prefix="dist",
         label_key="label",
+        context=context,
     )
 
 
@@ -387,6 +390,7 @@ def _handle_district(conv: Any, context: dict[str, Any], draft: dict, text: str)
             section_title=_("Districts"),
             id_prefix="dist",
             label_key="label",
+            context=context,
         )
 
     draft["custom_district"] = district
