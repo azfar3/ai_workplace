@@ -560,6 +560,10 @@ def _create_leave_application(draft: dict[str, Any], context: dict[str, Any]) ->
             doc.half_day_date if doc.half_day else None,
         ) or 0
 
+        doc.workflow_state = "Pending"
+        doc.status = "Open"
+        doc.docstatus = 0
+
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
         return doc.name
