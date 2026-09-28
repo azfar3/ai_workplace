@@ -274,12 +274,12 @@ def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
                 "status": ["!=", "Rejected"],
             }
             if from_d and to_d:
-                app_filters["from_date"] = ["<=", to_d]
-                app_filters["to_date"] = [">=", from_d]
+                app_filters["from_date"] = [">=", from_d]
+                app_filters["to_date"] = ["<=", to_d]
             elif from_d:
-                app_filters["to_date"] = [">=", from_d]
+                app_filters["from_date"] = [">=", from_d]
             elif to_d:
-                app_filters["from_date"] = ["<=", to_d]
+                app_filters["to_date"] = ["<=", to_d]
 
             leave_apps = frappe.db.get_all(
                 "Leave Application",
