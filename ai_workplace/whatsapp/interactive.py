@@ -198,16 +198,32 @@ def build_grouped_service_list_message(
     header_prefix: str = "",
     *,
     rows_override: list[dict[str, Any]] | None = None,
+    parent_key: str | None = None,
 ) -> OutboundMessage:
     """Full service list grouped into sections (bank-style browse menu)."""
     lang = context.get("preferred_language", "English")
-    browse = _browse_all_prompt(lang)
-    if lang == "Urdu":
-        subtitle = "اپنی مطلوبہ HR یا آپریشنل سروس منتخب کریں۔"
-    elif lang == "Roman Urdu":
-        subtitle = "Apni matlooba HR ya operational support talash karein."
+    
+    if parent_key:
+        from ai_workplace.services.registry import get_service_info
+        parent_info = get_service_info(parent_key) or {}
+        if lang == "Urdu":
+            browse = parent_info.get("title_urdu") or parent_info.get("title") or "مینو"
+            subtitle = parent_info.get("description") or "مطلوبہ سروس منتخب کریں"
+        elif lang == "Roman Urdu":
+            browse = parent_info.get("title_roman_urdu") or parent_info.get("title") or "Menu"
+            subtitle = parent_info.get("description") or "Matlooba service select karein"
+        else:
+            browse = parent_info.get("title") or "Menu"
+            subtitle = parent_info.get("description") or "Select a service"
+        browse = f"📋 *{browse}*"
     else:
-        subtitle = "Find the HR or operational support you need."
+        browse = _browse_all_prompt(lang)
+        if lang == "Urdu":
+            subtitle = "اپنی مطلوبہ HR یا آپریشنل سروس منتخب کریں۔"
+        elif lang == "Roman Urdu":
+            subtitle = "Apni matlooba HR ya operational support talash karein."
+        else:
+            subtitle = "Find the HR or operational support you need."
 
     if header_prefix:
         body = f"{header_prefix}\n\n{browse}\n\n{subtitle}"
@@ -294,6 +310,7 @@ def build_submenu_quick_buttons_message(
 def build_submenu_remaining_list_message(
     context: dict[str, Any],
     services: list[dict[str, Any]],
+    parent_key: str | None = None,
 ) -> OutboundMessage:
     """Remaining submenu options in a list (plus main menu)."""
     lang = context.get("preferred_language", "English")
@@ -308,7 +325,7 @@ def build_submenu_remaining_list_message(
             "title": _truncate(title, 24),
             "description": _truncate(description, 72),
         })
-    return build_grouped_service_list_message(context, services, rows_override=rows)
+    return build_grouped_service_list_message(context, services, rows_override=rows, parent_key=parent_key)
 
 
 def build_show_menu_again_button(context: dict[str, Any]) -> OutboundMessage:

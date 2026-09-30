@@ -93,6 +93,16 @@
    "fieldname": "guest_name",
    "fieldtype": "Data",
    "label": "Guest Name"
+  },
+  {
+   "fieldname": "sender_name",
+   "fieldtype": "Data",
+   "label": "Sender Name"
+  },
+  {
+   "fieldname": "receiver_name",
+   "fieldtype": "Data",
+   "label": "Receiver Name"
   }
  ],
  "icon": "fa fa-id-card",

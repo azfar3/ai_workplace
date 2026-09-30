@@ -331,9 +331,28 @@ def _process_receive():
         return Response("ok", status=200, mimetype="text/plain")
 
     # ── 5b. Identity resolution (before log for PIN redaction) ─────────────────
+    sender_name = parsed.get("sender_name", "")
+    receiver_name = parsed.get("receiver_name", "")
+
     identity = resolve_identity(raw_phone)
+    if identity.status == "guest" and sender_name:
+        identity.full_name = sender_name
+
     wa_identity_name = get_or_create_whatsapp_identity(identity, wa_id=wa_id or "")
     identity.whatsapp_identity = wa_identity_name
+
+    if wa_identity_name and (sender_name or receiver_name):
+        update_dict = {}
+        if sender_name:
+            update_dict["sender_name"] = sender_name
+        if receiver_name:
+            update_dict["receiver_name"] = receiver_name
+        frappe.db.set_value(
+            "WhatsApp Identity",
+            wa_identity_name,
+            update_dict,
+            update_modified=False,
+        )
 
     inbound_text = parsed.get("text", "")
     log_message = _redact_inbound_message(wa_identity_name, inbound_text)
@@ -349,6 +368,8 @@ def _process_receive():
         message=log_message,
         status="Processing",
         trace_id=trace_id,
+        sender_name=sender_name,
+        receiver_name=receiver_name,
     )
 
     # Update inbound log with identity info.
@@ -398,7 +419,8 @@ def _process_receive():
             raw_phone=raw_phone,
             message_text=inbound_text,
             trace_id=trace_id,
-            sender_name=parsed.get("sender_name", ""),
+            sender_name=sender_name,
+            receiver_name=receiver_name,
         )
         frappe.logger("ai_workplace").info(
             f"AI Workplace [{trace_id}]: Enqueued background job for message_id={message_id}"
@@ -511,6 +533,8 @@ def _process_receive():
             latency=latency_ms,
             error=outbound_error,
             sender_type="System",
+            sender_name="System",
+            receiver_name=sender_name,
         )
 
         if not send_result.get("success"):
@@ -530,6 +554,7 @@ def process_async_whatsapp_message(
     message_text: str = "",
     trace_id: str = "",
     sender_name: str = "",
+    receiver_name: str = "",
 ) -> dict[str, Any]:
     """
     Background worker job for processing incoming WhatsApp messages asynchronously.
@@ -557,8 +582,24 @@ def process_async_whatsapp_message(
     start_ts = datetime.utcnow()
 
     identity = resolve_identity(raw_phone)
+    if identity.status == "guest" and sender_name:
+        identity.full_name = sender_name
+
     wa_identity_name = get_or_create_whatsapp_identity(identity, wa_id=wa_id or "")
     identity.whatsapp_identity = wa_identity_name
+
+    if wa_identity_name and (sender_name or receiver_name):
+        update_dict = {}
+        if sender_name:
+            update_dict["sender_name"] = sender_name
+        if receiver_name:
+            update_dict["receiver_name"] = receiver_name
+        frappe.db.set_value(
+            "WhatsApp Identity",
+            wa_identity_name,
+            update_dict,
+            update_modified=False,
+        )
 
     inbound_log = frappe.get_doc("WhatsApp Message Log", inbound_log_name)
 
@@ -664,6 +705,8 @@ def process_async_whatsapp_message(
             latency=latency_ms,
             error=outbound_error,
             sender_type="System",
+            sender_name="System",
+            receiver_name=sender_name,
         )
 
     frappe.cache().set_value(lock_key, "1")
@@ -775,6 +818,8 @@ def _create_message_log(
     hr_live_chat_session: str = "",
     sender_type: str = "",
     media_file: str = "",
+    sender_name: str = "",
+    receiver_name: str = "",
 ) -> "frappe.Document":
     """Create and insert a WhatsApp Message Log record."""
     if not (message or "").strip() and not (media_file or "").strip():
@@ -798,6 +843,8 @@ def _create_message_log(
     doc.error = error
     doc.hr_live_chat_session = hr_live_chat_session or ""
     doc.sender_type = sender_type or ""
+    doc.sender_name = sender_name or ""
+    doc.receiver_name = receiver_name or ""
     doc.timestamp = frappe.utils.now_datetime()
     doc.insert(ignore_permissions=True)
     frappe.db.commit()
@@ -947,9 +994,28 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
         )
         return Response("ok", status=200, mimetype="text/plain")
 
+    sender_name = parsed.get("sender_name", "")
+    receiver_name = parsed.get("receiver_name", "")
+    
     identity = resolve_identity(raw_phone)
+    if identity.status == "guest" and sender_name:
+        identity.full_name = sender_name
+
     wa_identity_name = get_or_create_whatsapp_identity(identity, wa_id=wa_id or "")
     identity.whatsapp_identity = wa_identity_name
+
+    if wa_identity_name and (sender_name or receiver_name):
+        update_dict = {}
+        if sender_name:
+            update_dict["sender_name"] = sender_name
+        if receiver_name:
+            update_dict["receiver_name"] = receiver_name
+        frappe.db.set_value(
+            "WhatsApp Identity",
+            wa_identity_name,
+            update_dict,
+            update_modified=False,
+        )
 
     from ai_workplace.whatsapp.media import fetch_inbound_media
 
@@ -970,6 +1036,8 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
         status="Processing",
         trace_id=trace_id,
         media_file=file_url,
+        sender_name=sender_name,
+        receiver_name=receiver_name,
     )
     _update_log_identity(inbound_log, identity)
 
@@ -1095,6 +1163,9 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
                 ),
                 status="Sent" if send_result.get("success") else "Failed",
                 trace_id=trace_id,
+                sender_type="System",
+                sender_name="System",
+                receiver_name=sender_name,
             )
             frappe.logger("ai_workplace").info(
                 f"AI Workplace [{trace_id}]: Processed inbound {message_type} for deliverable flow"
@@ -1188,9 +1259,28 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
         )
         return Response("ok", status=200, mimetype="text/plain")
 
+    sender_name = parsed.get("sender_name", "")
+    receiver_name = parsed.get("receiver_name", "")
+    
     identity = resolve_identity(raw_phone)
+    if identity.status == "guest" and sender_name:
+        identity.full_name = sender_name
+
     wa_identity_name = get_or_create_whatsapp_identity(identity, wa_id=wa_id or "")
     identity.whatsapp_identity = wa_identity_name
+
+    if wa_identity_name and (sender_name or receiver_name):
+        update_dict = {}
+        if sender_name:
+            update_dict["sender_name"] = sender_name
+        if receiver_name:
+            update_dict["receiver_name"] = receiver_name
+        frappe.db.set_value(
+            "WhatsApp Identity",
+            wa_identity_name,
+            update_dict,
+            update_modified=False,
+        )
 
     loc_text = (
         parsed.get("location_name") or parsed.get("location_address") or "[Location]"

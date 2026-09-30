@@ -203,6 +203,16 @@
    "fieldname": "error",
    "fieldtype": "Long Text",
    "label": "Error"
+  },
+  {
+   "fieldname": "sender_name",
+   "fieldtype": "Data",
+   "label": "Sender Name"
+  },
+  {
+   "fieldname": "receiver_name",
+   "fieldtype": "Data",
+   "label": "Receiver Name"
   }
  ],
  "icon": "fa fa-comments",
