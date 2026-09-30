@@ -297,7 +297,7 @@ def get_published_policies(employee: str = "") -> list[dict[str, Any]]:
                 results.append({
                     "title": (n.get("subject") or n.get("name")).strip(),
                     "category": "Policy",
-                    "description": raw_body[:300] if raw_body else "Published Company Policy",
+                    "description": raw_body[:3000] if raw_body else "Published Company Policy",
                     "file_url": n.get("policy_document") or "",
                     "version": n.get("version") or "1.0",
                     "effective_from": str(n.get("published_from") or n.get("last_updated_on")) if (n.get("published_from") or n.get("last_updated_on")) else None,

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:agent_name",
  "creation": "2026-06-12 15:07:36.983943",
@@ -76,7 +77,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-28 17:32:51.036847",
+ "modified": "2026-09-29 11:09:53.825597",
  "modified_by": "Administrator",
  "module": "Agentic AI",
  "name": "AI Agents",

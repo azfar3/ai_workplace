@@ -7,6 +7,7 @@ Dynamic Menu & Selection Parser — Phase 2.
 from __future__ import annotations
 
 from typing import Any, Optional
+import frappe
 
 from ai_workplace.services.registry import get_available_services_for_context
 from ai_workplace.response.builder import (
@@ -34,9 +35,10 @@ def build_menu(
     """
     services = get_available_services_for_context(context, parent_key=parent_key)
     is_web = context.get("is_web_chat", False)
+    is_custom = frappe.db.get_single_value("AI Workplace Settings", "custom_whatsapp_api_enabled")
 
     if not parent_key:
-        if is_web:
+        if is_web or is_custom:
             list_out = build_grouped_service_list_message(context, services, header_prefix=header_prefix)
             return list_out, services
             
@@ -46,7 +48,7 @@ def build_menu(
             quick_out.follow_up = [list_out]
             return quick_out, services
 
-    if is_web:
+    if is_web or is_custom:
         list_out = build_submenu_remaining_list_message(context, services)
         if header_prefix:
             list_out.body_text = f"{header_prefix}\n\n{list_out.body_text}"

@@ -1,13 +1,21 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:",
- "creation": "2026-09-21 13:40:47.679918",
+ "autoname": "field:session_id",
+ "creation": "2026-09-28 17:51:51.161087",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "session_id",
   "file_name",
+  "status",
+  "column_break_pjfo",
+  "email",
+  "phone_number",
+  "full_name",
+  "whatsapp_id",
+  "lid",
+  "section_break_meyn",
   "data"
  ],
  "fields": [
@@ -18,14 +26,13 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Session ID",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
    "description": "The exact name of the Baileys key (e.g., 'creds.json')",
    "fieldname": "file_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "File Name"
   },
   {
@@ -34,14 +41,57 @@
    "fieldtype": "Code",
    "label": "JSON Data",
    "options": "JSON"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email"
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Phone Number"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "Status"
+  },
+  {
+   "fieldname": "column_break_pjfo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_meyn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Full Name"
+  },
+  {
+   "fieldname": "whatsapp_id",
+   "fieldtype": "Data",
+   "label": "Whatsapp ID"
+  },
+  {
+   "fieldname": "lid",
+   "fieldtype": "Data",
+   "label": "LID"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 13:44:14.359883",
+ "modified": "2026-09-30 16:00:03.911353",
  "modified_by": "Administrator",
  "module": "Ai Workplace",
  "name": "Whatsapp Session",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

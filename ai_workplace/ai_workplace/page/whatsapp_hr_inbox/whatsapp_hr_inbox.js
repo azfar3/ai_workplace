@@ -1072,6 +1072,9 @@ frappe.whatsapp_hr_inbox = {
 							<button class="wa-send-btn" disabled title="${__("Send")}">
 								<svg viewBox="0 0 24 24"><path d="M1.101 21.757L23.8 12.029 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
 							</button>
+							<button class="wa-mic-btn" disabled title="${__("Record Voice Message")}">
+								<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.39-.9.88 0 2.76-2.24 5.01-5.01 5.01s-5.01-2.25-5.01-5.01c0-.49-.41-.88-.9-.88s-.88.39-.88.88c0 3.16 2.45 5.76 5.54 6.13V20h-3v2h7.82v-2h-3v-1.99c3.09-.37 5.54-2.97 5.54-6.13 0-.49-.4-.88-.89-.88z"/></svg>
+							</button>
 						</div>
 					</footer>
 				</main>
@@ -1093,6 +1096,7 @@ frappe.whatsapp_hr_inbox = {
 		this.scroll_bottom_badge = this.wrapper.find(".wa-scroll-bottom-badge");
 		this.compose_el = this.wrapper.find(".wa-compose textarea");
 		this.send_btn = this.wrapper.find(".wa-send-btn");
+		this.mic_btn = this.wrapper.find(".wa-mic-btn");
 		this.attach_btn = this.wrapper.find(".wa-attach-btn");
 		this.emoji_btn = this.wrapper.find(".wa-emoji-btn");
 		this.emoji_picker = this.wrapper.find(".wa-emoji-picker");
@@ -1164,6 +1168,7 @@ frappe.whatsapp_hr_inbox = {
 
 		this.send_btn.on("click", () => this.send_reply());
 		this.attach_btn.on("click", () => this.attach_file());
+		this.mic_btn.on("click", () => this.toggle_voice_recording());
 		this.emoji_btn.on("click", (e) => {
 			e.stopPropagation();
 			this.toggle_emoji_picker();
@@ -1239,7 +1244,7 @@ frappe.whatsapp_hr_inbox = {
 	},
 
 	is_mobile() {
-		return window.matchMedia("(max-width: 767px)").matches;
+		return window.matchMedia("(max-width: 991px)").matches;
 	},
 
 	show_mobile_list() {
@@ -1265,7 +1270,7 @@ frappe.whatsapp_hr_inbox = {
 			return;
 		}
 		this._mobile_nav_initialized = true;
-		this._mobile_mql = window.matchMedia("(max-width: 767px)");
+		this._mobile_mql = window.matchMedia("(max-width: 991px)");
 		const on_change = () => this.handle_viewport_change();
 		if (this._mobile_mql.addEventListener) {
 			this._mobile_mql.addEventListener("change", on_change);
@@ -2211,6 +2216,7 @@ frappe.whatsapp_hr_inbox = {
 		this.compose_el.prop("disabled", !can_reply);
 		this.send_btn.prop("disabled", !can_reply);
 		this.attach_btn.prop("disabled", !can_reply);
+		if (this.mic_btn) this.mic_btn.prop("disabled", !can_reply);
 		if (this.emoji_btn) {
 			this.emoji_btn.prop("disabled", !can_reply);
 		}
@@ -2589,20 +2595,193 @@ frappe.whatsapp_hr_inbox = {
 		if (media) {
 			if (msg_type === "image") {
 				html += `<a class="wa-media-link" href="${frappe.utils.escape_html(media)}" target="_blank" rel="noopener"><img class="wa-media-img" src="${frappe.utils.escape_html(media)}" alt=""></a>`;
+			} else if (msg_type === "video") {
+				html += `<video class="wa-media-video" src="${frappe.utils.escape_html(media)}" controls style="max-width: 280px; max-height: 280px; border-radius: 8px; margin-bottom: 4px; display: block;"></video>`;
+			} else if (msg_type === "audio" || msg_type === "ptt") {
+				html += `<audio class="wa-media-audio" src="${frappe.utils.escape_html(media)}" controls style="min-width: 240px; max-width: 100%; margin-bottom: 4px;"></audio>`;
 			} else {
 				const label = frappe.utils.escape_html(message.message || media.split("/").pop());
 				html += `<a class="wa-media-doc" href="${frappe.utils.escape_html(media)}" target="_blank" rel="noopener"><span class="wa-doc-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span><span class="wa-doc-name">${label}</span></a>`;
 			}
 		}
 
-		let text = (message.message || "").trim();
-		text = this.format_message_text(text);
+		const raw_text = (message.message || "").trim();
+		let text = this.format_message_text(raw_text);
+		
+		const clean_media = media ? media.split("?")[0] : "";
+		const raw_filename = clean_media ? clean_media.split("/").pop() : "";
+		let decoded_filename = raw_filename;
+		try {
+			decoded_filename = decodeURIComponent(raw_filename);
+		} catch(e) {}
 
-		if (text && msg_type === "image" && media) {
-			html += `<div class="wa-bubble-text">${frappe.utils.escape_html(text)}</div>`;
-		} else if (text && !media) {
-			html += `<div class="wa-bubble-text">${frappe.utils.escape_html(text)}</div>`;
-		} else if (text && media && msg_type !== "image" && text !== media.split("/").pop()) {
+		// Check if text is exactly the filename, or if it matches the base filename (ignoring Frappe's -1, -2 suffixes)
+		let is_filename = false;
+		if (raw_text && media) {
+			if (raw_text === raw_filename || raw_text === decoded_filename) {
+				is_filename = true;
+			} else if (raw_text.includes('.') && decoded_filename.includes('.')) {
+				const text_base = raw_text.substring(0, raw_text.lastIndexOf('.'));
+				const text_ext = raw_text.substring(raw_text.lastIndexOf('.') + 1).toLowerCase();
+				const decoded_base = decoded_filename.substring(0, decoded_filename.lastIndexOf('.'));
+				const decoded_ext = decoded_filename.substring(decoded_filename.lastIndexOf('.') + 1).toLowerCase();
+				
+				if (text_ext === decoded_ext && decoded_base.startsWith(text_base)) {
+					is_filename = true;
+				}
+			}
+		}
+
+		let is_vcard = false;
+		let vcard_name = "";
+		let vcard_phone = "";
+		if (text.includes("BEGIN:VCARD") && text.includes("END:VCARD")) {
+			is_vcard = true;
+			const fn_match = text.match(/FN:(.+)/);
+			const tel_match = text.match(/TEL.*:(.+)/);
+			if (fn_match) vcard_name = fn_match[1].trim();
+			if (tel_match) vcard_phone = tel_match[1].trim();
+			
+			if (!vcard_name && vcard_phone) {
+				vcard_name = vcard_phone;
+			}
+		}
+
+		let is_poll = false;
+		let poll_title = "";
+		let poll_options = [];
+		if (text.trim().startsWith("[Poll:") && text.includes("]")) {
+			const lines = text.split("\n").map(l => l.trim()).filter(l => l);
+			if (lines.length > 0 && lines[0].startsWith("[Poll:") && lines[0].endsWith("]")) {
+				is_poll = true;
+				poll_title = lines[0].substring(6, lines[0].length - 1).trim();
+				poll_options = lines.slice(1).map(l => l.replace(/^\d+\.\s*/, ""));
+			}
+		}
+
+		let is_event = false;
+		let event_title = "";
+		let event_start = "";
+		let event_end = "";
+		let event_location = "";
+		if (text.trim().startsWith("[Event:") && text.includes("]")) {
+			const lines = text.split("\n").map(l => l.trim()).filter(l => l);
+			if (lines.length > 0 && lines[0].startsWith("[Event:") && lines[0].endsWith("]")) {
+				is_event = true;
+				event_title = lines[0].substring(7, lines[0].length - 1).trim();
+				const start_line = lines.find(l => l.startsWith("Start:"));
+				if (start_line) {
+					event_start = start_line.substring(6).trim();
+				}
+				const end_line = lines.find(l => l.startsWith("End:"));
+				if (end_line) {
+					event_end = end_line.substring(4).trim();
+				}
+				const location_line = lines.find(l => l.startsWith("Location:"));
+				if (location_line) {
+					event_location = location_line.substring(9).trim();
+				}
+			}
+		}
+
+		let is_location = false;
+		let is_live_location = false;
+		let loc_lat = "";
+		let loc_lng = "";
+		let loc_name = "";
+		if (text.trim().match(/^\[(Live )?Location:/i) && text.includes("]")) {
+			const lines = text.split("\n").map(l => l.trim()).filter(l => l);
+			if (lines.length > 0 && lines[0].match(/^\[(Live )?Location:/i) && lines[0].endsWith("]")) {
+				is_location = true;
+				if (lines[0].toLowerCase().includes("live location")) {
+					is_live_location = true;
+				}
+				const colon_idx = lines[0].indexOf(":");
+				loc_name = lines[0].substring(colon_idx + 1, lines[0].length - 1).trim();
+				const coord_line = lines.find(l => l.startsWith("Lat:"));
+				if (coord_line) {
+					const lat_match = coord_line.match(/Lat:\s*([0-9.-]+)/);
+					const lng_match = coord_line.match(/Lng:\s*([0-9.-]+)/);
+					if (lat_match) loc_lat = lat_match[1];
+					if (lng_match) loc_lng = lng_match[1];
+				}
+			}
+		}
+
+		if (is_filename) {
+			// Do not render text if it's just the filename of the media
+		} else if (is_poll) {
+			html += `<div class="wa-poll">
+				<div class="wa-poll-header">
+					<div class="wa-poll-icon">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
+						</svg>
+					</div>
+					<div class="wa-poll-title">${frappe.utils.escape_html(poll_title)}</div>
+				</div>
+				<div class="wa-poll-options">
+					${poll_options.map(opt => `<div class="wa-poll-option"><div class="wa-poll-radio"></div><div class="wa-poll-option-text">${frappe.utils.escape_html(opt)}</div></div>`).join('')}
+				</div>
+			</div>`;
+		} else if (is_event) {
+			let event_details_html = '';
+			if (event_start) {
+				event_details_html += `<div class="wa-event-detail wa-event-date"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> <span class="wa-event-detail-label">Start:</span> ${frappe.utils.escape_html(event_start)}</div>`;
+			}
+			if (event_end) {
+				event_details_html += `<div class="wa-event-detail wa-event-date"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> <span class="wa-event-detail-label">End:</span> ${frappe.utils.escape_html(event_end)}</div>`;
+			}
+			if (event_location) {
+				event_details_html += `<div class="wa-event-detail wa-event-location"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> ${frappe.utils.escape_html(event_location)}</div>`;
+			}
+
+			html += `<div class="wa-event">
+				<div class="wa-event-header">
+					<div class="wa-event-icon">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+						</svg>
+					</div>
+					<div class="wa-event-title">${frappe.utils.escape_html(event_title)}</div>
+				</div>
+				<div class="wa-event-body">
+					${event_details_html}
+				</div>
+			</div>`;
+		} else if (is_location) {
+			const map_url = `https://www.google.com/maps?q=${loc_lat},${loc_lng}`;
+			const display_name = loc_name || (is_live_location ? "Live Location" : "Location");
+			const live_badge = is_live_location ? `<div class="wa-live-location-badge"><span class="wa-live-dot"></span> Live</div>` : '';
+			html += `<div class="wa-location">
+				<a href="${frappe.utils.escape_html(map_url)}" target="_blank" rel="noopener" class="wa-location-link">
+					<div class="wa-location-map-placeholder">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+							<circle cx="12" cy="10" r="3"></circle>
+						</svg>
+						${live_badge}
+					</div>
+					<div class="wa-location-info">
+						<div class="wa-location-name">${frappe.utils.escape_html(display_name)}</div>
+						<div class="wa-location-coords">${frappe.utils.escape_html(loc_lat)}, ${frappe.utils.escape_html(loc_lng)}</div>
+					</div>
+				</a>
+			</div>`;
+		} else if (is_vcard) {
+			html += `<a class="wa-vcard" href="tel:${frappe.utils.escape_html(vcard_phone.replace(/[^\d+]/g, ''))}">
+				<div class="wa-vcard-icon">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+						<circle cx="12" cy="7" r="4"></circle>
+					</svg>
+				</div>
+				<div class="wa-vcard-info">
+					<div class="wa-vcard-name">${frappe.utils.escape_html(vcard_name)}</div>
+					<div class="wa-vcard-phone">${frappe.utils.escape_html(vcard_phone)}</div>
+				</div>
+			</a>`;
+		} else if (text) {
 			html += `<div class="wa-bubble-text">${frappe.utils.escape_html(text)}</div>`;
 		}
 
@@ -2806,6 +2985,7 @@ frappe.whatsapp_hr_inbox = {
 		this.compose_el.val("").css("height", "auto");
 		this.send_btn.prop("disabled", true);
 		this.attach_btn.prop("disabled", true);
+		if (this.mic_btn) this.mic_btn.prop("disabled", true);
 		if (this.emoji_btn) {
 			this.emoji_btn.prop("disabled", true);
 		}
@@ -2816,6 +2996,7 @@ frappe.whatsapp_hr_inbox = {
 			callback: () => {
 				this.send_btn.prop("disabled", false);
 				this.attach_btn.prop("disabled", false);
+				if (this.mic_btn) this.mic_btn.prop("disabled", false);
 				if (this.emoji_btn) {
 					this.emoji_btn.prop("disabled", false);
 				}
@@ -2825,6 +3006,7 @@ frappe.whatsapp_hr_inbox = {
 			error: () => {
 				this.send_btn.prop("disabled", false);
 				this.attach_btn.prop("disabled", false);
+				if (this.mic_btn) this.mic_btn.prop("disabled", false);
 				if (this.emoji_btn) {
 					this.emoji_btn.prop("disabled", false);
 				}
@@ -2857,6 +3039,12 @@ frappe.whatsapp_hr_inbox = {
 					".txt",
 					".csv",
 					".zip",
+					".mp3",
+					".wav",
+					".ogg",
+					".mp4",
+					".mov",
+					".webm",
 				],
 			},
 			on_success: (file_doc) => {
@@ -2869,6 +3057,7 @@ frappe.whatsapp_hr_inbox = {
 				this.compose_el.val("").css("height", "auto");
 				this.send_btn.prop("disabled", true);
 				this.attach_btn.prop("disabled", true);
+				if (this.mic_btn) this.mic_btn.prop("disabled", true);
 
 				frappe.call({
 					method: "ai_workplace.api.hr_chat.send_attachment",
@@ -2880,6 +3069,7 @@ frappe.whatsapp_hr_inbox = {
 					callback: () => {
 						this.send_btn.prop("disabled", false);
 						this.attach_btn.prop("disabled", false);
+						if (this.mic_btn) this.mic_btn.prop("disabled", false);
 						this.clear_current_session_unread();
 						this.refresh_session(true);
 						frappe.show_alert({ message: __("Attachment sent."), indicator: "green" });
@@ -2887,6 +3077,7 @@ frappe.whatsapp_hr_inbox = {
 					error: (err) => {
 						this.send_btn.prop("disabled", false);
 						this.attach_btn.prop("disabled", false);
+						if (this.mic_btn) this.mic_btn.prop("disabled", false);
 						frappe.msgprint({
 							title: __("Could not send attachment"),
 							message: err?.message || __("Failed to send file to WhatsApp."),
@@ -2897,4 +3088,122 @@ frappe.whatsapp_hr_inbox = {
 			},
 		});
 	},
+
+	toggle_voice_recording() {
+		if (this.is_recording) {
+			this.stop_voice_recording();
+		} else {
+			this.start_voice_recording();
+		}
+	},
+
+	start_voice_recording() {
+		if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+			frappe.msgprint(__("Audio recording is not supported in this browser."));
+			return;
+		}
+		navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+			this.audio_stream = stream;
+			this.media_recorder = new MediaRecorder(stream);
+			this.audio_chunks = [];
+
+			this.media_recorder.addEventListener("dataavailable", event => {
+				this.audio_chunks.push(event.data);
+			});
+
+			this.media_recorder.addEventListener("stop", () => {
+				const mime = this.media_recorder.mimeType || 'audio/webm';
+				const audioBlob = new Blob(this.audio_chunks, { type: mime });
+				let ext = "webm";
+				if (mime.includes("mp4")) ext = "m4a";
+				else if (mime.includes("ogg")) ext = "ogg";
+				else if (mime.includes("wav")) ext = "wav";
+
+				this.upload_voice_message(audioBlob, ext, mime);
+				this.audio_stream.getTracks().forEach(track => track.stop());
+			});
+
+			this.media_recorder.start();
+			this.is_recording = true;
+			this.mic_btn.addClass("recording").html('<svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z" fill="#d32f2f"/></svg>');
+			this.compose_el.prop("disabled", true).attr("placeholder", __("Recording voice message..."));
+		}).catch(err => {
+			frappe.msgprint(__("Could not access microphone: {0}", [err.message]));
+		});
+	},
+
+	stop_voice_recording() {
+		if (this.media_recorder && this.is_recording) {
+			this.media_recorder.stop();
+			this.is_recording = false;
+			this.mic_btn.removeClass("recording").html('<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.39-.9.88 0 2.76-2.24 5.01-5.01 5.01s-5.01-2.25-5.01-5.01c0-.49-.41-.88-.9-.88s-.88.39-.88.88c0 3.16 2.45 5.76 5.54 6.13V20h-3v2h7.82v-2h-3v-1.99c3.09-.37 5.54-2.97 5.54-6.13 0-.49-.4-.88-.89-.88z"/></svg>');
+			this.compose_el.prop("disabled", false).attr("placeholder", __("Type a message"));
+		}
+	},
+
+	upload_voice_message(blob, ext='webm', mimeType='audio/webm') {
+		const file = new File([blob], `voice_message_${Date.now()}.${ext}`, { type: mimeType });
+		
+		let form_data = new FormData();
+		form_data.append("file", file, file.name);
+		form_data.append("is_private", 0);
+		form_data.append("folder", "Home/Attachments");
+		
+		fetch('/api/method/upload_file', {
+			method: 'POST',
+			headers: {
+				'Accept': 'application/json',
+				'X-Frappe-CSRF-Token': frappe.csrf_token
+			},
+			body: form_data
+		})
+		.then(res => {
+			if (!res.ok) throw new Error("HTTP Error " + res.status);
+			return res.json();
+		})
+		.then(r => {
+			if (r.message && r.message.file_url) {
+				this.send_attachment_from_url(r.message.file_url, "");
+			} else {
+				frappe.msgprint(__("Failed to upload voice message: invalid response."));
+			}
+		})
+		.catch(err => {
+			console.error("Upload error:", err);
+			frappe.msgprint(__("Failed to upload voice message."));
+		});
+	},
+
+	send_attachment_from_url(file_url, caption) {
+		this.send_btn.prop("disabled", true);
+		this.attach_btn.prop("disabled", true);
+		if (this.mic_btn) this.mic_btn.prop("disabled", true);
+
+		frappe.call({
+			method: "ai_workplace.api.hr_chat.send_attachment",
+			args: {
+				session_name: this.current_session,
+				file_url: file_url,
+				caption: caption
+			},
+			callback: () => {
+				this.send_btn.prop("disabled", false);
+				this.attach_btn.prop("disabled", false);
+				if (this.mic_btn) this.mic_btn.prop("disabled", false);
+				this.clear_current_session_unread();
+				this.refresh_session(true);
+				frappe.show_alert({ message: __("Voice message sent."), indicator: "green" });
+			},
+			error: (err) => {
+				this.send_btn.prop("disabled", false);
+				this.attach_btn.prop("disabled", false);
+				if (this.mic_btn) this.mic_btn.prop("disabled", false);
+				frappe.msgprint({
+					title: __("Could not send voice message"),
+					message: err?.message || __("Failed to send file to WhatsApp."),
+					indicator: "red",
+				});
+			}
+		});
+	}
 };

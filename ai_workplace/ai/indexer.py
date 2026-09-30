@@ -612,9 +612,14 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
         })
 
     # Reranking: Relevance-first, then freshness
+    # Prevent inflating tiny BM25 scores when the corpus lacks a good match.
+    # A solid BM25 match for a single term typically yields a score of ~2.0 to 4.0.
+    bm25_floor = max(1.0, len(words) * 2.0)
+    effective_max_kw = max(bm25_floor, max_kw_score)
+
     scored = []
     for item in raw_candidates:
-        norm_kw  = item["kw_score"] / max_kw_score
+        norm_kw  = item["kw_score"] / effective_max_kw
         norm_sem = item["sem_score"]
         fresh    = item["freshness_score"]
 

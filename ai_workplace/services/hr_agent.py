@@ -341,10 +341,15 @@ def handle_hr_agent_message(
         Language: {ai_context.language}
 
     """
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": clean},
-    ]
+    # Build messages list: system → conversation history → current user message
+    from ai_workplace.ai.conversation_memory import get_conversation_history
+    history = get_conversation_history(conv, turns=5)
+
+    messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}]
+    if history:
+        # Inject prior turns so the LLM has cross-turn memory
+        messages.extend(history[:-1])  # exclude the very last entry (it's the current turn)
+    messages.append({"role": "user", "content": clean})
 
     # 4. Agentic Planner Loop (Max 5 Steps)
     MAX_STEPS = 5

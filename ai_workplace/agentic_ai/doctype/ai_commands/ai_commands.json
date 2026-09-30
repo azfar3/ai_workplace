@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:command_name",
  "creation": "2026-06-13 12:36:29.819897",
@@ -67,7 +68,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-28 17:32:51.789507",
+ "modified": "2026-09-29 11:10:12.405179",
  "modified_by": "Administrator",
  "module": "Agentic AI",
  "name": "AI Commands",

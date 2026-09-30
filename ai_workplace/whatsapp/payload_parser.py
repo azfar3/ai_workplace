@@ -33,7 +33,7 @@ import frappe
 
 # Message types supported for inbound processing.
 SUPPORTED_TYPES = {"text", "interactive"}
-MEDIA_TYPES = {"image", "document", "video", "audio", "sticker"}
+MEDIA_TYPES = {"image", "document", "video", "audio", "sticker", "media"}
 LOCATION_TYPES = {"location"}
 
 # Types that Meta sends as status updates rather than inbound messages.
@@ -46,7 +46,7 @@ class ParseError(Exception):
 
 def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
     """
-    Parse a Meta WhatsApp Cloud API webhook payload.
+    Parse a Meta WhatsApp Cloud API webhook payload or Custom Baileys payload.
 
     Returns a normalized internal message dict, or None if the payload
     contains no actionable inbound message (e.g. pure delivery status update
@@ -56,6 +56,69 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
     """
     if not isinstance(payload, dict):
         raise ParseError("Payload must be a dict")
+
+    # Check for Custom Baileys API payload format
+    if "number" in payload and "status" in payload and "message_id" in payload:
+        wa_id = str(payload["number"]).replace("+", "")
+        meta_status = str(payload["status"]).strip().lower()
+        return {
+            "message_id": payload.get("message_id", ""),
+            "wa_id": wa_id,
+            "phone_number": wa_id,
+            "message_type": "status",
+            "text": "",
+            "timestamp": "",
+            "business_phone_number_id": "custom_api",
+            "raw_type": "status",
+            "delivery_status": meta_status,
+        }
+
+    if "number" in payload and "message" in payload:
+        import uuid
+        from datetime import datetime
+        
+        wa_id = str(payload["number"]).replace("+", "")
+        message_text = str(payload["message"]).strip()
+        
+        cached_map = frappe.cache().get_value(f"custom_wa_menu_{wa_id}")
+        if cached_map and message_text in cached_map:
+            message_text = cached_map[message_text]
+            frappe.cache().delete_value(f"custom_wa_menu_{wa_id}")
+
+        message_type = "text"
+        if payload.get("media_base64"):
+            mime = (payload.get("mime_type") or "").lower()
+            if mime.startswith("image/"):
+                message_type = "image"
+            elif mime.startswith("video/"):
+                message_type = "video"
+            elif mime.startswith("audio/"):
+                message_type = "audio"
+            else:
+                message_type = "document"
+
+        return {
+            "message_id": payload.get("message_id") or f"custom_{uuid.uuid4().hex[:16]}",
+            "wa_id": wa_id,
+            "phone_number": wa_id,
+            "message_type": message_type,
+            "text": message_text,
+            "timestamp": str(int(datetime.utcnow().timestamp())),
+            "business_phone_number_id": "custom_api",
+            "raw_type": message_type,
+            "media_id": "",
+            "media_filename": payload.get("filename") or "",
+            "media_mime_type": payload.get("mime_type") or "",
+            "latitude": None,
+            "longitude": None,
+            "location_name": "",
+            "location_address": "",
+            "context_message_id": "",
+            "sender_name": payload.get("sender_name") or "",
+            "receiver_name": payload.get("receiver_name") or "",
+            "media_base64": payload.get("media_base64") or "",
+            "mime_type": payload.get("mime_type") or "",
+        }
 
     # Meta wraps events under entry[].changes[].value
     entries = payload.get("entry", [])

@@ -11,6 +11,9 @@
   "meta_app_secret",
   "webhook_verify_token",
   "whatsapp_system_user_access_token",
+  "custom_whatsapp_api_enabled",
+  "custom_whatsapp_api_url",
+  "custom_whatsapp_api_token",
   "ai_chat_enabled",
   "async_whatsapp_enabled",
   "default_ai_provider",
@@ -78,6 +81,24 @@
    "fieldname": "whatsapp_system_user_access_token",
    "fieldtype": "Password",
    "label": "WhatsApp System User Access Token"
+  },
+  {
+   "default": "0",
+   "fieldname": "custom_whatsapp_api_enabled",
+   "fieldtype": "Check",
+   "label": "Custom WhatsApp API Enabled"
+  },
+  {
+   "depends_on": "eval:doc.custom_whatsapp_api_enabled",
+   "fieldname": "custom_whatsapp_api_url",
+   "fieldtype": "Data",
+   "label": "Custom WhatsApp API URL"
+  },
+  {
+   "depends_on": "eval:doc.custom_whatsapp_api_enabled",
+   "fieldname": "custom_whatsapp_api_token",
+   "fieldtype": "Password",
+   "label": "Custom WhatsApp API Token"
   },
   {
    "default": "1",

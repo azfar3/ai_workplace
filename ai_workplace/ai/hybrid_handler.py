@@ -34,6 +34,11 @@ import frappe
 
 from ai_workplace.whatsapp.outbound import OutboundMessage
 from ai_workplace.whatsapp.interactive import build_button_message
+from ai_workplace.ai.conversation_memory import (
+    get_conversation_history,
+    build_context_summary,
+    reformulate_query_with_context,
+)
 
 
 def handle_hybrid(
@@ -58,9 +63,17 @@ def handle_hybrid(
     from ai_workplace.ai.router import complete, is_ai_chat_enabled
     from ai_workplace.ai.response_formatter import ResponseFormatter
 
-    # ── 1. Fetch authoritative data ────────────────────────────────────────────
+    # ── 0. Load conversation history for context-aware behaviour ───────────────
+    history = get_conversation_history(conv, turns=5)
+
+    # ── 1. Reformulate search query using prior context (handles follow-ups) ───
+    effective_query = user_query
+    if tool_name == "search_knowledge" and history:
+        effective_query = reformulate_query_with_context(user_query, history)
+
+    # ── 2. Fetch authoritative data ────────────────────────────────────────────
     try:
-        raw_data = run_tool(tool_name, context, query=user_query)
+        raw_data = run_tool(tool_name, context, query=effective_query)
     except Exception as exc:
         frappe.log_error(
             title=f"Hybrid Handler Tool Failed ({tool_name})",
@@ -88,24 +101,48 @@ def handle_hybrid(
     }.get(lang, "Respond in clear, concise English.")
 
     synthesis_system = (
-        "You are a helpful HR assistant. You answer employee questions using only "
-        "the structured data provided. You do NOT invent facts, numbers, or policies "
-        "that are not in the data. You do NOT call any tools. You only narrate the "
-        "data clearly and naturally. Note: The official currency for all salary, money, "
-        "deductions, and tax amounts is PKR (Pakistani Rupee / Rs.). ALWAYS format monetary values "
-        "using PKR or Rs. and NEVER use INR or ₹."
+        "You are a helpful HR assistant for MicroMerger. "
+        "You answer employee questions using only the structured data injected below as a system observation. "
+        "You do NOT invent facts, numbers, or policies that are not in the data. "
+        "You do NOT call any tools. You only narrate the data clearly and naturally. "
+        "If the knowledge data is empty or irrelevant, say so honestly — do NOT claim "
+        "'the information you provided does not include…' as if the user provided it; "
+        "instead say 'I could not find that information in our knowledge base.' "
+        "Note: The official currency for all salary, money, deductions, and tax amounts "
+        "is PKR (Pakistani Rupee / Rs.). ALWAYS format monetary values using PKR or Rs. "
+        "and NEVER use INR or ₹. Use WhatsApp-friendly formatting: single *asterisks* for "
+        "bold, no Markdown tables, no HTML tags."
     )
 
-    synthesis_prompt = (
-        f"Employee asked: \"{user_query}\"\n\n"
-        f"Here is the authoritative data from the HR system:\n{raw_data}\n\n"
+    # Build the messages list with: system → history → observation → current question
+    import json as _json
+    raw_data_text = (
+        _json.dumps(raw_data, ensure_ascii=False, default=str)
+        if isinstance(raw_data, (dict, list))
+        else str(raw_data)
+    )
+
+    messages: list[dict] = [{"role": "system", "content": synthesis_system}]
+
+    # Inject conversation history so the LLM understands follow-up questions
+    if history:
+        messages.extend(history[:-1])  # all prior turns except the current one
+
+    # Inject the tool data as a system-level observation before the user turn
+    observation = (
+        f"[SYSTEM OBSERVATION — authoritative data retrieved from HR system]\n"
+        f"{raw_data_text}\n"
+        f"[END OBSERVATION]\n\n"
         f"{lang_instruction}"
     )
+    messages.append({"role": "system", "content": observation})
+
+    # Add the current user message (use original, non-reformulated query for display)
+    messages.append({"role": "user", "content": user_query})
 
     try:
         res = complete(
-            prompt=synthesis_prompt,
-            system=synthesis_system,
+            messages=messages,
             channel="WhatsApp",
             employee=context.get("employee", ""),
         )

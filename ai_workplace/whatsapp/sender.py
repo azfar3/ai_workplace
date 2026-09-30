@@ -214,6 +214,42 @@ def send_document_message(
     return _post_message(phone_number, payload, settings)
 
 
+def send_video_message(
+    phone_number: str,
+    media_id: str,
+    caption: str = "",
+    settings: Optional[Any] = None,
+) -> dict[str, Any]:
+    """Send a WhatsApp video message using a Meta media id."""
+    video_payload: dict[str, Any] = {"id": media_id}
+    if caption:
+        video_payload["caption"] = caption
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": phone_number.lstrip("+"),
+        "type": "video",
+        "video": video_payload,
+    }
+    return _post_message(phone_number, payload, settings)
+
+
+def send_audio_message(
+    phone_number: str,
+    media_id: str,
+    settings: Optional[Any] = None,
+) -> dict[str, Any]:
+    """Send a WhatsApp audio message using a Meta media id."""
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": phone_number.lstrip("+"),
+        "type": "audio",
+        "audio": {"id": media_id},
+    }
+    return _post_message(phone_number, payload, settings)
+
+
 def send_message(
     phone_number: str,
     outbound: Union[OutboundMessage, str],
@@ -248,6 +284,42 @@ def _send_single_message(
     settings: Optional[Any] = None,
 ) -> dict[str, Any]:
     if outbound.has_document():
+        cfg = settings
+        if not cfg:
+            try:
+                cfg = frappe.get_single("AI Workplace Settings")
+            except Exception:
+                pass
+        
+        is_custom = cfg.get("custom_whatsapp_api_enabled") if cfg else False
+        
+        if is_custom:
+            from frappe.utils.file_manager import save_file
+            import uuid
+            
+            fname = outbound.document_filename or f"media_{uuid.uuid4().hex[:8]}"
+            file_doc = save_file(
+                fname=fname,
+                content=outbound.document_bytes or b"",
+                dt="User",
+                dn="Guest",
+                is_private=0
+            )
+            media_url = frappe.utils.get_url(file_doc.file_url)
+            media_type = "image" if (outbound.document_mimetype or "").startswith("image/") else "document"
+            
+            payload = {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": phone_number.lstrip("+"),
+                "type": "media",
+                "media_url": media_url,
+                "media_type": media_type,
+            }
+            if outbound.document_caption or outbound.body_text:
+                payload["text"] = {"body": outbound.document_caption or outbound.body_text}
+            return _post_message(phone_number, payload, settings=settings)
+
         upload = upload_media_bytes(
             outbound.document_bytes or b"",
             outbound.document_mimetype or "application/octet-stream",
@@ -323,24 +395,42 @@ def _post_message(
     phone_number_id = cfg.get("whatsapp_phone_number_id") or cfg.get("meta_phone_number_id") or ""
     api_version = cfg.get("graph_api_version") or _DEFAULT_GRAPH_API_VERSION
 
-    if not access_token:
-        return _error_result("Meta Access Token is not configured")
+    is_custom = cfg.get("custom_whatsapp_api_enabled")
+    if is_custom:
+        url = cfg.get("custom_whatsapp_api_url")
+        if not url:
+            return _error_result("Custom WhatsApp API URL is not configured")
+        
+        custom_token = ""
+        if cfg.get("custom_whatsapp_api_token"):
+            try:
+                custom_token = cfg.get_password("custom_whatsapp_api_token") or ""
+            except Exception:
+                custom_token = cfg.get("custom_whatsapp_api_token") or ""
+            
+        headers = ["-H", "Content-Type: application/json"]
+        if custom_token:
+            headers.extend(["-H", f"Authorization: Bearer {custom_token}"])
+            
+        payload = _transform_to_baileys(payload)
+    else:
+        if not access_token:
+            return _error_result("Meta Access Token is not configured")
 
-    if not phone_number_id:
-        return _error_result("Meta Phone Number ID is not configured")
+        if not phone_number_id:
+            return _error_result("Meta Phone Number ID is not configured")
 
-    url = (
-        f"https://graph.facebook.com/{api_version}"
-        f"/{phone_number_id}/messages"
-    )
+        url = (
+            f"https://graph.facebook.com/{api_version}"
+            f"/{phone_number_id}/messages"
+        )
+        headers = [
+            "-H", f"Authorization: Bearer {access_token}",
+            "-H", "Content-Type: application/json"
+        ]
 
     import subprocess
     import json
-    
-    headers = [
-        "-H", f"Authorization: Bearer {access_token}",
-        "-H", "Content-Type: application/json"
-    ]
 
     try:
         cmd = ["curl", "-s", "-X", "POST", url] + headers + ["-d", json.dumps(payload)]
@@ -349,6 +439,14 @@ def _post_message(
         if result.returncode != 0:
             return _error_result(f"Curl failed with code {result.returncode}: {result.stderr}")
             
+        if is_custom:
+            try:
+                data = json.loads(result.stdout)
+                msg_id = data.get("message_id") or data.get("id") or "custom"
+            except Exception:
+                msg_id = "custom"
+            return {"success": True, "message_id": msg_id, "error": None}
+
         try:
             data = json.loads(result.stdout)
         except Exception:
@@ -392,4 +490,86 @@ def _get_access_token(cfg: Any) -> str:
 
 def _error_result(error_message: str) -> dict[str, Any]:
     return {"success": False, "message_id": None, "error": error_message}
+
+
+def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
+    """Transforms a Meta Graph API payload into a Baileys-compatible payload."""
+    number = payload.get("to", "")
+    message: Any = ""
+    msg_type = payload.get("type", "text")
+    
+    media_url = ""
+    media_type = ""
+    
+    if msg_type == "text":
+        message = payload.get("text", {}).get("body", "")
+    elif msg_type == "media":
+        message = payload.get("text", {}).get("body", "")
+        media_url = payload.get("media_url", "")
+        media_type = payload.get("media_type", "")
+    elif msg_type == "interactive":
+        interactive = payload.get("interactive", {})
+        itype = interactive.get("type")
+        body_text = interactive.get("body", {}).get("text", "")
+        header_text = interactive.get("header", {}).get("text", "")
+        footer_text = interactive.get("footer", {}).get("text", "")
+        
+        full_text = body_text
+        if header_text:
+            full_text = f"{header_text}\n\n{full_text}"
+        if footer_text:
+            full_text = f"{full_text}\n\n{footer_text}"
+            
+        if itype == "button":
+            menu_text = f"{full_text}\n"
+            option_map = {}
+            for idx, btn in enumerate(interactive.get("action", {}).get("buttons", [])):
+                opt_num = str(idx + 1)
+                reply = btn.get("reply", {})
+                menu_text += f"\n{opt_num}. {reply.get('title', '')}"
+                option_map[opt_num] = reply.get("id") or reply.get("title")
+            message = menu_text.strip()
+            if option_map:
+                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", option_map, expires_in_sec=86400)
+        elif itype == "list":
+            menu_text = f"{full_text}\n"
+            opt_idx = 1
+            option_map = {}
+            for sec in interactive.get("action", {}).get("sections", []):
+                if sec.get("title"):
+                    menu_text += f"\n*{sec.get('title')}*\n"
+                for row in sec.get("rows", []):
+                    opt_num = str(opt_idx)
+                    menu_text += f"{opt_num}. {row.get('title')}\n"
+                    option_map[opt_num] = row.get("id") or row.get("title")
+                    opt_idx += 1
+            message = menu_text.strip()
+            if option_map:
+                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", option_map, expires_in_sec=86400)
+        else:
+            message = full_text
+    else:
+        message = "Message type not supported by custom API."
+    
+    try:
+        active_session = frappe.get_all("Whatsapp Session", filters={"status": "connected"}, fields=["email"], limit=1)
+        username = active_session[0].email if active_session and active_session[0].email else "AI Workplace"
+    except Exception:
+        username = "AI Workplace"
+
+    out = {
+        "number": number,
+        "message": message,
+        "username": username
+    }
+    
+    if media_url:
+        out["media_url"] = media_url
+        out["media_type"] = media_type
+        
+    if payload.get("media_base64"):
+        out["media_base64"] = payload.get("media_base64")
+        out["mime_type"] = payload.get("mime_type")
+        
+    return out
 

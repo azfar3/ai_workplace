@@ -679,7 +679,8 @@
 
 .wa-attach-btn,
 .wa-emoji-btn,
-.wa-send-btn {
+.wa-send-btn,
+.wa-mic-btn {
 	align-self: center;
 }
 
@@ -908,7 +909,8 @@
 	text-overflow: ellipsis;
 }
 
-.wa-send-btn {
+.wa-send-btn,
+.wa-mic-btn {
 	width: 36px;
 	height: 36px;
 	border: none;
@@ -923,19 +925,35 @@
 	transition: background 0.15s;
 }
 
-.wa-send-btn:hover:not(:disabled) {
+.wa-send-btn:hover:not(:disabled),
+.wa-mic-btn:hover:not(:disabled) {
 	background: #017561;
 }
 
-.wa-send-btn:disabled {
+.wa-send-btn:disabled,
+.wa-mic-btn:disabled {
 	background: #aebac1;
 	cursor: not-allowed;
 }
 
-.wa-send-btn svg {
+.wa-send-btn svg,
+.wa-mic-btn svg {
 	width: 20px;
 	height: 20px;
 	fill: currentColor;
+}
+
+.wa-mic-btn.recording {
+	background: #fff;
+	border: 1px solid #ea0038;
+	color: #ea0038;
+	animation: wa-pulse-border 2s infinite;
+}
+
+@keyframes wa-pulse-border {
+	0% { box-shadow: 0 0 0 0 rgba(234, 0, 56, 0.4); }
+	70% { box-shadow: 0 0 0 10px rgba(234, 0, 56, 0); }
+	100% { box-shadow: 0 0 0 0 rgba(234, 0, 56, 0); }
 }
 
 /* ── Empty states ────────────────────────────────────────────────────────── */
@@ -1332,13 +1350,28 @@ html[data-theme="dark"] .wa-compose-box textarea {
 .wa-inbox.dark-theme .wa-send-btn,
 [data-theme="dark"] .wa-send-btn,
 body[data-theme="dark"] .wa-send-btn,
-html[data-theme="dark"] .wa-send-btn {
+html[data-theme="dark"] .wa-send-btn,
+.wa-inbox.dark-theme .wa-mic-btn,
+[data-theme="dark"] .wa-mic-btn,
+body[data-theme="dark"] .wa-mic-btn,
+html[data-theme="dark"] .wa-mic-btn {
 	background: #00a884 !important;
 	color: #111b21 !important;
 }
 
+.wa-inbox.dark-theme .wa-mic-btn.recording,
+[data-theme="dark"] .wa-mic-btn.recording,
+body[data-theme="dark"] .wa-mic-btn.recording,
+html[data-theme="dark"] .wa-mic-btn.recording {
+	background: transparent !important;
+	color: #f15c6d !important;
+	border-color: #f15c6d !important;
+}
+
 .wa-inbox.dark-theme .wa-send-btn:hover:not(:disabled),
-body[data-theme="dark"] .wa-send-btn:hover:not(:disabled) {
+body[data-theme="dark"] .wa-send-btn:hover:not(:disabled),
+.wa-inbox.dark-theme .wa-mic-btn:hover:not(:disabled):not(.recording),
+body[data-theme="dark"] .wa-mic-btn:hover:not(:disabled):not(.recording) {
 	background: #008f70 !important;
 }
 
@@ -1452,7 +1485,7 @@ body[data-theme="dark"] .wa-emoji-item:hover {
 }
 
 /* ── Mobile: WhatsApp-style list ↔ chat navigation ─────────────────────── */
-@media (max-width: 767px) {
+@media (max-width: 991px) {
 
 	.wa-inbox-page-wrapper .layout-main-section,
 	.wa-inbox-page {
@@ -1737,4 +1770,408 @@ body[data-theme="dark"] .wa-scroll-bottom-btn {
 body[data-theme="dark"] .wa-scroll-bottom-btn:hover {
 	background: #2a3942 !important;
 	color: #e9edef !important;
+}
+
+/* ── VCard ───────────────────────────────────────────────────────────────── */
+.wa-vcard {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px;
+	border: 1px solid #e9edef;
+	border-radius: 8px;
+	background: #fafafa;
+	min-width: 200px;
+	margin-top: 4px;
+	text-decoration: none;
+	color: #111b21;
+	transition: background 0.15s;
+}
+
+.wa-vcard:hover {
+	background: #f0f2f5;
+	text-decoration: none;
+	color: #111b21;
+}
+
+.wa-vcard-icon {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background: #dfe5e7;
+	color: #54656f;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.wa-vcard-icon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.wa-vcard-info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.wa-vcard-name {
+	font-weight: 600;
+	font-size: 14px;
+}
+
+.wa-vcard-phone {
+	font-size: 12px;
+	color: #667781;
+}
+
+.wa-inbox.dark-theme .wa-vcard,
+[data-theme="dark"] .wa-vcard,
+body[data-theme="dark"] .wa-vcard {
+	background: #202c33;
+	border-color: #2a3942;
+	color: #e9edef;
+}
+
+.wa-inbox.dark-theme .wa-vcard:hover,
+[data-theme="dark"] .wa-vcard:hover,
+body[data-theme="dark"] .wa-vcard:hover {
+	background: #2a3942;
+}
+
+.wa-inbox.dark-theme .wa-vcard-icon,
+[data-theme="dark"] .wa-vcard-icon,
+body[data-theme="dark"] .wa-vcard-icon {
+	background: #2a3942;
+	color: #aebac1;
+}
+
+.wa-inbox.dark-theme .wa-vcard-phone,
+[data-theme="dark"] .wa-vcard-phone,
+body[data-theme="dark"] .wa-vcard-phone {
+	color: #8696a0;
+}
+
+/* ── Poll & Event Messages ─────────────────────────────────────────────────── */
+.wa-poll,
+.wa-event {
+	background: rgba(0, 0, 0, 0.04);
+	border-radius: 8px;
+	padding: 10px;
+	margin-top: 4px;
+	min-width: 220px;
+}
+
+.wa-msg-row.outbound .wa-poll,
+.wa-msg-row.outbound .wa-event {
+	background: rgba(0, 0, 0, 0.05);
+}
+
+.wa-poll-header,
+.wa-event-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.wa-poll-icon,
+.wa-event-icon {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: #00a884;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.wa-poll-icon svg,
+.wa-event-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.wa-poll-title,
+.wa-event-title {
+	font-weight: 600;
+	font-size: 14px;
+	color: #111b21;
+}
+
+.wa-poll-options {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.wa-poll-option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	background: #fff;
+	border-radius: 6px;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.wa-msg-row.outbound .wa-poll-option {
+	background: #d9fdd3;
+	border-color: #c4f3bd;
+}
+
+.wa-poll-radio {
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	border: 2px solid #00a884;
+	flex-shrink: 0;
+}
+
+.wa-poll-option-text {
+	font-size: 13.5px;
+	color: #111b21;
+}
+
+.wa-event-body {
+	padding-top: 2px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.wa-event-detail {
+	font-size: 13.5px;
+	color: #54656f;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.wa-event-detail svg {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	color: #00a884;
+}
+
+.wa-event-detail-label {
+	font-weight: 600;
+	color: #111b21;
+}
+
+/* Dark theme for Poll and Event */
+.wa-inbox.dark-theme .wa-poll,
+.wa-inbox.dark-theme .wa-event,
+[data-theme="dark"] .wa-poll,
+[data-theme="dark"] .wa-event,
+body[data-theme="dark"] .wa-poll,
+body[data-theme="dark"] .wa-event {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.wa-inbox.dark-theme .wa-poll-header,
+.wa-inbox.dark-theme .wa-event-header,
+[data-theme="dark"] .wa-poll-header,
+[data-theme="dark"] .wa-event-header,
+body[data-theme="dark"] .wa-poll-header,
+body[data-theme="dark"] .wa-event-header {
+	border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.wa-inbox.dark-theme .wa-poll-title,
+.wa-inbox.dark-theme .wa-event-title,
+[data-theme="dark"] .wa-poll-title,
+[data-theme="dark"] .wa-event-title,
+body[data-theme="dark"] .wa-poll-title,
+body[data-theme="dark"] .wa-event-title {
+	color: #e9edef;
+}
+
+.wa-inbox.dark-theme .wa-poll-option,
+[data-theme="dark"] .wa-poll-option,
+body[data-theme="dark"] .wa-poll-option {
+	background: #202c33;
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+.wa-inbox.dark-theme .wa-msg-row.outbound .wa-poll-option,
+[data-theme="dark"] .wa-msg-row.outbound .wa-poll-option,
+body[data-theme="dark"] .wa-msg-row.outbound .wa-poll-option {
+	background: #005c4b;
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+.wa-inbox.dark-theme .wa-poll-option-text,
+[data-theme="dark"] .wa-poll-option-text,
+body[data-theme="dark"] .wa-poll-option-text {
+	color: #e9edef;
+}
+
+.wa-inbox.dark-theme .wa-event-detail,
+[data-theme="dark"] .wa-event-detail,
+body[data-theme="dark"] .wa-event-detail {
+	color: #8696a0;
+}
+
+.wa-inbox.dark-theme .wa-event-detail-label,
+[data-theme="dark"] .wa-event-detail-label,
+body[data-theme="dark"] .wa-event-detail-label {
+	color: #e9edef;
+}
+
+/* ── Location Messages ─────────────────────────────────────────────────────── */
+.wa-location {
+	background: rgba(0, 0, 0, 0.04);
+	border-radius: 8px;
+	margin-top: 4px;
+	overflow: hidden;
+	width: 240px;
+}
+
+.wa-msg-row.outbound .wa-location {
+	background: rgba(0, 0, 0, 0.05);
+}
+
+.wa-location-link {
+	display: block;
+	text-decoration: none !important;
+	color: inherit;
+}
+
+.wa-location-map-placeholder {
+	height: 120px;
+	background: #e9edef;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #8696a0;
+}
+
+.wa-msg-row.outbound .wa-location-map-placeholder {
+	background: #c4f3bd;
+	color: #00a884;
+}
+
+.wa-location-map-placeholder svg {
+	width: 32px;
+	height: 32px;
+}
+
+.wa-location-info {
+	padding: 10px;
+	background: #fff;
+}
+
+.wa-msg-row.outbound .wa-location-info {
+	background: #d9fdd3;
+}
+
+.wa-location-name {
+	font-weight: 600;
+	font-size: 14px;
+	color: #111b21;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-bottom: 2px;
+}
+
+.wa-location-coords {
+	font-size: 12px;
+	color: #667781;
+}
+
+/* Dark theme for Location */
+.wa-inbox.dark-theme .wa-location,
+[data-theme="dark"] .wa-location,
+body[data-theme="dark"] .wa-location {
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wa-inbox.dark-theme .wa-location-map-placeholder,
+[data-theme="dark"] .wa-location-map-placeholder,
+body[data-theme="dark"] .wa-location-map-placeholder {
+	background: #2a3942;
+	color: #8696a0;
+}
+
+.wa-inbox.dark-theme .wa-msg-row.outbound .wa-location-map-placeholder,
+[data-theme="dark"] .wa-msg-row.outbound .wa-location-map-placeholder,
+body[data-theme="dark"] .wa-msg-row.outbound .wa-location-map-placeholder {
+	background: #005c4b;
+	color: #8696a0;
+}
+
+.wa-inbox.dark-theme .wa-location-info,
+[data-theme="dark"] .wa-location-info,
+body[data-theme="dark"] .wa-location-info {
+	background: #202c33;
+}
+
+.wa-inbox.dark-theme .wa-msg-row.outbound .wa-location-info,
+[data-theme="dark"] .wa-msg-row.outbound .wa-location-info,
+body[data-theme="dark"] .wa-msg-row.outbound .wa-location-info {
+	background: #005c4b;
+}
+
+.wa-inbox.dark-theme .wa-location-name,
+[data-theme="dark"] .wa-location-name,
+body[data-theme="dark"] .wa-location-name {
+	color: #e9edef;
+}
+
+.wa-inbox.dark-theme .wa-location-coords,
+[data-theme="dark"] .wa-location-coords,
+body[data-theme="dark"] .wa-location-coords {
+	color: #8696a0;
+}
+
+/* ── Live Location Badge ───────────────────────────────────────────────────── */
+.wa-location-map-placeholder {
+	position: relative;
+}
+
+.wa-live-location-badge {
+	position: absolute;
+	top: 8px;
+	left: 8px;
+	background: rgba(0, 0, 0, 0.6);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 4px 8px;
+	border-radius: 12px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	backdrop-filter: blur(4px);
+}
+
+.wa-live-dot {
+	width: 8px;
+	height: 8px;
+	background-color: #ef4444;
+	border-radius: 50%;
+	display: inline-block;
+	animation: wa-live-pulse 1.5s infinite;
+}
+
+@keyframes wa-live-pulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+	}
+	70% {
+		box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+	}
 }

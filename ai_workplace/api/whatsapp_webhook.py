@@ -47,9 +47,16 @@ from frappe import _
 from werkzeug.wrappers import Response
 
 from ai_workplace.whatsapp.signature import validate_signature, get_app_secret
-from ai_workplace.whatsapp.payload_parser import MEDIA_TYPES, parse_webhook_payload, ParseError
+from ai_workplace.whatsapp.payload_parser import (
+    MEDIA_TYPES,
+    parse_webhook_payload,
+    ParseError,
+)
 from ai_workplace.whatsapp.sender import send_message
-from ai_workplace.identity.resolver import resolve_identity, get_or_create_whatsapp_identity
+from ai_workplace.identity.resolver import (
+    resolve_identity,
+    get_or_create_whatsapp_identity,
+)
 from ai_workplace.services.welcome import build_welcome_message
 from ai_workplace.whatsapp.outbound import OutboundMessage
 from ai_workplace.conversation.orchestrator import process_message
@@ -104,11 +111,14 @@ def is_hr_session_exit_command(text: str) -> bool:
 # Non-recursive Webhook Handlers
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _process_verify():
     """
     Handle Meta's GET verification challenge.
     """
-    frappe.logger("ai_workplace").info("AI Workplace: Webhook GET verification request received")
+    frappe.logger("ai_workplace").info(
+        "AI Workplace: Webhook GET verification request received"
+    )
 
     req = getattr(getattr(frappe, "local", None), "request", None)
     args = frappe.form_dict or (getattr(req, "args", {}) if req else {})
@@ -118,7 +128,9 @@ def _process_verify():
     challenge = args.get("hub.challenge") or args.get("hub_challenge") or ""
 
     if mode != "subscribe":
-        frappe.logger("ai_workplace").warning(f"AI Workplace: Webhook verification failed: invalid hub.mode={mode!r}")
+        frappe.logger("ai_workplace").warning(
+            f"AI Workplace: Webhook verification failed: invalid hub.mode={mode!r}"
+        )
         return Response("Invalid hub.mode", status=400, mimetype="text/plain")
 
     try:
@@ -138,11 +150,16 @@ def _process_verify():
         frappe.logger("ai_workplace").error(
             "AI Workplace: Webhook Verify Token is not configured"
         )
-        return Response("Webhook verify token not configured", status=500, mimetype="text/plain")
+        return Response(
+            "Webhook verify token not configured", status=500, mimetype="text/plain"
+        )
 
     import hmac as _hmac
+
     if _hmac.compare_digest(token, configured_token):
-        frappe.logger("ai_workplace").info("AI Workplace: Webhook GET verification SUCCESSFUL")
+        frappe.logger("ai_workplace").info(
+            "AI Workplace: Webhook GET verification SUCCESSFUL"
+        )
         return Response(str(challenge), status=200, mimetype="text/plain")
 
     # Token mismatch.
@@ -151,7 +168,9 @@ def _process_verify():
         severity="Medium",
         description=f"Meta verification attempt with incorrect token: {token!r}",
     )
-    frappe.logger("ai_workplace").warning(f"AI Workplace: Webhook verify token mismatch. Provided: {token!r}")
+    frappe.logger("ai_workplace").warning(
+        f"AI Workplace: Webhook verify token mismatch. Provided: {token!r}"
+    )
     return Response("Forbidden", status=403, mimetype="text/plain")
 
 
@@ -162,13 +181,17 @@ def _process_receive():
     trace_id = str(uuid.uuid4())
     start_ts = datetime.utcnow()
 
-    frappe.logger("ai_workplace").info(f"AI Workplace [{trace_id}]: Webhook POST received")
+    frappe.logger("ai_workplace").info(
+        f"AI Workplace [{trace_id}]: Webhook POST received"
+    )
 
     # ── 1. Read raw body for signature validation ─────────────────────────────
     try:
         raw_body = frappe.local.request.data  # bytes
         if not raw_body:
-            frappe.logger("ai_workplace").info(f"AI Workplace [{trace_id}]: Empty request body")
+            frappe.logger("ai_workplace").info(
+                f"AI Workplace [{trace_id}]: Empty request body"
+            )
             return Response("ok", status=200, mimetype="text/plain")
     except Exception as exc:
         frappe.logger("ai_workplace").error(
@@ -184,7 +207,37 @@ def _process_receive():
     )
     app_secret = get_app_secret()
 
-    if not validate_signature(raw_body, sig_header, app_secret):
+    is_custom_api = False
+    custom_token = None
+    try:
+        settings = frappe.get_single("AI Workplace Settings")
+        is_custom_api = settings.custom_whatsapp_api_enabled
+        if settings.get("custom_whatsapp_api_token"):
+            try:
+                # pass raise_exception=False if possible, but catching is fine as long as we only call if it has a value
+                custom_token = settings.get_password("custom_whatsapp_api_token")
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    is_valid = False
+    if is_custom_api:
+        if custom_token:
+            auth_header = frappe.local.request.headers.get("Authorization", "")
+            if (
+                auth_header.startswith("Bearer ")
+                and auth_header.split(" ")[1] == custom_token
+            ):
+                is_valid = True
+            elif frappe.local.request.headers.get("X-Custom-Api-Token") == custom_token:
+                is_valid = True
+        else:
+            is_valid = (
+                True  # If custom API is enabled but no token is configured, allow it.
+            )
+
+    if not is_valid and not validate_signature(raw_body, sig_header, app_secret):
         _log_security_event(
             event_type="Invalid Webhook Signature",
             severity="High",
@@ -202,6 +255,17 @@ def _process_receive():
     # ── 3. Parse payload ──────────────────────────────────────────────────────
     try:
         payload = json.loads(raw_body)
+        # if is_custom_api:
+        #     try:
+        #         frappe.log_error(
+        #             title=f"Custom API Webhook Payload [{trace_id}]",
+        #             message=json.dumps(payload, indent=2)
+        #         )
+        #         frappe.logger("ai_workplace").info(
+        #             f"AI Workplace [{trace_id}]: Custom API Webhook Payload Received:\n{json.dumps(payload, indent=2)}"
+        #         )
+        #     except Exception:
+        #         pass
     except json.JSONDecodeError as exc:
         frappe.logger("ai_workplace").error(
             f"AI Workplace [{trace_id}]: Malformed JSON payload: {exc}"
@@ -224,7 +288,9 @@ def _process_receive():
 
     # ── 4. Acknowledge non-text events early ──────────────────────────────────
     if message_type == "status":
-        from ai_workplace.services.message_delivery import handle_delivery_status_webhook
+        from ai_workplace.services.message_delivery import (
+            handle_delivery_status_webhook,
+        )
 
         handle_delivery_status_webhook(parsed)
         frappe.logger("ai_workplace").info(
@@ -312,7 +378,10 @@ def _process_receive():
     use_async = not bool(getattr(frappe.flags, "in_test", False))
     try:
         settings = frappe.get_single("AI Workplace Settings")
-        if hasattr(settings, "async_whatsapp_enabled") and not settings.async_whatsapp_enabled:
+        if (
+            hasattr(settings, "async_whatsapp_enabled")
+            and not settings.async_whatsapp_enabled
+        ):
             use_async = False
     except Exception:
         pass
@@ -329,6 +398,7 @@ def _process_receive():
             raw_phone=raw_phone,
             message_text=inbound_text,
             trace_id=trace_id,
+            sender_name=parsed.get("sender_name", ""),
         )
         frappe.logger("ai_workplace").info(
             f"AI Workplace [{trace_id}]: Enqueued background job for message_id={message_id}"
@@ -400,14 +470,23 @@ def _process_receive():
         identity, outbound, send_result, wa_id=wa_id, trace_id=trace_id
     )
 
-    response_text = outbound.log_text() if hasattr(outbound, "log_text") else str(outbound)
-    outbound_type = outbound.message_type if hasattr(outbound, "message_type") else "text"
+    response_text = (
+        outbound.log_text() if hasattr(outbound, "log_text") else str(outbound)
+    )
+    outbound_type = (
+        outbound.message_type if hasattr(outbound, "message_type") else "text"
+    )
 
     # ── 10. Mark inbound log as Received ──────────────────────────────────────
     _finalize_log(inbound_log, status="Received")
 
     # Link inbound message to active HR chat session when applicable
-    _link_inbound_to_hr_session(inbound_log, identity, parsed.get("text", ""))
+    _link_inbound_to_hr_session(
+        inbound_log,
+        identity,
+        parsed.get("text", ""),
+        sender_name=parsed.get("sender_name", ""),
+    )
 
     # ── 11. Log outbound message ──────────────────────────────────────────────
     latency_ms = int((datetime.utcnow() - start_ts).total_seconds() * 1000)
@@ -450,6 +529,7 @@ def process_async_whatsapp_message(
     raw_phone: str = "",
     message_text: str = "",
     trace_id: str = "",
+    sender_name: str = "",
 ) -> dict[str, Any]:
     """
     Background worker job for processing incoming WhatsApp messages asynchronously.
@@ -465,7 +545,9 @@ def process_async_whatsapp_message(
         )
         return {"success": True, "skipped": True}
 
-    if frappe.db.exists("WhatsApp Message Log", {"meta_message_id": message_id, "direction": "Outbound"}):
+    if frappe.db.exists(
+        "WhatsApp Message Log", {"meta_message_id": message_id, "direction": "Outbound"}
+    ):
         frappe.logger("ai_workplace").info(
             f"AI Workplace [{trace_id}]: Skipping background processing for message_id={message_id} (outbound already exists)"
         )
@@ -548,11 +630,17 @@ def process_async_whatsapp_message(
         identity, outbound, send_result, wa_id=wa_id, trace_id=trace_id
     )
 
-    response_text = outbound.log_text() if hasattr(outbound, "log_text") else str(outbound)
-    outbound_type = outbound.message_type if hasattr(outbound, "message_type") else "text"
+    response_text = (
+        outbound.log_text() if hasattr(outbound, "log_text") else str(outbound)
+    )
+    outbound_type = (
+        outbound.message_type if hasattr(outbound, "message_type") else "text"
+    )
 
     _finalize_log(inbound_log, status="Received")
-    _link_inbound_to_hr_session(inbound_log, identity, message_text)
+    _link_inbound_to_hr_session(
+        inbound_log, identity, message_text, sender_name=sender_name
+    )
 
     latency_ms = int((datetime.utcnow() - start_ts).total_seconds() * 1000)
 
@@ -591,12 +679,17 @@ def _handle_async_job_failure(
     """Part J: Job Failure Handling — update conversation, log failure, notify escalation."""
     try:
         _finalize_log(inbound_log, status="Failed")
-        from ai_workplace.conversation.manager import get_or_create_conversation, update_conversation
+        from ai_workplace.conversation.manager import (
+            get_or_create_conversation,
+            update_conversation,
+        )
         from ai_workplace.conversation.state import ConversationState
 
         conv = get_or_create_conversation(identity, trace_id=trace_id)
         if conv.current_state == ConversationState.PROCESSING:
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=None)
+            update_conversation(
+                conv, state=ConversationState.AWAITING_SELECTION, current_intent=None
+            )
 
         _log_security_event(
             event_type="Async Worker Failure",
@@ -606,12 +699,15 @@ def _handle_async_job_failure(
             description=f"Async job failed permanently for log {inbound_log.name}: {error_trace[:300]}",
         )
     except Exception as exc:
-        frappe.logger("ai_workplace").error(f"Failed to execute job failure cleanup: {exc}")
+        frappe.logger("ai_workplace").error(
+            f"Failed to execute job failure cleanup: {exc}"
+        )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Whitelisted Endpoint Dispatchers (Non-recursive)
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @frappe.whitelist(allow_guest=True)
 def verify():
@@ -646,6 +742,7 @@ def receive():
 # ──────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def _is_duplicate(message_id: str) -> bool:
     """Return True if this Meta message_id has already been processed."""
@@ -751,14 +848,25 @@ def _link_inbound_to_hr_session(
     *,
     message_type: str = "text",
     media_file: str = "",
+    sender_name: str = "",
 ) -> None:
     """Attach inbound WhatsApp Message Log to an active HR live chat session."""
     try:
         wa_identity = getattr(identity, "whatsapp_identity", "") or ""
         employee = getattr(identity, "employee", "") or ""
-        wa_id = getattr(identity, "wa_id", "") or getattr(log_doc, "whatsapp_id", "") or getattr(log_doc, "recipient", "") or getattr(log_doc, "sender", "") or ""
+        wa_id = (
+            getattr(identity, "wa_id", "")
+            or getattr(log_doc, "whatsapp_id", "")
+            or getattr(log_doc, "recipient", "")
+            or getattr(log_doc, "sender", "")
+            or ""
+        )
 
-        from ai_workplace.services.hr_chat import get_active_session_for_identity, get_session_doc, publish_session_update
+        from ai_workplace.services.hr_chat import (
+            get_active_session_for_identity,
+            get_session_doc,
+            publish_session_update,
+        )
 
         session_name = get_active_session_for_identity(
             wa_identity, employee=employee, wa_id=wa_id
@@ -783,7 +891,9 @@ def _link_inbound_to_hr_session(
             return
 
         now_dt = frappe.utils.now_datetime()
-        frappe.db.set_value("HR Live Chat Session", session_name, "last_user_message_at", now_dt)
+        frappe.db.set_value(
+            "HR Live Chat Session", session_name, "last_user_message_at", now_dt
+        )
 
         if not log_doc.hr_live_chat_session:
             frappe.db.set_value(
@@ -795,6 +905,13 @@ def _link_inbound_to_hr_session(
                 },
             )
         frappe.db.commit()
+
+        emp_name = (
+            frappe.db.get_value("Employee", employee, "employee_name")
+            if employee
+            else ""
+        )
+        final_sender_name = sender_name or emp_name or wa_id
 
         session = get_session_doc(session_name)
         publish_session_update(
@@ -808,6 +925,7 @@ def _link_inbound_to_hr_session(
                 "timestamp": str(now_dt),
                 "message_type": message_type or "text",
                 "media_file": media_file or log_doc.media_file or "",
+                "sender_name": final_sender_name,
             },
         )
     except Exception as exc:
@@ -871,7 +989,9 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
         conversation_priority_expects_media,
     )
 
-    conv_for_route = get_or_create_conversation(identity, wa_id=wa_id or "", trace_id=trace_id)
+    conv_for_route = get_or_create_conversation(
+        identity, wa_id=wa_id or "", trace_id=trace_id
+    )
     priority_media_flow = conversation_priority_expects_media(conv_for_route)
 
     session_name = get_active_session_for_identity(wa_identity_name)
@@ -912,18 +1032,23 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
         # Track media temporarily for multi-step workflows
         if media_result.get("file_doc_name") and conv_for_route:
             try:
-                frappe.get_doc({
-                    "doctype": "WhatsApp Temporary Media",
-                    "conversation_id": conv_for_route.name,
-                    "employee": identity.employee or "",
-                    "document_type": message_type,
-                    "media_id": parsed.get("media_id", ""),
-                    "file_reference": media_result.get("file_doc_name"),
-                    "status": "Pending"
-                }).insert(ignore_permissions=True)
+                frappe.get_doc(
+                    {
+                        "doctype": "WhatsApp Temporary Media",
+                        "conversation_id": conv_for_route.name,
+                        "employee": identity.employee or "",
+                        "document_type": message_type,
+                        "media_id": parsed.get("media_id", ""),
+                        "file_reference": media_result.get("file_doc_name"),
+                        "status": "Pending",
+                    }
+                ).insert(ignore_permissions=True)
                 frappe.db.commit()
             except Exception:
-                frappe.log_error(title="Failed to track temporary media", message=frappe.get_traceback())
+                frappe.log_error(
+                    title="Failed to track temporary media",
+                    message=frappe.get_traceback(),
+                )
 
         from ai_workplace.conversation.orchestrator import process_inbound_media
         from ai_workplace.whatsapp.sender import send_message
@@ -938,22 +1063,36 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
                 wa_id=wa_id,
             )
         except Exception as exc:
-            frappe.log_error(title="WhatsApp media flow failed", message=frappe.get_traceback())
+            frappe.log_error(
+                title="WhatsApp media flow failed", message=frappe.get_traceback()
+            )
             outbound = OutboundMessage(
-                body_text=_("Sorry, we could not process your file. Please try sending it again.")
+                body_text=_(
+                    "Sorry, we could not process your file. Please try sending it again."
+                )
             )
 
         if outbound is not None:
             _finalize_log(inbound_log, status="Received")
-            send_result = send_message(phone_number=identity.normalized_phone, outbound=outbound)
+            send_result = send_message(
+                phone_number=identity.normalized_phone, outbound=outbound
+            )
             _create_message_log(
                 meta_message_id=send_result.get("message_id") or "",
                 direction="Outbound",
                 sender="",
                 recipient=identity.normalized_phone,
                 wa_id=wa_id,
-                message_type=outbound.message_type if hasattr(outbound, "message_type") else "text",
-                message=outbound.log_text() if hasattr(outbound, "log_text") else str(outbound),
+                message_type=(
+                    outbound.message_type
+                    if hasattr(outbound, "message_type")
+                    else "text"
+                ),
+                message=(
+                    outbound.log_text()
+                    if hasattr(outbound, "log_text")
+                    else str(outbound)
+                ),
                 status="Sent" if send_result.get("success") else "Failed",
                 trace_id=trace_id,
             )
@@ -975,7 +1114,9 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
     )
     if fail_out is not None:
         _finalize_log(inbound_log, status="Received")
-        send_result = send_message(phone_number=identity.normalized_phone, outbound=fail_out)
+        send_result = send_message(
+            phone_number=identity.normalized_phone, outbound=fail_out
+        )
         _create_message_log(
             meta_message_id=send_result.get("message_id") or "",
             direction="Outbound",
@@ -983,7 +1124,9 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
             recipient=identity.normalized_phone,
             wa_id=wa_id,
             message_type="text",
-            message=fail_out.log_text() if hasattr(fail_out, "log_text") else str(fail_out),
+            message=(
+                fail_out.log_text() if hasattr(fail_out, "log_text") else str(fail_out)
+            ),
             status="Sent" if send_result.get("success") else "Failed",
             trace_id=trace_id,
         )
@@ -996,6 +1139,7 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
         display_message,
         message_type=message_type,
         media_file=file_url,
+        sender_name=parsed.get("sender_name", ""),
     )
     frappe.logger("ai_workplace").info(
         f"AI Workplace [{trace_id}]: Acknowledged inbound {message_type} message {message_id}"
@@ -1017,9 +1161,13 @@ def _maybe_store_attendance_location_request_id(
         return
     try:
         from ai_workplace.conversation.manager import get_or_create_conversation
-        from ai_workplace.services.attendance_location import store_location_request_message_id
+        from ai_workplace.services.attendance_location import (
+            store_location_request_message_id,
+        )
 
-        conv = get_or_create_conversation(identity, wa_id=wa_id or "", trace_id=trace_id or "")
+        conv = get_or_create_conversation(
+            identity, wa_id=wa_id or "", trace_id=trace_id or ""
+        )
         store_location_request_message_id(conv, send_result["message_id"])
     except Exception:
         frappe.log_error(
@@ -1044,7 +1192,9 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
     wa_identity_name = get_or_create_whatsapp_identity(identity, wa_id=wa_id or "")
     identity.whatsapp_identity = wa_identity_name
 
-    loc_text = parsed.get("location_name") or parsed.get("location_address") or "[Location]"
+    loc_text = (
+        parsed.get("location_name") or parsed.get("location_address") or "[Location]"
+    )
     inbound_log = _create_message_log(
         meta_message_id=message_id,
         direction="Inbound",
@@ -1068,7 +1218,9 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
         conversation_priority_expects_location,
     )
 
-    conv_for_route = get_or_create_conversation(identity, wa_id=wa_id or "", trace_id=trace_id)
+    conv_for_route = get_or_create_conversation(
+        identity, wa_id=wa_id or "", trace_id=trace_id
+    )
     priority_location_flow = conversation_priority_expects_location(conv_for_route)
 
     session_name = get_active_session_for_identity(wa_identity_name)
@@ -1101,14 +1253,18 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
             context_message_id=parsed.get("context_message_id") or "",
         )
     except Exception:
-        frappe.log_error(title="WhatsApp location flow failed", message=frappe.get_traceback())
+        frappe.log_error(
+            title="WhatsApp location flow failed", message=frappe.get_traceback()
+        )
         outbound = OutboundMessage(
             body_text=_("Sorry, we could not process your location. Please try again.")
         )
 
     if outbound is not None:
         _finalize_log(inbound_log, status="Received")
-        send_result = send_message(phone_number=identity.normalized_phone, outbound=outbound)
+        send_result = send_message(
+            phone_number=identity.normalized_phone, outbound=outbound
+        )
         _maybe_store_attendance_location_request_id(
             identity, outbound, send_result, wa_id=wa_id, trace_id=trace_id
         )
@@ -1118,8 +1274,12 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
             sender="",
             recipient=identity.normalized_phone,
             wa_id=wa_id,
-            message_type=outbound.message_type if hasattr(outbound, "message_type") else "text",
-            message=outbound.log_text() if hasattr(outbound, "log_text") else str(outbound),
+            message_type=(
+                outbound.message_type if hasattr(outbound, "message_type") else "text"
+            ),
+            message=(
+                outbound.log_text() if hasattr(outbound, "log_text") else str(outbound)
+            ),
             status="Sent" if send_result.get("success") else "Failed",
             trace_id=trace_id,
         )

@@ -41,7 +41,7 @@ REALTIME_EVENT = "hr_chat_update"
 CONTACT_HR_SERVICE_KEYS = ("contact_hr", "guest_contact")
 IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".gif", ".webp"})
 DOCUMENT_EXTENSIONS = frozenset(
-    {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv", ".zip"}
+    {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv", ".zip", ".mp3", ".wav", ".ogg", ".mp4", ".mov", ".webm"}
 )
 MAX_ATTACHMENT_BYTES = 16 * 1024 * 1024
 
@@ -1195,10 +1195,20 @@ def send_hr_attachment(
 
     file_doc, content, filename, mime_type = _resolve_attachment_file(file_url)
     ext = os.path.splitext(filename or file_doc.file_name or "")[1].lower()
-    is_image = ext in IMAGE_EXTENSIONS
+    fname = (filename or file_doc.file_name or "").lower()
     caption_text = (caption or "").strip()
     log_message = caption_text or file_doc.file_name or "Attachment"
-    message_type = "image" if is_image else "document"
+    
+    if fname.startswith("voice_message_"):
+        message_type = "audio"
+    elif ext in IMAGE_EXTENSIONS:
+        message_type = "image"
+    elif ext in {".mp4", ".mov", ".webm"}:
+        message_type = "video"
+    elif ext in {".mp3", ".wav", ".ogg", ".m4a"}:
+        message_type = "audio"
+    else:
+        message_type = "document"
 
     if is_web:
         result = {"success": True, "message_id": f"WEB-{frappe.generate_hash(length=8)}"}
@@ -1221,24 +1231,48 @@ def send_hr_attachment(
         if not phone:
             frappe.throw(_("No WhatsApp phone number found for this session."))
 
-        upload_result = upload_media_bytes(
-            content, mime_type, filename or file_doc.file_name
-        )
-        if not upload_result.get("success"):
-            frappe.throw(
-                upload_result.get("error") or _("Failed to upload file to WhatsApp.")
-            )
+        cfg = frappe.get_single("AI Workplace Settings")
+        is_custom = cfg.get("custom_whatsapp_api_enabled")
 
-        media_id = upload_result.get("media_id")
-        if is_image:
-            result = send_image_message(phone, media_id, caption=caption_text)
+        if is_custom:
+            from ai_workplace.whatsapp.sender import _post_message
+            media_url = frappe.utils.get_url(file_doc.file_url)
+            payload = {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": phone.lstrip("+"),
+                "type": "media",
+                "media_url": media_url,
+                "media_type": message_type,
+            }
+            if caption_text:
+                payload["text"] = {"body": caption_text}
+            result = _post_message(phone, payload)
         else:
-            result = send_document_message(
-                phone,
-                media_id,
-                filename=filename or file_doc.file_name or "file",
-                caption=caption_text,
+            upload_result = upload_media_bytes(
+                content, mime_type, filename or file_doc.file_name
             )
+            if not upload_result.get("success"):
+                frappe.throw(
+                    upload_result.get("error") or _("Failed to upload file to WhatsApp.")
+                )
+
+            media_id = upload_result.get("media_id")
+            if message_type == "image":
+                result = send_image_message(phone, media_id, caption=caption_text)
+            elif message_type == "video":
+                from ai_workplace.whatsapp.sender import send_video_message
+                result = send_video_message(phone, media_id, caption=caption_text)
+            elif message_type == "audio":
+                from ai_workplace.whatsapp.sender import send_audio_message
+                result = send_audio_message(phone, media_id)
+            else:
+                result = send_document_message(
+                    phone,
+                    media_id,
+                    filename=filename or file_doc.file_name or "file",
+                    caption=caption_text,
+                )
 
     now = _now()
     session.last_hr_reply_at = now

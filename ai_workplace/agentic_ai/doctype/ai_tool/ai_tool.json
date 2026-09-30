@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:tool_name",
  "creation": "2026-06-12 14:59:36.645883",
@@ -44,7 +45,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-28 17:32:50.408717",
+ "modified": "2026-09-29 11:10:25.796555",
  "modified_by": "Administrator",
  "module": "Agentic AI",
  "name": "AI Tool",

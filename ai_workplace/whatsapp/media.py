@@ -47,7 +47,26 @@ def _validate_file_content(content: bytes, filename: str) -> None:
 
 
 def fetch_inbound_media(parsed: dict[str, Any], settings: Optional[Any] = None) -> dict[str, Any]:
-    """Download WhatsApp media referenced in a parsed webhook payload."""
+    """Download WhatsApp media referenced in a parsed webhook payload, or use base64 if provided."""
+    if parsed.get("media_base64"):
+        import base64
+        try:
+            content = base64.b64decode(parsed["media_base64"])
+            mime_type = parsed.get("mime_type") or parsed.get("media_mime_type") or "application/octet-stream"
+            filename = parsed.get("media_filename") or _resolve_filename(parsed, mime_type)
+            _validate_file_content(content, filename)
+            file_doc = _save_file(content, filename, mime_type)
+            return {
+                "success": True,
+                "file_url": file_doc.file_url,
+                "file_doc_name": file_doc.name,
+                "filename": file_doc.file_name,
+                "error": None,
+            }
+        except Exception as exc:
+            frappe.logger("ai_workplace").error(f"WhatsApp Media: base64 decode/validation failed: {exc}")
+            return {"success": False, "file_url": "", "filename": "", "error": str(exc)}
+
     media_id = (parsed.get("media_id") or "").strip()
     if not media_id:
         return {"success": False, "file_url": "", "filename": "", "error": "Missing media id"}
@@ -178,11 +197,31 @@ def _resolve_filename(parsed: dict[str, Any], mime_type: str) -> str:
         return explicit
 
     message_type = (parsed.get("message_type") or parsed.get("raw_type") or "media").lower()
-    ext = mimetypes.guess_extension(mime_type or "") or ""
+    clean_mime = (mime_type or "").split(";")[0].strip().lower()
+    
+    mime_overrides = {
+        "audio/ogg": ".ogg",
+        "audio/mpeg": ".mp3",
+        "audio/mp4": ".m4a",
+        "video/mp4": ".mp4",
+        "image/jpeg": ".jpg",
+        "image/webp": ".webp",
+        "image/png": ".png",
+    }
+    
+    ext = mime_overrides.get(clean_mime)
+    if not ext:
+        ext = mimetypes.guess_extension(clean_mime) or ""
+        
     if message_type == "image" and ext in ("", ".jpe"):
         ext = ".jpg"
     if not ext:
-        ext = ".bin"
+        if message_type == "audio":
+            ext = ".ogg"
+        elif message_type == "video":
+            ext = ".mp4"
+        else:
+            ext = ".bin"
     return f"whatsapp-{message_type}-{uuid.uuid4().hex[:10]}{ext}"
 
 
