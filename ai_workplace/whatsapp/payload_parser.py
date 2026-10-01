@@ -74,15 +74,31 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
         }
 
     if "number" in payload and "message" in payload:
+        if payload.get("fromMe") or payload.get("is_echo"):
+            return None
+
         import uuid
+        import time
         from datetime import datetime
         
         wa_id = str(payload["number"]).replace("+", "")
         message_text = str(payload["message"]).strip()
         
-        cached_map = frappe.cache().get_value(f"custom_wa_menu_{wa_id}")
-        if cached_map and message_text in cached_map:
-            message_text = cached_map[message_text]
+        cached_obj = frappe.cache().get_value(f"custom_wa_menu_{wa_id}")
+        if cached_obj and isinstance(cached_obj, dict):
+            if "map" in cached_obj:
+                cache_ts = cached_obj.get("timestamp", 0)
+                now = int(time.time())
+                
+                if now - cache_ts < 3:
+                    return None
+                    
+                cached_map = cached_obj.get("map", {})
+            else:
+                cached_map = cached_obj
+                
+            if message_text in cached_map:
+                message_text = cached_map[message_text]
             frappe.cache().delete_value(f"custom_wa_menu_{wa_id}")
 
         message_type = "text"

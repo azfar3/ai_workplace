@@ -110,7 +110,7 @@ class TestPayrollServices(unittest.TestCase):
         self.assertEqual(msg.body_text, "Choose period")
         opts = build_salary_slip_period_options_message(self.context_en)
         btn_ids = [b["reply"]["id"] for b in opts.interactive["action"]["buttons"]]
-        self.assertIn("svc_pay_slip_1m", btn_ids)
+        self.assertIn("svc_pay_slip_latest", btn_ids)
         self.assertIn("svc_pay_slip_3m", btn_ids)
         self.assertIn("svc_pay_slip_6m", btn_ids)
 

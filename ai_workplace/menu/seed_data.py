@@ -23,7 +23,7 @@ def get_menu_seed_items() -> list[dict[str, Any]]:
             "title_urdu": "🕒 حاضری اور رخصت",
             "title_roman_urdu": "🕒 Attendance & Leave",
             "user_category": "Active Employee",
-            "sequence": 1,
+            "sequence": 2,
             "description": "Check in/out, view attendance, apply for leave and track requests.",
             "submenus": [
                 {"menu_key": "att_today", "title": "📅 Today's Attendance", "title_urdu": "📅 آج کی حاضری", "title_roman_urdu": "📅 Today's Attendance", "description": "Today's check-in/out status.", "sequence": 1, "security_level": SEC_NONE},
@@ -43,7 +43,7 @@ def get_menu_seed_items() -> list[dict[str, Any]]:
             "title_urdu": "💰 تنخواہ اور پے رول",
             "title_roman_urdu": "💰 Salary & Payroll",
             "user_category": "Active Employee",
-            "sequence": 2,
+            "sequence": 1,
             "description": "Salary slips, tax documents and payroll information.",
             "submenus": [
                 {"menu_key": "pay_download_slip", "title": "📥 Salary Slip", "title_urdu": "📥 سیلری سلپ", "title_roman_urdu": "📥 Salary Slip", "description": "Download salary slips as PDF (1, 3 or 6 months).", "sequence": 1, "security_level": SEC_PIN},

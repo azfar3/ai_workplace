@@ -262,6 +262,17 @@ def send_message(
     if isinstance(outbound, str):
         return send_text_message(phone_number, outbound, settings=settings)
 
+    cfg = settings
+    if not cfg:
+        try:
+            cfg = frappe.get_single("AI Workplace Settings")
+        except Exception:
+            pass
+    is_custom = cfg.get("custom_whatsapp_api_enabled") if cfg else False
+
+    if is_custom and outbound.follow_up:
+        _consolidate_custom_api_interactive(outbound)
+
     result = _send_single_message(phone_number, outbound, settings=settings)
     if not result.get("success"):
         return result
@@ -276,6 +287,53 @@ def send_message(
                 f"AI Workplace: Follow-up message send failed: {follow_result.get('error')}"
             )
     return last_result
+
+def _consolidate_custom_api_interactive(outbound: OutboundMessage) -> None:
+    """
+    Consolidates multiple interactive follow-up messages into the first one 
+    when using the Custom Baileys API, avoiding multi-message clutter.
+    """
+    interactives = [msg for msg in outbound.follow_up if msg.is_interactive()]
+    if len(interactives) <= 1:
+        return
+        
+    primary = interactives[0]
+    p_type = primary.interactive.get("type")
+    p_action = primary.interactive.setdefault("action", {})
+    
+    for secondary in interactives[1:]:
+        s_type = secondary.interactive.get("type")
+        s_action = secondary.interactive.get("action", {})
+        
+        if p_type == "button" and s_type == "button":
+            p_action.setdefault("buttons", []).extend(s_action.get("buttons", []))
+        elif p_type == "list" and s_type == "list":
+            p_action.setdefault("sections", []).extend(s_action.get("sections", []))
+        elif p_type == "button" and s_type == "list":
+            # Convert primary to list by creating a section from its buttons
+            buttons = p_action.get("buttons", [])
+            rows = []
+            for btn in buttons:
+                reply = btn.get("reply", {})
+                rows.append({"id": reply.get("id"), "title": reply.get("title", ""), "description": ""})
+            p_type = "list"
+            primary.interactive["type"] = "list"
+            p_action["sections"] = [{"title": "Options", "rows": rows}] + s_action.get("sections", [])
+            p_action.pop("buttons", None)
+            p_action["button"] = "Select Option"
+        elif p_type == "list" and s_type == "button":
+            # Append secondary buttons as list rows to the primary list
+            buttons = s_action.get("buttons", [])
+            rows = []
+            for btn in buttons:
+                reply = btn.get("reply", {})
+                rows.append({"id": reply.get("id"), "title": reply.get("title", ""), "description": ""})
+            if p_action.get("sections"):
+                p_action["sections"][-1].setdefault("rows", []).extend(rows)
+            else:
+                p_action["sections"] = [{"title": "Options", "rows": rows}]
+                
+        outbound.follow_up.remove(secondary)
 
 
 def _send_single_message(
@@ -520,21 +578,46 @@ def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
         if footer_text:
             full_text = f"{full_text}\n\n{footer_text}"
             
+        import time
+        now = int(time.time())
+        
         if itype == "button":
             menu_text = f"{full_text}\n"
-            option_map = {}
+            existing_cache_obj = frappe.cache().get_value(f"custom_wa_menu_{number.lstrip('+')}")
+            
+            existing_map = {}
+            if existing_cache_obj and isinstance(existing_cache_obj, dict) and "map" in existing_cache_obj:
+                if existing_cache_obj.get("timestamp", 0) > now - 15:
+                    existing_map = existing_cache_obj.get("map", {})
+                
+            start_idx = len(existing_map) + 1
+            option_map = dict(existing_map)
+            
             for idx, btn in enumerate(interactive.get("action", {}).get("buttons", [])):
-                opt_num = str(idx + 1)
+                opt_num = str(start_idx + idx)
                 reply = btn.get("reply", {})
                 menu_text += f"\n{opt_num}. {reply.get('title', '')}"
                 option_map[opt_num] = reply.get("id") or reply.get("title")
             message = menu_text.strip()
             if option_map:
-                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", option_map, expires_in_sec=86400)
+                new_cache_obj = {
+                    "timestamp": existing_cache_obj.get("timestamp") if (isinstance(existing_cache_obj, dict) and existing_cache_obj.get("timestamp", 0) > now - 15) else now,
+                    "map": option_map
+                }
+                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=86400)
+                
         elif itype == "list":
             menu_text = f"{full_text}\n"
-            opt_idx = 1
-            option_map = {}
+            existing_cache_obj = frappe.cache().get_value(f"custom_wa_menu_{number.lstrip('+')}")
+            
+            existing_map = {}
+            if existing_cache_obj and isinstance(existing_cache_obj, dict) and "map" in existing_cache_obj:
+                if existing_cache_obj.get("timestamp", 0) > now - 15:
+                    existing_map = existing_cache_obj.get("map", {})
+                
+            opt_idx = len(existing_map) + 1
+            option_map = dict(existing_map)
+            
             for sec in interactive.get("action", {}).get("sections", []):
                 if sec.get("title"):
                     menu_text += f"\n*{sec.get('title')}*\n"
@@ -545,7 +628,11 @@ def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
                     opt_idx += 1
             message = menu_text.strip()
             if option_map:
-                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", option_map, expires_in_sec=86400)
+                new_cache_obj = {
+                    "timestamp": existing_cache_obj.get("timestamp") if (isinstance(existing_cache_obj, dict) and existing_cache_obj.get("timestamp", 0) > now - 15) else now,
+                    "map": option_map
+                }
+                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=86400)
         else:
             message = full_text
     else:
