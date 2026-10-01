@@ -76,6 +76,7 @@ def get_full_admin_dashboard_data(
     tools = get_tool_analytics(start_dt, end_dt)
     performance = get_performance_monitoring(start_dt, end_dt)
     live_feed = get_live_activity_stream()
+    bot_messages = get_bot_messages_analytics(start_dt, end_dt)
     alerts = generate_admin_alerts(health, overview, errors, knowledge)
 
     return {
@@ -91,6 +92,7 @@ def get_full_admin_dashboard_data(
         "deterministic": deterministic,
         "user_analytics": user_analytics,
         "conversations": conversations,
+        "bot_messages": bot_messages,
         "health": health,
         "errors": errors,
         "security": security,
@@ -790,7 +792,11 @@ def get_error_monitoring(
             service as endpoint_tool,
             status,
             trace_id,
-            error as details
+            CASE 
+                WHEN action = 'invalid_selection' THEN 'User selected an invalid interactive menu option or provided malformed input.'
+                WHEN action = 'timeout' THEN 'The AI Provider or internal service timed out while processing the request.'
+                ELSE IFNULL(NULLIF(error, ''), IFNULL(NULLIF(result, ''), 'No detailed error message provided by the system.')) 
+            END as details
         FROM `tabAI Action Log`
         WHERE created_at >= %s AND created_at <= %s AND status = 'Failed'
         ORDER BY created_at DESC
@@ -1060,3 +1066,64 @@ def reset_circuit_breaker(provider_name: str) -> Dict[str, Any]:
     CircuitBreaker.record_success(provider_name)
     frappe.log_error(title="Circuit Breaker Reset", message=f"Admin reset circuit breaker for {provider_name}")
     return {"success": True}
+
+@frappe.whitelist()
+def get_bot_messages_analytics(
+    start_dt: str = "",
+    end_dt: str = ""
+) -> Dict[str, Any]:
+    """Analytics for Bot Messages (In/Out) and Channels."""
+    if not start_dt:
+        _, _, start_dt, end_dt = get_date_range_bounds("30d")
+        
+    messages_in_out = frappe.db.sql("""
+        SELECT 
+            direction,
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'Failed' THEN 1 ELSE 0 END) as failed
+        FROM `tabWhatsApp Message Log`
+        WHERE timestamp >= %s AND timestamp <= %s
+        GROUP BY direction
+    """, (start_dt, end_dt), as_dict=True)
+
+    channels = frappe.db.sql("""
+        SELECT 
+            channel,
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'Failed' THEN 1 ELSE 0 END) as failed,
+            SUM(CASE WHEN direction = 'Inbound' THEN 1 ELSE 0 END) as inbound,
+            SUM(CASE WHEN direction = 'Outbound' THEN 1 ELSE 0 END) as outbound
+        FROM `tabWhatsApp Message Log`
+        WHERE timestamp >= %s AND timestamp <= %s
+        GROUP BY channel
+    """, (start_dt, end_dt), as_dict=True)
+    
+    total_messages = sum([c["total"] for c in channels]) if channels else 0
+    total_failed = sum([c["failed"] for c in channels]) if channels else 0
+    total_inbound = sum([m["total"] for m in messages_in_out if m["direction"] == "Inbound"]) if messages_in_out else 0
+    total_outbound = sum([m["total"] for m in messages_in_out if m["direction"] == "Outbound"]) if messages_in_out else 0
+
+    recent_messages = frappe.db.sql("""
+        SELECT 
+            name,
+            timestamp,
+            channel,
+            direction,
+            status,
+            message_type,
+            whatsapp_id,
+            IFNULL(NULLIF(erp_user, ''), IFNULL(NULLIF(employee, ''), whatsapp_id)) as user_label
+        FROM `tabWhatsApp Message Log`
+        WHERE timestamp >= %s AND timestamp <= %s
+        ORDER BY timestamp DESC
+        LIMIT 20
+    """, (start_dt, end_dt), as_dict=True)
+
+    return {
+        "total_messages": total_messages,
+        "total_failed": total_failed,
+        "total_inbound": total_inbound,
+        "total_outbound": total_outbound,
+        "channels": channels,
+        "recent_messages": recent_messages
+    }

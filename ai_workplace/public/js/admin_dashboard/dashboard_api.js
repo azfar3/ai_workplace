@@ -40,6 +40,21 @@ window.DashboardAPI = (function () {
                     }
                 }
             });
+        },
+
+        reindexKnowledgeSources: function (callback) {
+            frappe.call({
+                method: 'ai_workplace.api.ai_admin.reindex_all_knowledge_sources',
+                callback: function (r) {
+                    if (r && r.message && r.message.success) {
+                        frappe.show_alert({ message: __('Knowledge base re-indexed successfully'), indicator: 'green' });
+                        if (callback) callback(null, r.message);
+                    } else {
+                        frappe.show_alert({ message: __('Failed to re-index knowledge base'), indicator: 'red' });
+                        if (callback) callback(r ? r.exc : 'Error re-indexing', null);
+                    }
+                }
+            });
         }
     };
 })();

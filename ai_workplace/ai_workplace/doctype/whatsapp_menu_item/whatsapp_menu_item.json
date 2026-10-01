@@ -1,12 +1,13 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:menu_key",
  "creation": "2026-08-28 15:58:15.257908",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
-  "field_order": [
+ "field_order": [
   "menu_key",
   "title",
   "title_urdu",
@@ -125,7 +126,7 @@
  ],
  "icon": "fa fa-list",
  "links": [],
- "modified": "2026-08-28 19:53:30.960827",
+ "modified": "2026-10-01 14:17:41.203448",
  "modified_by": "Administrator",
  "module": "Ai Workplace",
  "name": "WhatsApp Menu Item",

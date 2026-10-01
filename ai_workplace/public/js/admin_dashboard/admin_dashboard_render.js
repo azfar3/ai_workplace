@@ -58,6 +58,7 @@ window.AdminDashboardRender = (function () {
     function renderTabBar(activeTab) {
         var tabs = [
             { id: 'overview', label: 'Executive Overview', icon: 'fa-line-chart' },
+            { id: 'bot_messages', label: 'Bot Messages & Channels', icon: 'fa-envelope' },
             { id: 'ai_analytics', label: 'AI Usage & Cost', icon: 'fa-bolt' },
             { id: 'deterministic', label: 'Deterministic Engine', icon: 'fa-cogs' },
             { id: 'users', label: 'User Analytics', icon: 'fa-users' },
@@ -195,13 +196,28 @@ window.AdminDashboardRender = (function () {
         var providers = ai.providers || [];
 
         var html = '<div class="tab-pane-content">';
+
+        // LLM Performance Highlight Banner
+        html += '<div class="highlight-banner-card" style="background: linear-gradient(135deg, #4b134f 0%, #c94b4b 100%);">';
+        html += '  <div class="banner-left">';
+        html += '    <div class="banner-label">LLM GENERATION PERFORMANCE</div>';
+        html += '    <div class="banner-value">' + U.formatNumber(s.total_llm_requests) + '</div>';
+        html += '    <div class="banner-sub">Total LLM queries processed and generated</div>';
+        html += '  </div>';
+        html += '  <div class="banner-metrics">';
+        html += '    <div class="b-stat"><span class="b-val text-white">' + U.formatNumber(s.failed_requests) + '</span><span class="b-lbl" style="color:#ffd3d3;">Failures</span></div>';
+        html += '    <div class="b-stat"><span class="b-val text-white">' + U.formatNumber(s.timeout_count) + '</span><span class="b-lbl" style="color:#ffd3d3;">Timeouts</span></div>';
+        html += '    <div class="b-stat"><span class="b-val text-white">' + U.latencyBadge(s.avg_response_latency) + '</span><span class="b-lbl" style="color:#ffd3d3;">Avg Latency</span></div>';
+        html += '  </div>';
+        html += '</div>';
+
         html += '<div class="dash-card-grid">';
 
         html += '  <div class="stat-card">';
         html += '    <div class="stat-content">';
-        html += '      <div class="stat-value">' + U.formatNumber(s.total_llm_requests) + '</div>';
-        html += '      <div class="stat-label">Total LLM Requests</div>';
-        html += '      <div class="stat-sub">' + U.formatNumber(s.requests_today) + ' Today | ' + U.formatNumber(s.requests_this_month) + ' Month</div>';
+        html += '      <div class="stat-value">' + U.formatNumber(s.requests_today) + '</div>';
+        html += '      <div class="stat-label">Requests Today</div>';
+        html += '      <div class="stat-sub">' + U.formatNumber(s.requests_this_month) + ' Month</div>';
         html += '    </div>';
         html += '  </div>';
 
@@ -515,7 +531,7 @@ window.AdminDashboardRender = (function () {
                 html += '  <td>' + U.severityBadge(err.severity) + '</td>';
                 html += '  <td><code>' + U.escapeHtml(err.error_type) + '</code></td>';
                 html += '  <td>' + U.escapeHtml(err.endpoint_tool || 'N/A') + '</td>';
-                html += '  <td class="text-muted">' + U.truncate(err.details, 60) + '</td>';
+                html += '  <td class="text-muted" title="' + U.escapeHtml(err.details || '') + '">' + U.truncate(err.details, 120) + '</td>';
                 html += '</tr>';
             });
         } else {
@@ -580,7 +596,14 @@ window.AdminDashboardRender = (function () {
         var html = '<div class="tab-pane-content">';
 
         if (k.is_stale) {
-            html += '<div class="dash-alert dash-alert-warning"><i class="fa fa-warning"></i> <strong>Knowledge Index Stale:</strong> Knowledge base was last indexed on ' + U.escapeHtml(k.last_indexing_time) + '. Consider triggering re-indexing.</div>';
+            html += '<div class="dash-alert dash-alert-warning" style="justify-content: space-between; align-items: center;">';
+            html += '  <div><i class="fa fa-warning"></i> <strong>Knowledge Index Stale:</strong> Knowledge base was last indexed on ' + U.escapeHtml(k.last_indexing_time) + '. Consider triggering re-indexing.</div>';
+            html += '  <button class="btn btn-sm btn-primary" id="btn-reindex-knowledge">Re-index Now</button>';
+            html += '</div>';
+        } else {
+            html += '<div style="margin-bottom: 20px; text-align: right;">';
+            html += '  <button class="btn btn-sm btn-primary" id="btn-reindex-knowledge">Force Re-index Now</button>';
+            html += '</div>';
         }
 
         html += '<div class="dash-card-grid">';
@@ -707,6 +730,85 @@ window.AdminDashboardRender = (function () {
         return html;
     }
 
+    // 14. Bot Messages & Channels Tab
+    function renderBotMessagesTab(data) {
+        if (!data || !data.bot_messages) return '<div class="dash-empty">No bot messages data available.</div>';
+        var b = data.bot_messages;
+        var channels = b.channels || [];
+        var recent = b.recent_messages || [];
+
+        var html = '<div class="tab-pane-content">';
+        
+        // Highlight Banner for Messages
+        html += '<div class="highlight-banner-card" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">';
+        html += '  <div class="banner-left">';
+        html += '    <div class="banner-label">TOTAL SYSTEM MESSAGES (IN & OUT)</div>';
+        html += '    <div class="banner-value">' + U.formatNumber(b.total_messages) + '</div>';
+        html += '    <div class="banner-sub">Messages handled across Web Chat, Meta API, and Custom WhatsApp API</div>';
+        html += '  </div>';
+        html += '  <div class="banner-metrics">';
+        html += '    <div class="b-stat"><span class="b-val text-success">' + U.formatNumber(b.total_inbound) + '</span><span class="b-lbl">Inbound (User)</span></div>';
+        html += '    <div class="b-stat"><span class="b-val text-info">' + U.formatNumber(b.total_outbound) + '</span><span class="b-lbl">Outbound (Bot)</span></div>';
+        html += '    <div class="b-stat"><span class="b-val text-danger">' + U.formatNumber(b.total_failed) + '</span><span class="b-lbl">Failed</span></div>';
+        html += '  </div>';
+        html += '</div>';
+
+        // Channels Table
+        html += '<div class="dash-table-card">';
+        html += '  <div class="table-card-title"><i class="fa fa-share-alt"></i> Channel Performance & Success Rate</div>';
+        html += '  <table class="dash-table">';
+        html += '    <thead><tr><th>Channel / API</th><th>Total Messages</th><th>Inbound</th><th>Outbound</th><th>Failed</th><th>Success Rate</th></tr></thead>';
+        html += '    <tbody>';
+        if (channels.length) {
+            channels.forEach(function (c) {
+                var total = c.total || 0;
+                var failed = c.failed || 0;
+                var successRate = total > 0 ? ((total - failed) / total) * 100 : 0;
+                html += '<tr>';
+                html += '  <td><strong>' + U.escapeHtml(c.channel || 'Unknown') + '</strong></td>';
+                html += '  <td>' + U.formatNumber(total) + '</td>';
+                html += '  <td>' + U.formatNumber(c.inbound) + '</td>';
+                html += '  <td>' + U.formatNumber(c.outbound) + '</td>';
+                html += '  <td class="' + (failed > 0 ? 'text-danger' : '') + '">' + U.formatNumber(failed) + '</td>';
+                html += '  <td>' + U.formatPercent(successRate) + '</td>';
+                html += '</tr>';
+            });
+        } else {
+            html += '<tr><td colspan="6" class="text-center text-muted">No channel data recorded.</td></tr>';
+        }
+        html += '    </tbody>';
+        html += '  </table>';
+        html += '</div>';
+
+        // Recent Messages Table
+        html += '<div class="dash-table-card">';
+        html += '  <div class="table-card-title"><i class="fa fa-envelope-open-o"></i> Recent Bot Messages</div>';
+        html += '  <table class="dash-table">';
+        html += '    <thead><tr><th>Timestamp</th><th>User / Identity</th><th>Channel</th><th>Direction</th><th>Type</th><th>Status</th></tr></thead>';
+        html += '    <tbody>';
+        if (recent.length) {
+            recent.forEach(function (rm) {
+                var dirClass = rm.direction === 'Inbound' ? 'badge-success' : 'badge-info';
+                html += '<tr>';
+                html += '  <td>' + U.formatDateTime(rm.timestamp) + '</td>';
+                html += '  <td>' + U.escapeHtml(rm.user_label || 'User') + '</td>';
+                html += '  <td>' + U.escapeHtml(rm.channel || 'N/A') + '</td>';
+                html += '  <td><span class="dash-badge ' + dirClass + '">' + U.escapeHtml(rm.direction) + '</span></td>';
+                html += '  <td><code>' + U.escapeHtml(rm.message_type || 'text') + '</code></td>';
+                html += '  <td>' + U.statusBadge(rm.status) + '</td>';
+                html += '</tr>';
+            });
+        } else {
+            html += '<tr><td colspan="6" class="text-center text-muted">No recent messages found.</td></tr>';
+        }
+        html += '    </tbody>';
+        html += '  </table>';
+        html += '</div>';
+
+        html += '</div>';
+        return html;
+    }
+
     return {
         renderFullDashboard: function (container, data, state) {
             if (!container) return;
@@ -719,6 +821,7 @@ window.AdminDashboardRender = (function () {
 
             html += '<div class="dash-tab-body">';
             if (activeTab === 'overview') html += renderOverviewTab(data);
+            else if (activeTab === 'bot_messages') html += renderBotMessagesTab(data);
             else if (activeTab === 'ai_analytics') html += renderAiAnalyticsTab(data);
             else if (activeTab === 'deterministic') html += renderDeterministicTab(data);
             else if (activeTab === 'users') html += renderUsersTab(data);

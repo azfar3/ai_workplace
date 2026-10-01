@@ -8,7 +8,7 @@ window.DashboardState = (function () {
         fromDate: null,
         toDate: null,
         activeTab: 'overview',
-        autoRefresh: true,
+        autoRefresh: false, // Disabled to prevent server overload
         refreshInterval: 30000,
         lastUpdated: null,
         isLoading: false,

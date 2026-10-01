@@ -96,6 +96,7 @@ def is_hr_session_exit_command(text: str) -> bool:
         "stop",
         "quit",
         "0",
+        "1",
         "restart",
         "start",
         "chat khatam karein",

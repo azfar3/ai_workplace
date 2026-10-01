@@ -86,7 +86,14 @@ def get_or_create_conversation(
     if active_conv_name:
         conv = frappe.get_doc("WhatsApp Conversation", active_conv_name)
         # Check Expiry
-        if conv.expires_at and conv.expires_at < now:
+        is_custom_api = False
+        try:
+            settings = frappe.get_single("AI Workplace Settings")
+            is_custom_api = settings.custom_whatsapp_api_enabled
+        except Exception:
+            pass
+
+        if not is_custom_api and conv.expires_at and conv.expires_at < now:
             expired_done = process_expired_conversation(conv, trace_id=trace_id)
             if expired_done:
                 # Fall through to create a new session
@@ -375,6 +382,16 @@ def close_inactive_sessions() -> dict[str, Any]:
     Check for active conversations where expires_at <= now.
     Closes inactive sessions and sends an automated Bye message to the user.
     """
+    is_custom_api = False
+    try:
+        settings = frappe.get_single("AI Workplace Settings")
+        is_custom_api = settings.custom_whatsapp_api_enabled
+    except Exception:
+        pass
+
+    if is_custom_api:
+        return {"status": "success", "closed_count": 0, "message": "Skipped for Custom API"}
+
     now = frappe.utils.now_datetime()
     expired_convs = frappe.get_all(
         "WhatsApp Conversation",

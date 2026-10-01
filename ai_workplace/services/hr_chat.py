@@ -398,7 +398,14 @@ def evaluate_reply_permission(
         if not user_is_hr_manager(user):
             return False, _("This chat is assigned to another HR agent.")
 
-    if getattr(session, "channel", "WhatsApp") != "Web Chat":
+    is_custom_api = False
+    try:
+        settings = frappe.get_single("AI Workplace Settings")
+        is_custom_api = settings.custom_whatsapp_api_enabled
+    except Exception:
+        pass
+
+    if getattr(session, "channel", "WhatsApp") != "Web Chat" and not is_custom_api:
         if not session.last_user_message_at or not session.session_window_expires_at:
             return False, _("Waiting for an employee message on WhatsApp.")
 
@@ -872,7 +879,14 @@ def take_session(session_name: str, user: Optional[str] = None) -> Any:
         frappe.throw(_("Only queued chats can be taken."))
 
     now = _now()
-    if session.session_window_expires_at and now > session.session_window_expires_at:
+    is_custom_api = False
+    try:
+        settings = frappe.get_single("AI Workplace Settings")
+        is_custom_api = settings.custom_whatsapp_api_enabled
+    except Exception:
+        pass
+
+    if not is_custom_api and session.session_window_expires_at and now > session.session_window_expires_at:
         session.status = "Expired"
         session.flags.ignore_links = True
         session.save(ignore_permissions=True)
@@ -1017,6 +1031,16 @@ def close_inactive_hr_chat_sessions(inactivity_hours: int = 12) -> dict[str, Any
     Auto-close active HR Live Chat Sessions ('Queued', 'Assigned', 'Active')
     where no messages have been exchanged between HR and user for `inactivity_hours` (default 12).
     """
+    is_custom_api = False
+    try:
+        settings = frappe.get_single("AI Workplace Settings")
+        is_custom_api = settings.custom_whatsapp_api_enabled
+    except Exception:
+        pass
+
+    if is_custom_api:
+        return {"status": "success", "closed_count": 0, "message": "Skipped for Custom API"}
+
     now = _now()
     threshold = now - timedelta(hours=inactivity_hours)
 
@@ -1074,19 +1098,27 @@ def expire_stale_sessions() -> None:
     except Exception as e:
         frappe.log_error(f"Error in close_inactive_hr_chat_sessions: {e}")
 
-    now = _now()
-    stale = frappe.get_all(
-        "HR Live Chat Session",
-        filters={
-            "status": ["in", list(OPEN_STATUSES)],
-            "session_window_expires_at": ["<", now],
-        },
-        pluck="name",
-    )
-    for name in stale:
-        frappe.db.set_value("HR Live Chat Session", name, "status", "Expired")
-    if stale:
-        frappe.db.commit()
+    is_custom_api = False
+    try:
+        settings = frappe.get_single("AI Workplace Settings")
+        is_custom_api = settings.custom_whatsapp_api_enabled
+    except Exception:
+        pass
+
+    if not is_custom_api:
+        now = _now()
+        stale = frappe.get_all(
+            "HR Live Chat Session",
+            filters={
+                "status": ["in", list(OPEN_STATUSES)],
+                "session_window_expires_at": ["<", now],
+            },
+            pluck="name",
+        )
+        for name in stale:
+            frappe.db.set_value("HR Live Chat Session", name, "status", "Expired")
+        if stale:
+            frappe.db.commit()
 
 
 def _create_outbound_log(
@@ -1389,8 +1421,10 @@ def send_hr_reply(
 
         from ai_workplace.whatsapp.interactive import build_button_message
         from ai_workplace.whatsapp.sender import send_message
+        from ai_workplace.whatsapp.outbound import OutboundMessage
 
         btn_title = "End HR Chat"
+        lang = "English"
         try:
             from ai_workplace.conversation.manager import get_or_create_conversation
             conv = get_or_create_conversation(session.whatsapp_identity)
@@ -1402,13 +1436,27 @@ def send_hr_reply(
         except Exception:
             pass
 
-        outbound_msg = build_button_message(
-            body=text,
-            buttons=[
-                {"id": "svc_end_hr_chat", "title": btn_title[:20]},
-            ]
-        )
-        result = send_message(phone, outbound_msg)
+        cfg = frappe.get_single("AI Workplace Settings")
+        is_custom = cfg.get("custom_whatsapp_api_enabled")
+
+        if is_custom:
+            result = send_message(phone, OutboundMessage(body_text=text))
+            
+            end_instruction = "To end your chat with HR, type *1*"
+            if lang == "Urdu":
+                end_instruction = "HR کے ساتھ اپنی چیٹ ختم کرنے کے لیے *1* ٹائپ کریں"
+            elif lang == "Roman Urdu":
+                end_instruction = "HR ke sath apni chat khatam karne ke liye *1* type karein"
+                
+            send_message(phone, OutboundMessage(body_text=end_instruction))
+        else:
+            outbound_msg = build_button_message(
+                body=text,
+                buttons=[
+                    {"id": "svc_end_hr_chat", "title": btn_title[:20]},
+                ]
+            )
+            result = send_message(phone, outbound_msg)
 
     now = _now()
     session.last_hr_reply_at = now

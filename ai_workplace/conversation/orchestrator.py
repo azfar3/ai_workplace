@@ -483,6 +483,7 @@ def _process_message_internal(
                 "stop",
                 "quit",
                 "0",
+                "1",
                 "restart",
                 "start",
                 "chat khatam karein",

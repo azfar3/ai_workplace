@@ -11,6 +11,9 @@ frappe.pages['ai-workplace-admin'].on_page_load = function (wrapper) {
         single_column: true
     });
 
+    // Hide standard page header to fit the dashboard fully
+    $(wrapper).find('.page-head').hide();
+
     // Ensure assets are loaded
     frappe.require([
         '/assets/ai_workplace/css/ai_workplace_admin.css',
@@ -115,6 +118,17 @@ function initAdminDashboard(page, wrapper) {
                 if (!err) loadData();
             });
         }
+    });
+
+    $(wrapper).on('click', '#btn-reindex-knowledge', function () {
+        var $btn = $(this);
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Re-indexing...');
+        DashboardAPI.reindexKnowledgeSources(function (err, res) {
+            $btn.prop('disabled', false).html('Re-index Now');
+            if (!err) {
+                loadData();
+            }
+        });
     });
 
     // Initial Load & Auto Refresh setup
