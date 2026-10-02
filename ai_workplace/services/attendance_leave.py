@@ -259,38 +259,50 @@ def get_leave_balance_data(employee_id: Optional[str]) -> list[dict[str, Any]]:
             order_by="leave_type asc",
         )
 
+        try:
+            from hrms.hr.doctype.leave_application.leave_application import get_leave_details
+            leave_details_dict = get_leave_details(employee_id, curr_today).get("leave_allocation", {})
+        except Exception:
+            leave_details_dict = {}
+
         for alloc in allocations:
             leave_type = alloc.get("leave_type")
-            allocated = flt(alloc.get("total_leaves_allocated", 0))
-            # Use allocation dates if set, falling back to fiscal year (1 July to 30 June)
             from_d = alloc.get("from_date") or fy_from
             to_d = alloc.get("to_date") or fy_to
 
-            # Query non-cancelled Leave Application records within the 1 July - 30 June fiscal leave period
-            app_filters: dict[str, Any] = {
-                "employee": employee_id,
-                "leave_type": leave_type,
-                "docstatus": ["!=", 2],
-                "status": ["!=", "Rejected"],
-            }
-            if from_d and to_d:
-                app_filters["from_date"] = [">=", from_d]
-                app_filters["to_date"] = ["<=", to_d]
-            elif from_d:
-                app_filters["from_date"] = [">=", from_d]
-            elif to_d:
-                app_filters["to_date"] = ["<=", to_d]
+            if leave_type in leave_details_dict:
+                ld = leave_details_dict[leave_type]
+                allocated = flt(ld.get("total_leaves", alloc.get("total_leaves_allocated", 0)))
+                approved_taken = flt(ld.get("leaves_taken", 0))
+                pending_taken = flt(ld.get("leaves_pending_approval", 0))
+                remaining = flt(ld.get("remaining_leaves", 0))
+            else:
+                allocated = flt(alloc.get("total_leaves_allocated", 0))
+                
+                # Fallback manual calculation if not found in get_leave_details
+                app_filters: dict[str, Any] = {
+                    "employee": employee_id,
+                    "leave_type": leave_type,
+                    "docstatus": ["!=", 2],
+                    "status": ["!=", "Rejected"],
+                }
+                if from_d and to_d:
+                    app_filters["from_date"] = [">=", from_d]
+                    app_filters["to_date"] = ["<=", to_d]
+                elif from_d:
+                    app_filters["from_date"] = [">=", from_d]
+                elif to_d:
+                    app_filters["to_date"] = ["<=", to_d]
 
-            leave_apps = frappe.db.get_all(
-                "Leave Application",
-                filters=app_filters,
-                fields=["total_leave_days", "status", "from_date", "to_date"]
-            )
-            
-            approved_taken = sum(flt(r.get("total_leave_days", 0)) for r in leave_apps if r.get("status") == "Approved")
-            pending_taken = sum(flt(r.get("total_leave_days", 0)) for r in leave_apps if r.get("status") in ("Open", "Draft", "Applied"))
-            total_taken = approved_taken + pending_taken
-            remaining = max(0.0, allocated - total_taken)
+                leave_apps = frappe.db.get_all(
+                    "Leave Application",
+                    filters=app_filters,
+                    fields=["total_leave_days", "status"]
+                )
+                
+                approved_taken = sum(flt(r.get("total_leave_days", 0)) for r in leave_apps if r.get("status") == "Approved")
+                pending_taken = sum(flt(r.get("total_leave_days", 0)) for r in leave_apps if r.get("status") in ("Open", "Draft", "Applied"))
+                remaining = max(0.0, allocated - (approved_taken + pending_taken))
 
             taken_str = f"{approved_taken:.1f}"
             if pending_taken > 0:
