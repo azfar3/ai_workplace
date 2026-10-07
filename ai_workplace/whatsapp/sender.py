@@ -623,8 +623,13 @@ def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
                     menu_text += f"\n*{sec.get('title')}*\n"
                 for row in sec.get("rows", []):
                     opt_num = str(opt_idx)
-                    menu_text += f"{opt_num}. {row.get('title')}\n"
-                    option_map[opt_num] = row.get("id") or row.get("title")
+                    row_title = row.get("title", "")
+                    row_desc = row.get("description", "")
+                    if row_desc and row_desc != row_title:
+                        menu_text += f"{opt_num}. {row_title} - {row_desc}\n"
+                    else:
+                        menu_text += f"{opt_num}. {row_title}\n"
+                    option_map[opt_num] = row.get("id") or row_title
                     opt_idx += 1
             message = menu_text.strip()
             if option_map:

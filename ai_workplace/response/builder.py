@@ -106,8 +106,7 @@ def build_welcome_header(context: dict[str, Any]) -> str:
     person_type = context.get("person_type", "Guest")
 
     if person_type in ("Employee", "Consultant"):
-        first_name = _employee_first_name(context) or full_name
-        name_str = f", {first_name}" if first_name else ""
+        name_str = f", {full_name}" if full_name else ""
         if lang == "Urdu":
             return (
                 f"*السلام علیکم{name_str}!* 👋\n\n"

@@ -13,6 +13,14 @@ from ai_workplace.whatsapp.outbound import OutboundMessage
 
 def _truncate(text: str, max_len: int) -> str:
     text = (text or "").strip()
+    
+    try:
+        import frappe
+        if frappe.db.get_single_value("AI Workplace Settings", "custom_whatsapp_api_enabled"):
+            return text
+    except Exception:
+        pass
+        
     # Meta WhatsApp API calculates string lengths using UTF-16 code units
     if len(text.encode('utf-16-le')) // 2 <= max_len:
         return text
