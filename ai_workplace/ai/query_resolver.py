@@ -70,6 +70,11 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
         r"what happens to (unused|remaining|leftover) (leave|leaves|chutti)",
         r"leave (encashment|lapse|expire)",
     ],
+    "employee_leave_policy": [
+        r"(my |)?leave (policy|rules?|requirements?|eligibility)",
+        r"(what is|batao) (my |the )?leave (policy|rule)",
+        r"(sick|annual|casual) leave (policy|rule|requirements?)",
+    ],
     # ── Payroll ────────────────────────────────────────────────────────────────
     "latest_salary_slip": [
         r"(my |show |send |get |bhejo )?(latest|last|current|this month.?s?)? ?(salary slip|payslip|pay slip)",

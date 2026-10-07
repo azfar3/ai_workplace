@@ -256,6 +256,11 @@ def get_leave_balance(employee: str) -> list[dict[str, Any]]:
     return get_leave_balance_data(employee)
 
 
+def get_employee_leave_policy_details(employee: str) -> dict[str, Any]:
+    from ai_workplace.services.attendance_leave import get_employee_leave_policy_details as _get_leave_policy
+    return _get_leave_policy(employee)
+
+
 def get_leave_analysis(employee: str) -> dict[str, Any]:
     from ai_workplace.services.attendance_leave import get_leave_balance_data, get_recent_leave_requests
     from frappe.utils import flt
@@ -455,6 +460,8 @@ def run_tool(tool_name: str, context: dict[str, Any], **kwargs) -> Any:
         elif tool_name == "get_attendance_summary":
             raw = meta["handler"](auth_employee)
         elif tool_name in ("get_leave_balance", "get_leave_analysis"):
+            raw = meta["handler"](auth_employee)
+        elif tool_name == "get_employee_leave_policy_details":
             raw = meta["handler"](auth_employee)
         elif tool_name == "get_leave_history":
             raw = meta["handler"](auth_employee)

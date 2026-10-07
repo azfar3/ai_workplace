@@ -256,6 +256,11 @@ def handle_hr_agent_message(
         31. NEVER fabricate a MicroMerger URL. Only provide official URLs returned by the knowledge source or tools, or official designated portals (https://xpertjobs.pk/ for careers).
         32. If the user asks about job openings, vacancies, hiring, career opportunities, or where/how to apply for a job, ALWAYS instruct them to apply for the job at https://xpertjobs.pk/. MicroMerger does not accept job applications via WhatsApp.
 
+            *STRICT LANGUAGE POLICY*
+        33. NEVER ever respond in Hindi or use the Devanagari script under any circumstances.
+        34. ONLY respond in English, Urdu (Perso-Arabic script), or Roman Urdu.
+        35. If a user asks a question in Hindi or requests a response in Hindi, you MUST reply in Roman Urdu or English instead.
+
             *RESPONSE DECISION FLOW*
         
         For every incoming message, follow this order:
@@ -471,14 +476,18 @@ def handle_hr_agent_message(
 
 
 def _build_feedback_message(text: str, context: dict) -> OutboundMessage:
-    return build_button_message(
-        text,
-        [
+    if "I could not find the relevant policy information" in text or "contact HR" in text.lower() or "not available" in text.lower():
+        buttons = [
+            {"id": "svc_contact_hr", "title": "Chat with HR"},
+            {"id": "svc_main_menu", "title": "Main Menu"},
+        ]
+    else:
+        buttons = [
             {"id": "fb_helpful", "title": "👍 Helpful"},
             {"id": "fb_not_helpful", "title": "👎 Not Helpful"},
             {"id": "svc_main_menu", "title": "Main Menu"},
-        ],
-    )
+        ]
+    return build_button_message(text, buttons)
 
 
 def _mask_sensitive(text: str) -> str:

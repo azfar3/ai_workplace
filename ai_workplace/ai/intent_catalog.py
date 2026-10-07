@@ -209,6 +209,29 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
         "source_type": "FAQ",
     },
 
+    "employee_leave_policy": {
+        "category": "leave",
+        "intents": ["employee_leave_policy", "leave_policy", "leave_rules", "leave_eligibility"],
+        "aliases": [
+            "what is my leave policy",
+            "my leave policy",
+            "leave rules",
+            "leave policy",
+            "leave requirements",
+            "leave eligibility",
+            "sick leave requirements",
+            "annual leave policy",
+            "chutti ki policy",
+        ],
+        "tool": "get_employee_leave_policy_details",
+        "requires_authentication": True,
+        "read_only": True,
+        "requires_confirmation": False,
+        "llm_allowed": True,
+        "response_mode": "hybrid",
+        "source_type": "ERP",
+    },
+
     # ══════════════════════════════════════════════════════════════════════════
     # ATTENDANCE
     # ══════════════════════════════════════════════════════════════════════════

@@ -1033,3 +1033,61 @@ def build_leave_requests_response(context: dict[str, Any]) -> str:
         f"{req_str}\n\n"
         f"💡 *For urgent approvals, please reach out to your designated Leave Approver.*"
     )
+
+def get_employee_leave_policy_details(employee_id: str) -> dict[str, Any]:
+    """Fetch Leave Policy assigned to the employee and its detailed rules."""
+    res = {"has_leave_policy": False}
+    try:
+        import frappe
+        if not employee_id or not frappe.db.exists("Employee", employee_id):
+            return res
+            
+        lp_name = None
+        assignments = frappe.get_all("Leave Policy Assignment", filters={"employee": employee_id}, fields=["leave_policy"], order_by="creation desc", limit=1)
+        if assignments and isinstance(assignments[0], dict) and assignments[0].get("leave_policy"):
+            lp_name = assignments[0].get("leave_policy")
+        elif assignments and hasattr(assignments[0], "leave_policy"):
+            lp_name = assignments[0].leave_policy
+        
+        if not lp_name:
+            emp = frappe.get_doc("Employee", employee_id)
+            if emp.leave_policy:
+                lp_name = emp.leave_policy
+                
+        if not lp_name:
+            return res
+            
+        res["has_leave_policy"] = True
+        res["policy_name"] = lp_name
+        
+        lp = frappe.get_doc("Leave Policy", lp_name)
+        res["title"] = lp.title or lp_name
+        
+        allocations = []
+        for d in lp.get("leave_policy_details", []):
+            allocations.append({
+                "leave_type": d.leave_type,
+                "annual_allocation": d.annual_allocation
+            })
+        res["allocations"] = allocations
+        
+        rules = []
+        for r in lp.get("custom_leave_type_policy", []):
+            rules.append({
+                "leave_reason": r.leave_reason,
+                "eligibility": r.eligibility,
+                "min_days": r.min_days,
+                "max_days": r.max_days,
+                "paid_days": r.paid_days,
+                "prior_notice_days": r.prior_notice_days,
+                "requirements": r.requirements,
+                "gender": r.gender,
+                "is_holiday": r.is_holiday,
+            })
+        res["rules"] = rules
+        
+        return res
+    except Exception as e:
+        frappe.log_error("Leave Policy Tool Error", str(e))
+        return res
+

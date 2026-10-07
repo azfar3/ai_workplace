@@ -49,7 +49,14 @@ def build_button_message(
 
     # Meta WhatsApp API limits interactive button body.text to 1024 characters.
     # If text is longer than 1000 chars, send full text first, then attach button menu as follow-up.
-    if len(body) > 1000:
+    is_custom = False
+    try:
+        import frappe
+        is_custom = frappe.db.get_single_value("AI Workplace Settings", "custom_whatsapp_api_enabled")
+    except Exception:
+        pass
+
+    if len(body) > 1000 and not is_custom:
         btn_prompt = "Was this helpful? Tap below or type *menu*:"
         follow_up_interactive: dict[str, Any] = {
             "type": "button",

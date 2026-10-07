@@ -111,7 +111,9 @@ def handle_hybrid(
         "Note: The official currency for all salary, money, deductions, and tax amounts "
         "is PKR (Pakistani Rupee / Rs.). ALWAYS format monetary values using PKR or Rs. "
         "and NEVER use INR or ₹. Use WhatsApp-friendly formatting: single *asterisks* for "
-        "bold, no Markdown tables, no HTML tags."
+        "bold, no Markdown tables, no HTML tags. "
+        "STRICT LANGUAGE RULE: NEVER ever respond in Hindi or use the Devanagari script under any circumstances. "
+        "ONLY respond in English, Urdu (Perso-Arabic script), or Roman Urdu."
     )
 
     # Build the messages list with: system → history → observation → current question
@@ -169,14 +171,20 @@ def handle_hybrid(
     # ── 5. Build response with feedback buttons ────────────────────────────────
     _log_hybrid(intent_key, tool_name, context, conv, trace_id, res)
 
-    return build_button_message(
-        res["text"],
-        [
+    text = res["text"]
+    if "I could not find the relevant policy information" in text or "contact HR" in text.lower() or "not available" in text.lower():
+        buttons = [
+            {"id": "svc_contact_hr", "title": "Chat with HR"},
+            {"id": "svc_main_menu", "title": "Main Menu"},
+        ]
+    else:
+        buttons = [
             {"id": "fb_helpful", "title": "👍 Helpful"},
             {"id": "fb_not_helpful", "title": "👎 Not Helpful"},
             {"id": "svc_main_menu", "title": "Main Menu"},
-        ],
-    )
+        ]
+        
+    return build_button_message(text, buttons)
 
 
 def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any]) -> OutboundMessage:
@@ -200,14 +208,19 @@ def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any]) -> Outbou
         )
         text = "I could not retrieve that information right now. Please contact HR for assistance."
 
-    return build_button_message(
-        text,
-        [
+    if "I could not retrieve that information right now" in text or "contact HR" in text.lower() or "I could not find the relevant policy information" in text or "not available" in text.lower():
+        buttons = [
+            {"id": "svc_contact_hr", "title": "Chat with HR"},
+            {"id": "svc_main_menu", "title": "Main Menu"},
+        ]
+    else:
+        buttons = [
             {"id": "fb_helpful", "title": "👍 Helpful"},
             {"id": "fb_not_helpful", "title": "👎 Not Helpful"},
             {"id": "svc_main_menu", "title": "Main Menu"},
-        ],
-    )
+        ]
+        
+    return build_button_message(text, buttons)
 
 
 def _log_hybrid(
