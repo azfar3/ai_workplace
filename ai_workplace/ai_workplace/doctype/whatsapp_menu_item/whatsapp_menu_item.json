@@ -21,7 +21,9 @@
   "flow_group",
   "security_level",
   "section_details",
-  "description"
+  "description",
+  "description_urdu",
+  "description_roman_urdu"
  ],
  "fields": [
   {
@@ -122,6 +124,16 @@
    "fieldname": "description",
    "fieldtype": "Small Text",
    "label": "Description / Submenu Header Note"
+  },
+  {
+   "fieldname": "description_urdu",
+   "fieldtype": "Small Text",
+   "label": "Description (Urdu)"
+  },
+  {
+   "fieldname": "description_roman_urdu",
+   "fieldtype": "Small Text",
+   "label": "Description (Roman Urdu)"
   }
  ],
  "icon": "fa fa-list",

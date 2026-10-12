@@ -31,9 +31,9 @@ _WAIT_ALIASES = {
     "hr connect",
     "leave message",
     "پیغام چھوڑیں",
-    "پیغام چھوڑیں",
     "message chhorin",
     "hr سے بات کریں",
+    "ایچ آر سے بات کریں",
 }
 
 
@@ -60,7 +60,7 @@ def is_wait_for_hr_selection(user_input: str) -> bool:
 def is_contact_hr_menu_resubmit(user_input: str) -> bool:
     """True when user taps Chat with HR again while already on the HR contact step."""
     clean = (user_input or "").strip().lower()
-    return clean in ("svc_contact_hr", "contact_hr", "💬 chat with hr")
+    return clean in ("svc_contact_hr", "contact_hr", "💬 chat with hr", "💬 ایچ آر سے بات کریں", "ایچ آر سے بات کریں")
 
 
 def _contact_hr_body(context: dict[str, Any]) -> str:
@@ -85,7 +85,7 @@ def _contact_hr_body(context: dict[str, Any]) -> str:
 
     if lang == "Urdu":
         contact_block = (
-            f"☎️ *HR سے رابطہ*\n\n"
+            f"☎️ *ایچ آر سے رابطہ*\n\n"
             f"{availability}\n\n"
             f"• فون: {phone}\n"
             f"{wa_line_ur}"
@@ -113,7 +113,7 @@ def _contact_hr_body(context: dict[str, Any]) -> str:
 def _wait_button_title(lang: str, *, is_open: bool) -> str:
     if is_open:
         if lang == "Urdu":
-            return "HR سے بات کریں"
+            return "ایچ آر سے بات کریں"
         if lang == "Roman Urdu":
             return "HR Se Baat Karein"
         return "Chat with HR"
@@ -126,7 +126,7 @@ def _wait_button_title(lang: str, *, is_open: bool) -> str:
 
 def _menu_button_title(lang: str) -> str:
     if lang == "Urdu":
-        return "اصلی مینو"
+        return "🏠 اصلی مینو"
     if lang == "Roman Urdu":
         return "Main Menu"
     return "Main Menu"

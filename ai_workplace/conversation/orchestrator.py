@@ -1516,7 +1516,7 @@ def _process_message_internal(
         # LLM disabled — show menu with a helpful hint
         lang = context.get("preferred_language", "English")
         if lang == "Urdu":
-            hint = "براہ کرم نیچے سے سروس منتخب کریں۔ آپ \"تنخواہ\"، \"رخصت\"، \"حاضری\"، \"سفر\" یا \"HR\" بھی لکھ سکتے ہیں۔"
+            hint = "براہ کرم نیچے سے سروس منتخب کریں۔ آپ \"تنخواہ\"، \"رخصت\"، \"حاضری\"، \"سفر\" یا \"ایچ آر\" بھی لکھ سکتے ہیں۔"
         elif lang == "Roman Urdu":
             hint = "Neeche se service choose karein. Aap \"salary slip\", \"leave\", \"attendance\", \"travel\" ya \"HR\" bhi likh sakte hain."
         else:

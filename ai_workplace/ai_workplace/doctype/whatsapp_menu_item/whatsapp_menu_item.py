@@ -54,6 +54,8 @@ def setup_default_menu_items(force: bool = False) -> None:
                 "title_urdu": sub.get("title_urdu", sub["title"]),
                 "title_roman_urdu": sub.get("title_roman_urdu", sub["title"]),
                 "description": sub.get("description", ""),
+                "description_urdu": sub.get("description_urdu", ""),
+                "description_roman_urdu": sub.get("description_roman_urdu", ""),
                 "user_category": sub.get("user_category", parent_category),
                 "parent_menu_item": item_data["menu_key"],
                 "sequence": sub.get("sequence", 0),

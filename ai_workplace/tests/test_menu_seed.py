@@ -28,8 +28,8 @@ class TestMenuSeedStructure(unittest.TestCase):
             for key in keys:
                 if key == "main_menu" or key in seeded_keys:
                     continue
-                # att_monthly is a regular submenu trigger, not a flow action seed row
-                if key in ("att_monthly",):
+                # att_monthly and attendance_leave are regular menu triggers, not flow action seed rows
+                if key in ("att_monthly", "attendance_leave"):
                     continue
                 self.fail(f"Flow group {group} references unknown key {key}")
 

@@ -139,7 +139,7 @@ def build_language_saved_message(language: str, context: dict[str, Any]) -> str:
             return (
                 "✅ اردو منتخب کر لی گئی۔\n\n"
                 "*آج ہم آپ کی کیا مدد کر سکتے ہیں؟*\n\n"
-                "نیچے سے سروس منتخب کریں۔ آپ \"تنخواہ\"، \"رخصت\"، \"حاضری\"، \"سفر\" یا \"HR\" بھی لکھ سکتے ہیں۔"
+                "نیچے سے سروس منتخب کریں۔ آپ \"تنخواہ\"، \"رخصت\"، \"حاضری\"، \"سفر\" یا \"ایچ آر\" بھی لکھ سکتے ہیں۔"
             )
         if language == "Roman Urdu":
             return (
@@ -155,7 +155,7 @@ def build_language_saved_message(language: str, context: dict[str, Any]) -> str:
         )
 
     if language == "Urdu":
-        return f"✅ زبان {language} منتخب کر لی گئی ہے۔"
+        return "✅ زبان اردو منتخب کر لی گئی ہے۔"
     if language == "Roman Urdu":
         return f"✅ Zaban {language} select ho gayi hai."
     return f"✅ Language set to {language}."
@@ -163,10 +163,7 @@ def build_language_saved_message(language: str, context: dict[str, Any]) -> str:
 
 def _language_prompt_text(lang: str) -> str:
     if lang == "Urdu":
-        return (
-            "براہ کرم اپنی پسندیدہ زبان منتخب کریں:\n"
-            "Please choose your preferred language:"
-        )
+        return "براہ کرم اپنی پسندیدہ زبان منتخب کریں:"
     if lang == "Roman Urdu":
         return "Barah-e-karam apni pasandeeda zuban intekhab karein:"
     return "Please choose your preferred language:"

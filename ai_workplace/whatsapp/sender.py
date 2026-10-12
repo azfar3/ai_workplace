@@ -587,6 +587,7 @@ def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
             
         import time
         now = int(time.time())
+        NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
         
         if itype == "button":
             menu_text = f"{full_text}\n"
@@ -600,11 +601,31 @@ def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
             start_idx = len(existing_map) + 1
             option_map = dict(existing_map)
             
-            for idx, btn in enumerate(interactive.get("action", {}).get("buttons", [])):
-                opt_num = str(start_idx + idx)
+            buttons = interactive.get("action", {}).get("buttons", [])
+            is_urdu = any("\u0600" <= ch <= "\u06ff" for ch in full_text) or any(
+                any("\u0600" <= ch <= "\u06ff" for ch in b.get("reply", {}).get("title", "")) for b in buttons
+            )
+            
+            for idx, btn in enumerate(buttons):
+                curr_idx = start_idx + idx
+                opt_num = str(curr_idx)
                 reply = btn.get("reply", {})
-                menu_text += f"\n{opt_num}. {reply.get('title', '')}"
-                option_map[opt_num] = reply.get("id") or reply.get("title")
+                btn_title = reply.get("title", "")
+                opt_id = reply.get("id") or btn_title
+                
+                if is_urdu and 0 < curr_idx <= len(NUMBER_EMOJIS):
+                    prefix = NUMBER_EMOJIS[curr_idx - 1]
+                    menu_text += f"\n{prefix} {btn_title}"
+                    option_map[prefix] = opt_id
+                else:
+                    menu_text += f"\n{opt_num}. {btn_title}"
+                
+                option_map[opt_num] = opt_id
+                option_map[f"{opt_num}."] = opt_id
+                option_map[f"{opt_num}۔"] = opt_id
+                urdu_digit = opt_num.translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
+                option_map[urdu_digit] = opt_id
+                
             message = menu_text.strip()
             if option_map:
                 new_cache_obj = {
@@ -625,18 +646,39 @@ def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
             opt_idx = len(existing_map) + 1
             option_map = dict(existing_map)
             
-            for sec in interactive.get("action", {}).get("sections", []):
+            sections = interactive.get("action", {}).get("sections", [])
+            is_urdu = any("\u0600" <= ch <= "\u06ff" for ch in full_text) or any(
+                any("\u0600" <= ch <= "\u06ff" for ch in r.get("title", "")) for sec in sections for r in sec.get("rows", [])
+            )
+            
+            for sec in sections:
                 if sec.get("title"):
                     menu_text += f"\n*{sec.get('title')}*\n"
                 for row in sec.get("rows", []):
                     opt_num = str(opt_idx)
                     row_title = row.get("title", "")
                     row_desc = row.get("description", "")
-                    if row_desc and row_desc != row_title:
-                        menu_text += f"{opt_num}. {row_title} - {row_desc}\n"
+                    opt_id = row.get("id") or row_title
+                    
+                    if is_urdu:
+                        prefix = NUMBER_EMOJIS[opt_idx - 1] if 0 < opt_idx <= len(NUMBER_EMOJIS) else f"{opt_num}۔"
+                        if row_desc and row_desc != row_title:
+                            menu_text += f"{prefix} {row_title} — {row_desc}\n"
+                        else:
+                            menu_text += f"{prefix} {row_title}\n"
+                        if 0 < opt_idx <= len(NUMBER_EMOJIS):
+                            option_map[NUMBER_EMOJIS[opt_idx - 1]] = opt_id
                     else:
-                        menu_text += f"{opt_num}. {row_title}\n"
-                    option_map[opt_num] = row.get("id") or row_title
+                        if row_desc and row_desc != row_title:
+                            menu_text += f"{opt_num}. {row_title} - {row_desc}\n"
+                        else:
+                            menu_text += f"{opt_num}. {row_title}\n"
+                            
+                    option_map[opt_num] = opt_id
+                    option_map[f"{opt_num}."] = opt_id
+                    option_map[f"{opt_num}۔"] = opt_id
+                    urdu_digit = opt_num.translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
+                    option_map[urdu_digit] = opt_id
                     opt_idx += 1
             message = menu_text.strip()
             if option_map:

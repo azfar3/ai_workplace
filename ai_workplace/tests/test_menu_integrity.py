@@ -17,6 +17,7 @@ _KNOWN_LEAF_HANDLERS = frozenset(
         "att_checkout",
         "att_monthly",
         "att_missing",
+        "att_request_apply",
         "leave_balance",
         "leave_apply",
         "leave_requests",

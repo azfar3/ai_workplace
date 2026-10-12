@@ -8,7 +8,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from ai_workplace.response.builder import build_menu_header_text, _translate_service_title
+from ai_workplace.response.builder import (
+    build_menu_header_text,
+    _translate_service_title,
+    _translate_service_description,
+)
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
 def _truncate(text: str, max_len: int) -> str:
@@ -113,8 +117,8 @@ def build_service_list_message(
     rows = []
     for svc in services[:10]:
         key = svc["key"]
-        title = _translate_service_title(key, svc["title"], lang)
-        description = svc.get("description") or title
+        title = _translate_service_title(key, svc["title"], lang, title_urdu=svc.get("title_urdu", ""), title_roman_urdu=svc.get("title_roman_urdu", ""))
+        description = _translate_service_description(key, svc.get("description") or title, lang, desc_urdu=svc.get("description_urdu", ""), desc_roman_urdu=svc.get("description_roman_urdu", ""))
         rows.append({
             "id": f"svc_{key}",
             "title": _truncate(title, 24),
@@ -190,7 +194,7 @@ def build_quick_action_buttons_message(
 
     buttons = []
     for svc in quick_services:
-        title = _translate_service_title(svc["key"], svc["title"], lang)
+        title = _translate_service_title(svc["key"], svc["title"], lang, title_urdu=svc.get("title_urdu", ""), title_roman_urdu=svc.get("title_roman_urdu", ""))
         buttons.append({
             "type": "reply",
             "reply": {
@@ -234,7 +238,7 @@ def build_grouped_service_list_message(
     else:
         browse = _browse_all_prompt(lang)
         if lang == "Urdu":
-            subtitle = "اپنی مطلوبہ HR یا آپریشنل سروس منتخب کریں۔"
+            subtitle = "اپنی مطلوبہ سروس منتخب کریں۔"
         elif lang == "Roman Urdu":
             subtitle = "Apni matlooba HR ya operational support talash karein."
         else:
@@ -249,8 +253,8 @@ def build_grouped_service_list_message(
     if not rows:
         for svc in services[:10]:
             key = svc["key"]
-            title = _translate_service_title(key, svc["title"], lang)
-            description = svc.get("description") or title
+            title = _translate_service_title(key, svc["title"], lang, title_urdu=svc.get("title_urdu", ""), title_roman_urdu=svc.get("title_roman_urdu", ""))
+            description = _translate_service_description(key, svc.get("description") or title, lang, desc_urdu=svc.get("description_urdu", ""), desc_roman_urdu=svc.get("description_roman_urdu", ""))
             rows.append({
                 "id": f"svc_{key}",
                 "title": _truncate(title, 24),
@@ -305,7 +309,7 @@ def build_submenu_quick_buttons_message(
 
     buttons = []
     for svc in quick[:3]:
-        title = _translate_service_title(svc["key"], svc["title"], lang)
+        title = _translate_service_title(svc["key"], svc["title"], lang, title_urdu=svc.get("title_urdu", ""), title_roman_urdu=svc.get("title_roman_urdu", ""))
         buttons.append({
             "type": "reply",
             "reply": {
@@ -333,8 +337,8 @@ def build_submenu_remaining_list_message(
     rows = []
     for svc in remaining[:10]:
         key = svc["key"]
-        title = _translate_service_title(key, svc["title"], lang)
-        description = svc.get("description") or title
+        title = _translate_service_title(key, svc["title"], lang, title_urdu=svc.get("title_urdu", ""), title_roman_urdu=svc.get("title_roman_urdu", ""))
+        description = _translate_service_description(key, svc.get("description") or title, lang, desc_urdu=svc.get("description_urdu", ""), desc_roman_urdu=svc.get("description_roman_urdu", ""))
         rows.append({
             "id": f"svc_{key}",
             "title": _truncate(title, 24),
@@ -460,23 +464,33 @@ def build_leave_type_list_message(
     header: str,
 ) -> OutboundMessage:
     """Interactive list for selecting a leave type during apply flow."""
+    lang = context.get("preferred_language", "English")
     rows = []
     limit = len(leave_types) if context.get("is_web_chat") else 10
     for idx, item in enumerate(leave_types[:limit]):
         lt = item.get("leave_type") or "Leave"
         remaining = item.get("remaining", "")
+        if lang == "Urdu":
+            desc = f"باقی بیلنس: {remaining} دن"
+        elif lang == "Roman Urdu":
+            desc = f"Baqi balance: {remaining} din"
+        else:
+            desc = f"Balance: {remaining} days"
         rows.append({
             "id": f"lt_{idx}",
             "title": _truncate(lt, 24),
-            "description": _truncate(f"Balance: {remaining} days", 72),
+            "description": _truncate(desc, 72),
         })
+
+    btn_text = "چھٹی منتخب کریں" if lang == "Urdu" else ("Leave select karein" if lang == "Roman Urdu" else "Select Leave")
+    sec_title = "چھٹیوں کی اقسام" if lang == "Urdu" else ("Chuttiyon ki aqsam" if lang == "Roman Urdu" else "Leave Types")
 
     interactive = {
         "type": "list",
         "body": {"text": header},
         "action": {
-            "button": _truncate("Select Leave", 20),
-            "sections": [{"title": "Leave Types", "rows": rows}],
+            "button": _truncate(btn_text, 20),
+            "sections": [{"title": sec_title, "rows": rows}],
         },
     }
     return OutboundMessage(body_text=header, interactive=interactive)
@@ -555,19 +569,21 @@ def build_flow_group_message(context: dict[str, Any], flow_group: str) -> Outbou
     if len(items) > 3:
         rows = []
         for item in items[:10]:
-            title = _translate_service_title(item["key"], item["title"], lang)
-            desc = item.get("description") or title
+            title = _translate_service_title(item["key"], item["title"], lang, title_urdu=item.get("title_urdu", ""), title_roman_urdu=item.get("title_roman_urdu", ""))
+            desc = _translate_service_description(item["key"], item.get("description") or title, lang, desc_urdu=item.get("description_urdu", ""), desc_roman_urdu=item.get("description_roman_urdu", ""))
             rows.append({
                 "id": f"svc_{item['key']}",
                 "title": _truncate(title, 24),
                 "description": _truncate(desc, 72),
             })
+        btn_text = "منتخب کریں" if lang == "Urdu" else ("Intekhab karein" if lang == "Roman Urdu" else "Select Option")
+        sec_title = "اختیارات" if lang == "Urdu" else "Options"
         interactive = {
             "type": "list",
             "body": {"text": prompt},
             "action": {
-                "button": _truncate("Select Option", 20),
-                "sections": [{"title": _truncate("Options", 24), "rows": rows}],
+                "button": _truncate(btn_text, 20),
+                "sections": [{"title": _truncate(sec_title, 24), "rows": rows}],
             },
         }
         return OutboundMessage(body_text=prompt, interactive=interactive)
@@ -577,7 +593,7 @@ def build_flow_group_message(context: dict[str, Any], flow_group: str) -> Outbou
             "type": "reply",
             "reply": {
                 "id": f"svc_{item['key']}",
-                "title": _truncate(_translate_service_title(item["key"], item["title"], lang), 20),
+                "title": _truncate(_translate_service_title(item["key"], item["title"], lang, title_urdu=item.get("title_urdu", ""), title_roman_urdu=item.get("title_roman_urdu", "")), 20),
             },
         }
         for item in items[:3]
