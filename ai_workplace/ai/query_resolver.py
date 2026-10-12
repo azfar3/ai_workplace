@@ -46,8 +46,7 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
         r"(remaining|leftover|pending|available) leaves?",
         r"leave (balance|left|remaining|available|baqi)",
         r"kitne leaves? (hain|bache|baqi|hai)",
-        r"meri? leave (balance|kitni|kitne|kya hai)",
-        r"how many (annual|casual|sick|earned) leaves?",
+        r"how many (annual|casual|sick|earned) leaves?(\?|$|\s*(are |do i have |i have )?(left|remaining|bache|baqi|available))",
     ],
     "apply_leave": [
         r"(apply|request|take|need|want|lena).{0,15}leave",
@@ -73,7 +72,12 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
     "employee_leave_policy": [
         r"(my |)?leave (policy|rules?|requirements?|eligibility)",
         r"(what is|batao) (my |the )?leave (policy|rule)",
-        r"(sick|annual|casual) leave (policy|rule|requirements?)",
+        r"(sick|annual|casual) leave (policy|rule|requirements?|limit)",
+        r"(max|maximum|most).{0,20}(casual|sick|annual|earned|leaves?).{0,25}(together|once|single time|consecutive|at a time|continuous)",
+        r"how many (casual|sick|annual|earned|leaves?).{0,25}(apply|take|avail).{0,25}(together|maximum|at once|single time|consecutively|continuous)",
+        r"how many (casual|sick|annual|earned|leaves?).{0,25}(maximum|max).{0,25}(together|at once|apply|take)",
+        r"(can i take|can i apply).{0,20}(casual|sick|annual|leaves?).{0,20}(together|at once)",
+        r"(consecutive|continuous) (casual|sick|annual|leaves?)",
     ],
     # ── Payroll ────────────────────────────────────────────────────────────────
     "latest_salary_slip": [
@@ -358,6 +362,21 @@ class QueryResolver:
                 best_intent = "search_knowledge"
                 best_meta = INTENT_CATALOG["search_knowledge"]
                 best_score = max(best_score, 0.85)
+
+        # Consecutive / Maximum leave rule inquiry safeguard:
+        # Questions asking about maximum leaves allowed together / consecutive / continuous
+        # are policy/rule inquiries (employee_leave_policy), NOT current leave_balance.
+        rule_limit_terms = [
+            "maximum together", "max together", "apply maximum", "take together",
+            "apply together", "consecutive", "continuous", "single time",
+            "at a time", "at once", "ek sath", "aik sath", "maximum at", "max at"
+        ]
+        if any(term in normalized for term in rule_limit_terms) and any(lt in normalized for lt in ["leave", "leaves", "casual", "sick", "annual"]):
+            if best_intent in ("leave_balance", "unknown") or best_score < 0.90:
+                if "employee_leave_policy" in INTENT_CATALOG:
+                    best_intent = "employee_leave_policy"
+                    best_meta = INTENT_CATALOG["employee_leave_policy"]
+                    best_score = max(best_score, 0.95)
 
         if best_score >= CONFIDENCE_THRESHOLD and best_intent:
             return best_intent, best_meta, best_score

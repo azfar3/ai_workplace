@@ -1065,12 +1065,26 @@ def get_employee_leave_policy_details(employee_id: str) -> dict[str, Any]:
         
         allocations = []
         for d in lp.get("leave_policy_details", []):
+            lt_meta = frappe.db.get_value(
+                "Leave Type",
+                d.leave_type,
+                ["max_continuous_days_allowed", "is_carry_forward"],
+                as_dict=True
+            ) or {}
             allocations.append({
                 "leave_type": d.leave_type,
-                "annual_allocation": d.annual_allocation
+                "annual_allocation": d.annual_allocation,
+                "max_continuous_days_allowed": lt_meta.get("max_continuous_days_allowed", 0),
+                "is_carry_forward": lt_meta.get("is_carry_forward", 0)
             })
         res["allocations"] = allocations
-        
+
+        leave_type_limits = {}
+        for lt in frappe.get_all("Leave Type", fields=["name", "max_continuous_days_allowed"]):
+            if lt.max_continuous_days_allowed:
+                leave_type_limits[lt.name] = lt.max_continuous_days_allowed
+        res["leave_type_limits"] = leave_type_limits
+
         rules = []
         for r in lp.get("custom_leave_type_policy", []):
             rules.append({
@@ -1085,7 +1099,7 @@ def get_employee_leave_policy_details(employee_id: str) -> dict[str, Any]:
                 "is_holiday": r.is_holiday,
             })
         res["rules"] = rules
-        
+
         return res
     except Exception as e:
         frappe.log_error("Leave Policy Tool Error", str(e))

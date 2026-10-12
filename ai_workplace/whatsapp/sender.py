@@ -341,6 +341,13 @@ def _send_single_message(
     outbound: OutboundMessage,
     settings: Optional[Any] = None,
 ) -> dict[str, Any]:
+    if outbound.body_text:
+        try:
+            from ai_workplace.ai.response_formatter import ResponseFormatter
+            outbound.body_text = ResponseFormatter.sanitize_whatsapp_text(outbound.body_text)
+        except Exception:
+            pass
+
     if outbound.has_document():
         cfg = settings
         if not cfg:

@@ -86,11 +86,11 @@ def handle_hybrid(
 
     # ── 2. If no data worth synthesising, return deterministic fallback ────────
     if not raw_data or (isinstance(raw_data, (list, dict)) and not raw_data):
-        return _fallback(intent_key, raw_data, context)
+        return _fallback(intent_key, raw_data, context, user_query)
 
     # ── 3. If AI is disabled, return deterministic fallback ───────────────────
     if not is_ai_chat_enabled():
-        return _fallback(intent_key, raw_data, context)
+        return _fallback(intent_key, raw_data, context, user_query)
 
     # ── 4. LLM synthesis — narrate, don't calculate ───────────────────────────
     lang = context.get("preferred_language", "English")
@@ -110,8 +110,17 @@ def handle_hybrid(
         "instead say 'I could not find that information in our knowledge base.' "
         "Note: The official currency for all salary, money, deductions, and tax amounts "
         "is PKR (Pakistani Rupee / Rs.). ALWAYS format monetary values using PKR or Rs. "
-        "and NEVER use INR or ₹. Use WhatsApp-friendly formatting: single *asterisks* for "
-        "bold, no Markdown tables, no HTML tags. "
+        "and NEVER use INR or ₹.\n\n"
+        "CRITICAL WHATSAPP FORMATTING RULES:\n"
+        "1. NEVER use Markdown tables (| ... |). WhatsApp CANNOT render tables. Tables look broken and unreadable.\n"
+        "2. NEVER use Markdown headings (###, ##, #) or horizontal dividers (---). Use single asterisks *Heading* for bold titles.\n"
+        "3. NEVER dump raw multi-column database tables or endless lists of database rows.\n"
+        "4. Always format lists with clean bullet points (• *Item*: details).\n"
+        "5. LEAVE POLICY & RULES GUIDELINES:\n"
+        "   - If the user asks about a SPECIFIC leave or rule (e.g. 'how many casual leaves can I apply maximum together', 'consecutive casual leaves', 'maternity leave', 'wedding leave'):\n"
+        "     Give a direct, concise, and focused answer for THAT specific leave rule and its limits (e.g. state clearly that Casual Leave has a maximum limit of 3 consecutive/continuous days at a single time).\n"
+        "   - If the user asks GENERALLY ('what is my leave policy'):\n"
+        "     State the policy title, list Annual Allocations clearly (• *Leave Type*: X days), and summarize 5-6 key special leaves (Maternity, Paternity, Pilgrimage, Marriage, Bereavement, Sick leave) with days and key requirement in clean bullet points. Invite them to ask about any specific leave for full details.\n"
         "STRICT LANGUAGE RULE: NEVER ever respond in Hindi or use the Devanagari script under any circumstances. "
         "ONLY respond in English, Urdu (Perso-Arabic script), or Roman Urdu."
     )
@@ -156,7 +165,7 @@ def handle_hybrid(
         frappe.logger("ai_workplace").warning(
             f"HybridHandler: LLM synthesis failed for {intent_key!r}: {exc}"
         )
-        return _fallback(intent_key, raw_data, context)
+        return _fallback(intent_key, raw_data, context, user_query)
 
     if not res.get("success") or not res.get("text"):
         frappe.log_error(
@@ -166,12 +175,13 @@ def handle_hybrid(
         frappe.logger("ai_workplace").warning(
             f"HybridHandler: LLM returned no text for {intent_key!r}"
         )
-        return _fallback(intent_key, raw_data, context)
+        return _fallback(intent_key, raw_data, context, user_query)
 
     # ── 5. Build response with feedback buttons ────────────────────────────────
     _log_hybrid(intent_key, tool_name, context, conv, trace_id, res)
 
-    text = res["text"]
+    from ai_workplace.ai.response_formatter import ResponseFormatter
+    text = ResponseFormatter.sanitize_whatsapp_text(res.get("text") or "")
     if "I could not find the relevant policy information" in text or "contact HR" in text.lower() or "not available" in text.lower():
         buttons = [
             {"id": "svc_contact_hr", "title": "Chat with HR"},
@@ -187,12 +197,16 @@ def handle_hybrid(
     return build_button_message(text, buttons)
 
 
-def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any]) -> OutboundMessage:
+def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_query: str = "") -> OutboundMessage:
     """Return a deterministically-formatted response when LLM is unavailable."""
     from ai_workplace.ai.response_formatter import ResponseFormatter
 
     try:
-        text = ResponseFormatter.format_response(intent_key, raw_data)
+        if intent_key == "employee_leave_policy":
+            text = ResponseFormatter.format_employee_leave_policy(raw_data, user_query)
+        else:
+            text = ResponseFormatter.format_response(intent_key, raw_data)
+
         # Safety net: if format_response returned a raw dict/list str, use friendly fallback
         if text and (text.strip().startswith("{") or text.strip().startswith("[")):
             # It looks like raw data slipped through - try knowledge_matches formatter
@@ -201,6 +215,8 @@ def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any]) -> Outbou
                     text = ResponseFormatter.format_knowledge_matches(raw_data)
                 except Exception:
                     pass
+
+        text = ResponseFormatter.sanitize_whatsapp_text(text)
     except Exception as exc:
         frappe.log_error(
             title=f"Hybrid Handler ResponseFormatter Error ({intent_key})",

@@ -336,6 +336,8 @@ class ResponseFormatter:
             return ResponseFormatter.format_branch(data)
         elif intent == "monthly_attendance":
             return ResponseFormatter.format_monthly_attendance(data)
+        elif intent == "employee_leave_policy":
+            return ResponseFormatter.format_employee_leave_policy(data)
         elif intent == "get_menu_help":
             return "📋 *MicroMerger Staff Services*\n\nPlease select an option from the menu below or tap *View Services*."
         elif intent in ("guest_job_status", "guest_careers"):
@@ -358,13 +360,142 @@ class ResponseFormatter:
             return "I could not retrieve that information right now. Please contact HR for assistance."
 
     @staticmethod
+    def format_employee_leave_policy(data: Any, user_query: str = "") -> str:
+        """
+        Formats leave policy details cleanly for WhatsApp.
+        Handles both broad policy overviews and specific questions (like casual leave limits).
+        """
+        if not data or not isinstance(data, dict) or not data.get("has_leave_policy"):
+            return (
+                "🌴 *Leave Policy*\n\n"
+                "I couldn't find an assigned leave policy for your employee profile.\n\n"
+                "Please contact HR if you need your policy details."
+            )
+
+        title = data.get("title") or data.get("policy_name") or "Company Leave Policy"
+        allocations = data.get("allocations") or []
+        rules = data.get("rules") or []
+        leave_type_limits = data.get("leave_type_limits") or {}
+
+        q_lower = (user_query or "").lower()
+
+        # Check if query asks specifically about casual leave or consecutive / continuous / together limits
+        is_casual_query = "casual" in q_lower
+        is_limit_query = any(w in q_lower for w in [
+            "consecutive", "continuous", "together", "maximum", "max",
+            "at once", "single time", "at a time", "ek sath", "aik sath"
+        ])
+
+        if is_casual_query or (is_limit_query and not any(other in q_lower for other in ["annual", "sick", "maternity", "hajj", "wedding"])):
+            casual_alloc = None
+            for a in allocations:
+                if "casual" in (a.get("leave_type") or "").lower():
+                    casual_alloc = a
+                    break
+
+            max_cont = 3
+            if casual_alloc and casual_alloc.get("max_continuous_days_allowed"):
+                max_cont = casual_alloc.get("max_continuous_days_allowed")
+            elif "Casual Leave" in leave_type_limits:
+                max_cont = leave_type_limits["Casual Leave"]
+
+            alloc_days = int(casual_alloc.get("annual_allocation", 10)) if casual_alloc else 10
+
+            return (
+                "🌴 *Casual Leave Policy & Limits*\n\n"
+                f"• *Maximum at a single time*: You can apply for a maximum of *{max_cont} consecutive Casual Leaves* at one time.\n"
+                f"• *Annual Allocation*: *{alloc_days} days* per year.\n"
+                "• *Purpose*: Casual leave is meant for unforeseen personal matters.\n\n"
+                "💡 *Need more days?* If you require more than 3 continuous days off, please apply for *Accrued / Annual Leave* or discuss with HR."
+            )
+
+        # Specific query for maternity / paternity
+        if "maternity" in q_lower or "paternity" in q_lower:
+            mat_rules = [r for r in rules if any(k in (r.get("leave_reason") or "").lower() for k in ["maternity", "paternity"])]
+            if mat_rules:
+                res = "🌴 *Maternity & Paternity Leave Rules*\n\n"
+                for r in mat_rules:
+                    reason = r.get("leave_reason")
+                    paid = r.get("paid_days", 0)
+                    max_d = r.get("max_days", 0)
+                    notice = r.get("prior_notice_days", 0)
+                    req = r.get("requirements", "")
+                    details = []
+                    if paid:
+                        details.append(f"{paid} paid days")
+                    elif max_d:
+                        details.append(f"up to {max_d} days")
+                    if notice:
+                        details.append(f"{notice} days prior notice")
+                    if req and req not in ("–", "-", "None"):
+                        details.append(f"Requires: {req}")
+                    det_str = f" ({', '.join(details)})" if details else ""
+                    res += f"• *{reason}*{det_str}\n"
+                res += "\n💡 *Tip*: Apply via the HR portal with supporting medical documents attached."
+                return res
+
+        # General Leave Policy response
+        res = f"🌴 *Your Leave Policy: {title}*\n\n"
+
+        if allocations:
+            res += "📅 *Annual Leave Allocations:*\n"
+            for a in allocations:
+                ltype = a.get("leave_type", "Leave")
+                days = a.get("annual_allocation", 0)
+                max_cont = a.get("max_continuous_days_allowed", 0)
+                cont_str = f" (Max {int(max_cont)} consecutive days)" if max_cont else ""
+                res += f"• *{ltype}*: {days} days{cont_str}\n"
+            res += "\n"
+
+        if rules:
+            res += "✨ *Special Leave Highlights:*\n"
+            key_reasons = ["Maternity", "Paternity", "Self-Wedding", "Death in Immediate Family", "Hajj", "Umrah", "Self-Sick Leave"]
+            selected_rules = []
+            for kr in key_reasons:
+                for r in rules:
+                    if kr.lower() in (r.get("leave_reason") or "").lower() and r not in selected_rules:
+                        selected_rules.append(r)
+                        break
+
+            if not selected_rules:
+                selected_rules = rules[:6]
+
+            for r in selected_rules:
+                reason = r.get("leave_reason", "Leave")
+                paid = r.get("paid_days")
+                max_d = r.get("max_days")
+                notice = r.get("prior_notice_days")
+                req = r.get("requirements")
+
+                parts = []
+                if paid and str(paid) not in ("0", "0.0", "", "None"):
+                    parts.append(f"{paid} paid days")
+                elif max_d and str(max_d) not in ("0", "0.0", "", "None"):
+                    parts.append(f"up to {max_d} days")
+                if notice and str(notice) not in ("0", "0.0", "", "None"):
+                    parts.append(f"{notice}d notice")
+                if req and req not in ("–", "-", "None", ""):
+                    req_clean = req.split("(")[0].strip()
+                    parts.append(req_clean)
+
+                det = f": {', '.join(parts)}" if parts else ""
+                res += f"• *{reason}*{det}\n"
+
+            res += "\n💡 *Tip*: Ask me about any specific leave (e.g. *casual leave limits*, *maternity*, *wedding*, *hajj*) for complete requirements!"
+
+        return res.strip()
+
+    @staticmethod
     def sanitize_whatsapp_text(text: str) -> str:
         """
         Sanitize and format text responses for WhatsApp compliance:
         1. Converts double asterisks **bold** to single asterisks *bold*.
-        2. Strips Markdown tables (| col | col |) and converts rows into clean bullet points.
-        3. Converts HTML breaks <br> to proper newlines without breaking tables.
-        4. Strips residual HTML tags.
+        2. Converts Markdown headings (### Heading) to single asterisk bold (*Heading*).
+        3. Removes horizontal divider lines (---, ***, ___).
+        4. Parses Markdown tables (| col | col |) and converts rows into clean, structured bullet points.
+        5. Converts HTML breaks <br> to newlines.
+        6. Strips residual HTML tags.
+        7. Collapses excessive newlines.
         """
         import re
         if not text or not isinstance(text, str):
@@ -376,38 +507,118 @@ class ResponseFormatter:
         # 2. Strip residual HTML tags except <br>
         text = re.sub(r'<(?!\/?br\b)[^>]+>', '', text, flags=re.IGNORECASE)
 
-        # 3. Clean Markdown table lines line-by-line
+        # 3. Process lines
         lines = text.split('\n')
         cleaned_lines = []
-        for line in lines:
-            stripped = line.strip()
-            # Skip separator rows like |-------|---------|
-            if re.match(r'^\|?[\s:\-]+\|[\s:\-\|]*$', stripped):
+        i = 0
+        n = len(lines)
+
+        while i < n:
+            raw_line = lines[i]
+            line = raw_line.strip()
+
+            # A. Remove horizontal dividers (---, ***, ___)
+            if re.match(r'^[-*_]{3,}$', line):
+                i += 1
                 continue
 
-            # Process table row lines starting and ending with |
-            if stripped.startswith('|') and stripped.endswith('|'):
-                # Replace <br> inside this table row line with newline
-                row_content = re.sub(r'<br\s*/?>', '\n', stripped, flags=re.IGNORECASE)
-                # Split cells by |
-                cells = [c.strip() for c in row_content.strip('|').split('|') if c.strip()]
-                
-                # Skip header rows containing common headers
-                cell_str = " ".join(cells).lower()
-                if "method" in cell_str and ("contact" in cell_str or "how to" in cell_str):
-                    continue
-                    
-                for cell in cells:
-                    cell_lines = [l.strip() for l in cell.split('\n') if l.strip()]
-                    for cl in cell_lines:
-                        if cl.startswith("•") or cl.startswith("-") or cl.startswith("*"):
-                            cleaned_lines.append(f"  {cl}")
+            # B. Convert Markdown headings (### Heading -> *Heading*)
+            heading_match = re.match(r'^#{1,6}\s+(.+)$', line)
+            if heading_match:
+                title = heading_match.group(1).strip()
+                title = title.strip('*')
+                cleaned_lines.append(f"*{title}*")
+                i += 1
+                continue
+
+            # C. Check if this is the start of a Markdown table
+            if line.startswith('|') and line.endswith('|') and line.count('|') >= 2:
+                table_lines = []
+                while i < n:
+                    cur = lines[i].strip()
+                    if cur.startswith('|') and cur.endswith('|') and cur.count('|') >= 2:
+                        table_lines.append(cur)
+                        i += 1
+                    elif cur == "" and i + 1 < n and lines[i+1].strip().startswith('|'):
+                        i += 1
+                    else:
+                        break
+
+                parsed_rows = []
+                for tl in table_lines:
+                    if re.match(r'^\|?[\s:\-]+\|[\s:\-\|]*$', tl):
+                        continue
+                    row_content = re.sub(r'<br\s*/?>', ' ', tl, flags=re.IGNORECASE)
+                    cells = [c.strip() for c in row_content.strip('|').split('|')]
+                    if cells and any(cells):
+                        parsed_rows.append(cells)
+
+                if parsed_rows:
+                    headers = parsed_rows[0]
+                    data_rows = parsed_rows[1:] if len(parsed_rows) > 1 else []
+                    is_real_header = False
+                    if len(parsed_rows) > 1:
+                        h_lower = " ".join(headers).lower()
+                        if any(kw in h_lower for kw in [
+                            "reason", "name", "title", "eligibility", "days", "type",
+                            "method", "item", "description", "rule", "leave", "notice"
+                        ]):
+                            is_real_header = True
+
+                    if not is_real_header and len(parsed_rows) == 1:
+                        data_rows = parsed_rows
+                        headers = [f"Col {idx+1}" for idx in range(len(data_rows[0]))]
+                    elif not is_real_header:
+                        data_rows = parsed_rows
+                        headers = [f"Col {idx+1}" for idx in range(len(data_rows[0]))]
+
+                    for row in data_rows:
+                        while len(row) < len(headers):
+                            row.append("")
+                        row_item = row[0].strip()
+                        if not row_item:
+                            continue
+                        clean_item = row_item.strip('*')
+
+                        if len(headers) == 2:
+                            val = row[1].strip()
+                            if val and val not in ("-", "–", "N/A", "None"):
+                                cleaned_lines.append(f"• *{clean_item}*: {val}")
+                            else:
+                                cleaned_lines.append(f"• *{clean_item}*")
                         else:
-                            cleaned_lines.append(f"• {cl}")
-            else:
-                # Replace <br> in normal non-table lines
-                line = re.sub(r'<br\s*/?>', '\n', line, flags=re.IGNORECASE)
-                cleaned_lines.append(line)
+                            parts = []
+                            for h, v in zip(headers[1:], row[1:]):
+                                val = v.strip()
+                                if not val or val in ("-", "–", "N/A", "None", "0", "0.0", "No", "no"):
+                                    continue
+                                h_clean = re.sub(r'\(.*?\)', '', h).strip()
+                                hl = h_clean.lower()
+                                if "paid" in hl and re.match(r'^\d+(\.\d+)?$', val):
+                                    parts.append(f"{val} paid days")
+                                elif "max" in hl and re.match(r'^\d+(\.\d+)?$', val):
+                                    parts.append(f"max {val} days")
+                                elif "prior notice" in hl or "notice" in hl:
+                                    parts.append(f"Notice: {val}d")
+                                elif "eligibility" in hl:
+                                    parts.append(f"Eligibility: {val} yrs")
+                                elif "requirement" in hl:
+                                    parts.append(f"Req: {val}")
+                                elif "gender" in hl:
+                                    parts.append(f"Gender: {val}")
+                                else:
+                                    parts.append(f"{h_clean}: {val}")
+
+                            if parts:
+                                cleaned_lines.append(f"• *{clean_item}*: {', '.join(parts)}")
+                            else:
+                                cleaned_lines.append(f"• *{clean_item}*")
+                continue
+
+            # D. Normal non-table line
+            line = re.sub(r'<br\s*/?>', '\n', line, flags=re.IGNORECASE)
+            cleaned_lines.append(line)
+            i += 1
 
         result = "\n".join(cleaned_lines)
         result = re.sub(r'\n{3,}', '\n\n', result)
