@@ -182,19 +182,52 @@ def handle_hybrid(
 
     from ai_workplace.ai.response_formatter import ResponseFormatter
     text = ResponseFormatter.sanitize_whatsapp_text(res.get("text") or "")
-    if "I could not find the relevant policy information" in text or "contact HR" in text.lower() or "not available" in text.lower():
-        buttons = [
-            {"id": "svc_contact_hr", "title": "Chat with HR"},
-            {"id": "svc_main_menu", "title": "Main Menu"},
+    buttons = _build_feedback_buttons(text, lang)
+    return build_button_message(text, buttons)
+
+
+def _build_feedback_buttons(text: str, lang: str = "English") -> list[dict[str, str]]:
+    is_missing_or_contact = (
+        "I could not find the relevant policy information" in text
+        or "contact hr" in text.lower()
+        or "not available" in text.lower()
+        or "i could not retrieve that information" in text.lower()
+        or "could not find that information in our knowledge base" in text.lower()
+    )
+
+    if lang == "Urdu":
+        if is_missing_or_contact:
+            return [
+                {"id": "svc_contact_hr", "title": "HR سے رابطہ 💬"},
+                {"id": "svc_main_menu", "title": "مین مینو 📋"},
+            ]
+        return [
+            {"id": "fb_helpful", "title": "مفید تھا 👍"},
+            {"id": "fb_not_helpful", "title": "مفید نہیں تھا 👎"},
+            {"id": "svc_main_menu", "title": "مین مینو 📋"},
+        ]
+    elif lang == "Roman Urdu":
+        if is_missing_or_contact:
+            return [
+                {"id": "svc_contact_hr", "title": "HR se Raabta 💬"},
+                {"id": "svc_main_menu", "title": "Main Menu 📋"},
+            ]
+        return [
+            {"id": "fb_helpful", "title": "👍 Helpful"},
+            {"id": "fb_not_helpful", "title": "👎 Not Helpful"},
+            {"id": "svc_main_menu", "title": "Main Menu 📋"},
         ]
     else:
-        buttons = [
+        if is_missing_or_contact:
+            return [
+                {"id": "svc_contact_hr", "title": "Chat with HR"},
+                {"id": "svc_main_menu", "title": "Main Menu"},
+            ]
+        return [
             {"id": "fb_helpful", "title": "👍 Helpful"},
             {"id": "fb_not_helpful", "title": "👎 Not Helpful"},
             {"id": "svc_main_menu", "title": "Main Menu"},
         ]
-        
-    return build_button_message(text, buttons)
 
 
 def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_query: str = "") -> OutboundMessage:
@@ -224,18 +257,8 @@ def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_quer
         )
         text = "I could not retrieve that information right now. Please contact HR for assistance."
 
-    if "I could not retrieve that information right now" in text or "contact HR" in text.lower() or "I could not find the relevant policy information" in text or "not available" in text.lower():
-        buttons = [
-            {"id": "svc_contact_hr", "title": "Chat with HR"},
-            {"id": "svc_main_menu", "title": "Main Menu"},
-        ]
-    else:
-        buttons = [
-            {"id": "fb_helpful", "title": "👍 Helpful"},
-            {"id": "fb_not_helpful", "title": "👎 Not Helpful"},
-            {"id": "svc_main_menu", "title": "Main Menu"},
-        ]
-        
+    lang = (context or {}).get("preferred_language", "English")
+    buttons = _build_feedback_buttons(text, lang)
     return build_button_message(text, buttons)
 
 

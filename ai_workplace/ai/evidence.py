@@ -204,7 +204,7 @@ def _minimize_knowledge_search(data: Any) -> dict[str, Any]:
                 "section":        k.get("section") or "",
                 "version":        k.get("version") or "",
                 "relevance_score": k.get("score", 0),
-                "text":           redact_sensitive_text((k.get("text") or "")[:800]),
+                "text":           redact_sensitive_text((k.get("text") or "")[:1500]),
             })
     return {"knowledge_matches": matches}
 

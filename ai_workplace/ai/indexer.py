@@ -432,14 +432,53 @@ _BM25_STOP_WORDS = frozenset({
 })
 
 
+_POLICY_SYNONYMS: dict[str, list[str]] = {
+    "dual job": ["outside employment", "freelancing", "second job", "conflict of interest", "moonlighting"],
+    "second job": ["outside employment", "freelancing", "dual job", "conflict of interest"],
+    "outside employment": ["dual job", "freelancing", "consulting", "conflict of interest"],
+    "moonlighting": ["outside employment", "dual job", "freelancing", "conflict of interest"],
+    "two jobs": ["outside employment", "dual job", "freelancing", "conflict of interest"],
+    "dusri job": ["outside employment", "dual job", "freelancing", "conflict of interest"],
+    "doosri job": ["outside employment", "dual job", "freelancing", "conflict of interest"],
+    "dusri nokri": ["outside employment", "dual job", "freelancing", "conflict of interest"],
+    "doosri nokri": ["outside employment", "dual job", "freelancing", "conflict of interest"],
+    "travel": ["travel policy", "dsa", "per diem", "allowance", "conveyance", "transportation"],
+    "safar": ["travel", "travel policy", "dsa", "allowance", "conveyance"],
+    "dsa": ["daily subsistence allowance", "travel policy", "per diem", "travel allowance"],
+    "per diem": ["travel allowance", "dsa", "daily subsistence allowance"],
+    "leave": ["leave policy", "casual leave", "sick leave", "annual leave"],
+    "chutti": ["leave", "casual leave", "sick leave", "leave policy"],
+    "chhutiyan": ["leave", "casual leave", "sick leave", "leave policy"],
+    "resignation": ["notice period", "separation", "clearance"],
+    "notice period": ["resignation", "separation", "clearance"],
+    "istifa": ["resignation", "notice period", "separation"],
+}
+
+
 def _clean_query_tokens(query: str) -> list[str]:
-    """Tokenise query for BM25: lowercase, strip punctuation, drop stop-words."""
-    # Strip leading/trailing punctuation from each token
+    """Tokenise query for BM25: lowercase, strip punctuation, drop stop-words, and expand domain synonyms."""
     tokens = re.findall(r"[a-z0-9]+(?:'[a-z]+)?", query.lower())
-    return [
+    base_tokens = [
         t for t in tokens
         if len(t) > 2 and t not in _BM25_STOP_WORDS
     ]
+
+    q_lower = query.lower()
+    expanded = list(base_tokens)
+    for phrase, syns in _POLICY_SYNONYMS.items():
+        if phrase in q_lower:
+            for s in syns:
+                for st in re.findall(r"[a-z0-9]+(?:'[a-z]+)?", s.lower()):
+                    if len(st) > 2 and st not in _BM25_STOP_WORDS:
+                        expanded.append(st)
+
+    seen = set()
+    result = []
+    for t in expanded:
+        if t not in seen:
+            seen.add(t)
+            result.append(t)
+    return result
 
 
 def search_knowledge(query: str, limit: int = 5, employment_type: str = "", context: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
@@ -467,7 +506,7 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
         "AI Workplace Knowledge Chunk",
         filters={"knowledge_source": ["in", _active_source_names()]},
         fields=fields,
-        limit=500,
+        limit=5000,
     )
 
     if not chunks:
@@ -489,16 +528,14 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
     # Inclusive rule:
     #   employee scope "HO"      → sees chunks scoped "All" or "HO"
     #   employee scope "Project" → sees chunks scoped "All" or "Project"
-    #   employee scope "All"     → sees chunks scoped "All" only
-    #   (no employee / guest)    → sees only "All" chunks
+    #   employee scope "All" / unassigned → sees "All" and "HO" (Head Office policies as baseline)
     _employee_policy_scope = (context or {}).get("policy_scope", "") if context else ""
     if _employee_policy_scope == "HO":
         _allowed_chunk_scopes: set[str] = {"All", "HO", ""}
     elif _employee_policy_scope == "Project":
         _allowed_chunk_scopes = {"All", "Project", ""}
     else:
-        # "All" scope employees or guests get universal policies only
-        _allowed_chunk_scopes = {"All", ""}
+        _allowed_chunk_scopes: set[str] = {"All", "HO", ""}
 
     # Phase C: Pre-filtering via metadata scopes
     filtered_chunks = []
@@ -520,20 +557,34 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
 
         filtered_chunks.append(chunk)
 
+    # Fallback: if strictly scoped chunks yielded nothing, include all valid active chunks
+    if not filtered_chunks:
+        for chunk in chunks:
+            if chunk.effective_date and frappe.utils.getdate(chunk.effective_date) > frappe.utils.getdate(today_str):
+                continue
+            filtered_chunks.append(chunk)
+
     if not filtered_chunks:
         return []
 
     # BM25 Scoring
     N    = len(filtered_chunks)
-    avgdl = sum(len((c.chunk_text or "").split()) for c in filtered_chunks) / float(N) if N else 1.0
+    avgdl = sum(
+        len(f"{c.document_name or ''} {c.section or ''} {c.chunk_text or ''}".split())
+        for c in filtered_chunks
+    ) / float(N) if N else 1.0
     k1, b = 1.5, 0.75
 
     df = {}
     for w in words:
-        # Use whole-word check in df to keep IDF consistent with the scoring loop
-        df[w] = sum(1 for c in filtered_chunks
-                    if any(cw == w or cw.rstrip(".,;:!?'\")") == w
-                       for cw in (c.chunk_text or "").lower().split()))
+        # Use whole-word check across document name, section, and chunk text
+        df[w] = sum(
+            1 for c in filtered_chunks
+            if any(
+                cw == w or cw.rstrip(".,;:!?'\")") == w
+                for cw in f"{c.document_name or ''} {c.section or ''} {c.chunk_text or ''}".lower().split()
+            )
+        )
 
     idf = {}
     for w in words:
@@ -564,21 +615,22 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
     max_date = max(source_dates) if source_dates else None
 
     for chunk in filtered_chunks:
-        text       = chunk.chunk_text or ""
-        text_lower = text.lower()
-        chunk_words = text_lower.split()
-        doc_len    = len(chunk_words)
+        doc_words = (chunk.document_name or "").lower().split()
+        sec_words = (chunk.section or "").lower().split()
+        body_words = (chunk.chunk_text or "").lower().split()
+        doc_len = len(doc_words) + len(sec_words) + len(body_words)
 
-        # Okapi BM25 Score — use whole-word boundary matching to avoid
-        # substring false positives (e.g. "job" matching inside "subject").
+        # Okapi BM25 Score — title matches receive 3x boost, section 2x, body 1x
         kw_score = 0.0
         for w in words:
-            # Count whole-word occurrences using a simple split-based approach
-            freq = sum(1 for cw in chunk_words if cw == w or cw.rstrip(".,;:!?'\")") == w)
+            body_freq = sum(1 for cw in body_words if cw == w or cw.rstrip(".,;:!?'\")") == w)
+            doc_freq = sum(1 for cw in doc_words if cw == w or cw.rstrip(".,;:!?'\")") == w) * 3
+            sec_freq = sum(1 for cw in sec_words if cw == w or cw.rstrip(".,;:!?'\")") == w) * 2
+            freq = body_freq + doc_freq + sec_freq
             if freq > 0:
                 numerator   = freq * (k1 + 1)
                 denominator = freq + k1 * (1 - b + b * (doc_len / avgdl))
-                kw_score   += idf[w] * (numerator / denominator)
+                kw_score   += idf.get(w, 0.0) * (numerator / denominator)
 
         if kw_score > max_kw_score:
             max_kw_score = kw_score
