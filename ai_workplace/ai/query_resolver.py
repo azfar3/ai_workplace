@@ -79,6 +79,16 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
         r"(can i take|can i apply).{0,20}(casual|sick|annual|leaves?).{0,20}(together|at once)",
         r"(consecutive|continuous) (casual|sick|annual|leaves?)",
     ],
+    "employee_city_dsa": [
+        r"\b(?:dsa|daily subsistence(?: allowance)?)\b.{0,40}\b(?:for|in|at|to|of)\b.{1,80}",
+        r"\b[a-z][a-z .'-]{1,60}\b\s+(?:ka|ki)\s+(?:dsa|daily allowance)\b",
+    ],
+    "employee_monthly_travel_days": [
+        r"\bhow many days?\b.{0,30}\btravel\b.{0,60}\b(?:left|remaining|used|taken|utili[sz]ed|this month)\b",
+        r"(?:how many|what).{0,30}\btravel days?\b.{0,40}\b(?:left|remaining|used|taken|utili[sz]ed|this month)\b",
+        r"\b(?:remaining|used|taken|utili[sz]ed)\b.{0,30}\btravel days?\b",
+        r"\btravel days?\b.{0,30}\b(?:this month|left|remaining|used|taken|utili[sz]ed)\b",
+    ],
     # ── Payroll ────────────────────────────────────────────────────────────────
     "latest_salary_slip": [
         r"(my |show |send |get |bhejo )?(latest|last|current|this month.?s?)? ?(salary slip|payslip|pay slip)",

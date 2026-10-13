@@ -338,6 +338,10 @@ class ResponseFormatter:
             return ResponseFormatter.format_monthly_attendance(data)
         elif intent == "employee_leave_policy":
             return ResponseFormatter.format_employee_leave_policy(data)
+        elif intent == "employee_city_dsa":
+            return ResponseFormatter.format_employee_city_dsa(data)
+        elif intent == "employee_monthly_travel_days":
+            return ResponseFormatter.format_employee_monthly_travel_days(data)
         elif intent == "get_menu_help":
             return "📋 *MicroMerger Staff Services*\n\nPlease select an option from the menu below or tap *View Services*."
         elif intent in ("guest_job_status", "guest_careers"):
@@ -358,6 +362,38 @@ class ResponseFormatter:
             if not data:
                 return "I could not retrieve that information right now. Please contact HR for assistance."
             return "I could not retrieve that information right now. Please contact HR for assistance."
+
+    @staticmethod
+    def format_employee_city_dsa(data: Any) -> str:
+        if not isinstance(data, dict):
+            return "I could not retrieve the city DSA amount right now. Please contact HR for assistance."
+        if not data.get("has_city_dsa"):
+            return data.get("message") or "I could not find a city DSA amount for your profile. Please contact HR."
+
+        currency = data.get("currency") or "PKR"
+        amount = float(data.get("dsa_amount") or 0)
+        return (
+            f"🚗 *DSA for {data.get('city')}*\n\n"
+            f"• DSA per day: *{currency} {amount:,.2f}*\n"
+            f"• City level: *{data.get('city_level')}*\n"
+            f"• Applicable date: {data.get('travel_date')}\n\n"
+            f"Source: Your Expense Claim Structure — {data.get('policy_name')}"
+        )
+
+    @staticmethod
+    def format_employee_monthly_travel_days(data: Any) -> str:
+        if not isinstance(data, dict):
+            return "I could not retrieve your monthly travel-day summary right now. Please contact HR for assistance."
+        if not data.get("has_travel_days_policy"):
+            return data.get("message") or "I could not find a travel-day policy assigned to your profile. Please contact HR."
+
+        return (
+            f"🚗 *Travel Days — {data.get('month')}*\n\n"
+            f"• Allowed this month: *{data.get('allowed_days'):g} days*\n"
+            f"• Used: *{data.get('used_days'):g} days*\n"
+            f"• Remaining: *{data.get('remaining_days'):g} days*\n\n"
+            f"Source: Your Expense Claim Structure Assignment — {data.get('policy_name')}"
+        )
 
     @staticmethod
     def format_employee_leave_policy(data: Any, user_query: str = "") -> str:

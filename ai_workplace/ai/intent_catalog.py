@@ -660,6 +660,37 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
         "source_type": "ERP",
     },
 
+    "employee_city_dsa": {
+        "category": "travel",
+        "intents": ["employee_city_dsa", "city_dsa", "dsa_for_city"],
+        "aliases": [],
+        "tool": "get_employee_city_dsa",
+        "requires_authentication": True,
+        "read_only": True,
+        "requires_confirmation": False,
+        "llm_allowed": False,
+        "response_mode": "deterministic",
+        "source_type": "ERP",
+    },
+
+    "employee_monthly_travel_days": {
+        "category": "travel",
+        "intents": ["monthly_travel_days", "travel_days_remaining", "travel_days_used"],
+        "aliases": [
+            "my remaining travel days",
+            "my travel days this month",
+            "how many travel days do i have left",
+            "how many travel days have i used",
+        ],
+        "tool": "get_employee_monthly_travel_days",
+        "requires_authentication": True,
+        "read_only": True,
+        "requires_confirmation": False,
+        "llm_allowed": False,
+        "response_mode": "deterministic",
+        "source_type": "ERP",
+    },
+
     # ══════════════════════════════════════════════════════════════════════════
     # ORGANISATION / NAVIGATION
     # ══════════════════════════════════════════════════════════════════════════

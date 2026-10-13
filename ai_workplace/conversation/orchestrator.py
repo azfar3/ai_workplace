@@ -1000,7 +1000,9 @@ def _process_message_internal(
                     if pin_gate:
                         return pin_gate
 
-                _p13_data = _run_tool_p13(_p13_tool, context)
+                from ai_workplace.ai.entity_extractor import EntityExtractor
+                _p13_entities = EntityExtractor.extract(_p13_intent, clean_text)
+                _p13_data = _run_tool_p13(_p13_tool, context, **_p13_entities)
                 _p13_fmt = ResponseFormatter.format_response(_p13_intent, _p13_data)
                 # Clear AI mode — this message was deterministically resolved
                 update_conversation(

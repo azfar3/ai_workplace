@@ -267,6 +267,20 @@ def get_employee_travel_expense_policy_details(employee: str) -> dict[str, Any]:
     return _get_travel_policy(employee)
 
 
+def get_employee_city_dsa(
+    employee: str, query: str = "", travel_date: Optional[str] = None
+) -> dict[str, Any]:
+    """Return the employee's DSA for the configured city named in the question."""
+    from ai_workplace.services.travel import get_employee_city_dsa as _get_city_dsa
+    return _get_city_dsa(employee, query=query, travel_date=travel_date)
+
+
+def get_employee_monthly_travel_days(employee: str) -> dict[str, Any]:
+    """Return the employee's current-month travel-day allowance and utilization."""
+    from ai_workplace.services.travel import get_employee_monthly_travel_days as _get_travel_days
+    return _get_travel_days(employee)
+
+
 def get_leave_analysis(employee: str) -> dict[str, Any]:
     from ai_workplace.services.attendance_leave import get_leave_balance_data, get_recent_leave_requests
     from frappe.utils import flt
@@ -391,6 +405,16 @@ for intent_name, meta in INTENT_CATALOG.items():
         if tool_name == "search_knowledge":
             params["properties"]["query"] = {"type": "string", "description": "The specific question or topic to search for in the knowledge base."}
             params["required"].append("query")
+        elif tool_name == "get_employee_city_dsa":
+            params["properties"]["query"] = {
+                "type": "string",
+                "description": "The user's city DSA question, including the city name.",
+            }
+            params["properties"]["travel_date"] = {
+                "type": "string",
+                "description": "Travel date in YYYY-MM-DD format, when the user specifies one.",
+            }
+            params["required"].append("query")
         elif tool_name == "create_leave_application":
             params["properties"]["from_date"] = {"type": "string", "description": "Start date in YYYY-MM-DD format."}
             params["properties"]["to_date"] = {"type": "string", "description": "End date in YYYY-MM-DD format."}
@@ -470,6 +494,10 @@ def run_tool(tool_name: str, context: dict[str, Any], **kwargs) -> Any:
         elif tool_name == "get_employee_leave_policy_details":
             raw = meta["handler"](auth_employee)
         elif tool_name == "get_employee_travel_expense_policy_details":
+            raw = meta["handler"](auth_employee)
+        elif tool_name == "get_employee_city_dsa":
+            raw = meta["handler"](auth_employee, **clean_kwargs)
+        elif tool_name == "get_employee_monthly_travel_days":
             raw = meta["handler"](auth_employee)
         elif tool_name == "get_leave_history":
             raw = meta["handler"](auth_employee)

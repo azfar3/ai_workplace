@@ -105,7 +105,25 @@ class EntityExtractor:
         if intent_key in ("apply_leave",):
             return cls._extract_date_range(text)
 
+        if intent_key == "employee_city_dsa":
+            result: dict[str, Any] = {"query": text}
+            travel_date = cls._extract_single_date(text)
+            if travel_date:
+                result["travel_date"] = travel_date
+            return result
+
         return {}
+
+    @classmethod
+    def _extract_single_date(cls, text: str) -> str | None:
+        """Extract an explicitly supplied travel date for a city DSA lookup."""
+        iso = _RE_ISO.search(text)
+        if iso:
+            return "%s-%02d-%02d" % (iso.group(1), int(iso.group(2)), int(iso.group(3)))
+        dmy = _RE_DMY.search(text)
+        if dmy:
+            return "%s-%02d-%02d" % (dmy.group(3), int(dmy.group(2)), int(dmy.group(1)))
+        return None
 
     # ── Month / Year ───────────────────────────────────────────────────────────
 

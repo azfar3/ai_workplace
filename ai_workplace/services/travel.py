@@ -14,12 +14,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime
 from typing import Any, Optional
 
 import frappe
 from frappe import _
-from frappe.utils import formatdate, getdate, today
+from frappe.utils import flt, formatdate, get_first_day, get_last_day, getdate, today
 
 from ai_workplace.conversation.manager import update_conversation
 from ai_workplace.conversation.state import ConversationState
@@ -31,6 +32,213 @@ TRAVEL_SOP_KEYWORDS = ("travel", "dsa", "daily subsistence", "field visit", "ta/
 EXCLUDED_TRAVEL_STATES = ("Rejected", "Cancelled")
 MAX_TRAVEL_ROWS = 8
 MAX_CLAIM_ROWS = 8
+
+
+def get_employee_monthly_travel_days(employee_id: Optional[str]) -> dict[str, Any]:
+    """Return travel days used and remaining for the current calendar month."""
+    result: dict[str, Any] = {
+        "has_travel_days_policy": False,
+        "reason": "",
+        "message": "",
+    }
+    try:
+        if not employee_id or not _employee_exists(employee_id):
+            result.update(reason="NO_EMPLOYEE", message="No active employee record was found.")
+            return result
+
+        reference_date = getdate(today())
+        assignment = frappe.get_all(
+            "Expense Claim Structure Assigment",
+            filters={"employee": employee_id, "from_date": ["<=", reference_date]},
+            fields=["name", "expense_claim_structure", "from_date", "travel_days"],
+            order_by="from_date desc, creation desc",
+            limit=1,
+        )
+        if not assignment:
+            result.update(
+                reason="NO_ASSIGNED_POLICY",
+                message="No active travel or expense claim policy is assigned to your profile.",
+            )
+            return result
+
+        assignment = assignment[0]
+        month_start = get_first_day(reference_date)
+        month_end = get_last_day(reference_date)
+        used_days = frappe.db.sql(
+            """
+            SELECT IFNULL(SUM(total_days), 0)
+            FROM `tabEmployee Expense Claim`
+            WHERE docstatus = 1
+              AND month_end_date BETWEEN %s AND %s
+              AND employee = %s
+            """,
+            (month_start, month_end, employee_id),
+        )[0][0]
+        allowed_days = flt(assignment.get("travel_days"))
+        used_days = flt(used_days)
+
+        return {
+            "has_travel_days_policy": True,
+            "reason": "",
+            "message": "",
+            "month": reference_date.strftime("%B %Y"),
+            "allowed_days": allowed_days,
+            "used_days": used_days,
+            "remaining_days": max(0, allowed_days - used_days),
+            "assignment_name": assignment.get("name"),
+            "assignment_effective_from": str(assignment.get("from_date") or ""),
+            "policy_name": assignment.get("expense_claim_structure") or "",
+        }
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Monthly Travel Days Tool Error")
+        result.update(reason="LOOKUP_FAILED", message="Your monthly travel-day summary could not be retrieved right now.")
+        return result
+
+
+def get_employee_city_dsa(
+    employee_id: Optional[str], query: str = "", travel_date: Optional[str] = None
+) -> dict[str, Any]:
+    """Resolve an employee's DSA for a city using the active assignment and city level."""
+    result: dict[str, Any] = {
+        "has_city_dsa": False,
+        "reason": "",
+        "message": "",
+    }
+    try:
+        if not employee_id or not _employee_exists(employee_id):
+            result.update(reason="NO_EMPLOYEE", message="No active employee record was found.")
+            return result
+
+        city_name = _find_expense_claim_city(query)
+        if not city_name:
+            requested_city = _extract_requested_city(query)
+            if requested_city:
+                result.update(
+                    reason="CITY_NOT_CONFIGURED",
+                    message=(
+                        f"{requested_city} is not configured in the Expense Claim City list. "
+                        "Please ask HR to add the city and its DSA level."
+                    ),
+                    city=requested_city,
+                )
+                return result
+            result.update(
+                reason="CITY_NOT_PROVIDED",
+                message="Please tell me the city for which you need the DSA amount.",
+            )
+            return result
+
+        effective_date = getdate(travel_date) if travel_date else getdate(today())
+        assignment = frappe.get_all(
+            "Expense Claim Structure Assigment",
+            filters={"employee": employee_id, "from_date": ["<=", effective_date]},
+            fields=["name", "expense_claim_structure", "from_date"],
+            order_by="from_date desc, creation desc",
+            limit=1,
+        )
+        if not assignment:
+            result.update(
+                reason="NO_ASSIGNED_POLICY",
+                message="No active travel or expense claim policy is assigned to your profile.",
+                city=city_name,
+            )
+            return result
+
+        assignment = assignment[0]
+        structure_name = assignment.get("expense_claim_structure")
+        if not structure_name or not frappe.db.exists("Expense Claim Structure", structure_name):
+            result.update(
+                reason="STRUCTURE_NOT_FOUND",
+                message="Your assigned expense claim structure could not be found.",
+                city=city_name,
+            )
+            return result
+
+        level_row = frappe.db.sql(
+            """
+            SELECT level
+            FROM `tabExpense Claim City Table`
+            WHERE parent = %s AND effective_from <= %s
+            ORDER BY effective_from DESC
+            LIMIT 1
+            """,
+            (city_name, effective_date),
+            as_dict=True,
+        )
+        city_level = (
+            level_row[0].get("level")
+            if level_row
+            else frappe.db.get_value("Expense Claim City", city_name, "level")
+        )
+        if not city_level:
+            result.update(
+                reason="CITY_LEVEL_NOT_FOUND",
+                message="No DSA level is configured for this city on the requested date.",
+                city=city_name,
+            )
+            return result
+
+        amount = frappe.db.get_value(
+            "Expense Claim Structure DSA",
+            {"parent": structure_name, "level": city_level},
+            "amount",
+        )
+        if amount is None:
+            result.update(
+                reason="DSA_RATE_NOT_FOUND",
+                message="Your assigned expense claim structure has no DSA rate for this city's level.",
+                city=city_name,
+                city_level=city_level,
+                policy_name=structure_name,
+            )
+            return result
+
+        return {
+            "has_city_dsa": True,
+            "reason": "",
+            "message": "",
+            "city": city_name,
+            "travel_date": str(effective_date),
+            "city_level": city_level,
+            "dsa_amount": flt(amount),
+            "currency": frappe.db.get_default("currency") or "PKR",
+            "assignment_name": assignment.get("name"),
+            "policy_name": structure_name,
+            "assignment_effective_from": str(assignment.get("from_date") or ""),
+        }
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "City DSA Tool Error")
+        result.update(reason="LOOKUP_FAILED", message="The city DSA amount could not be retrieved right now.")
+        return result
+
+
+def _find_expense_claim_city(query: str) -> Optional[str]:
+    """Return the configured city named in a natural-language question."""
+    normalized_query = re.sub(r"\s+", " ", (query or "").casefold()).strip()
+    if not normalized_query:
+        return None
+
+    cities = frappe.get_all("Expense Claim City", fields=["city"])
+    for row in sorted(cities, key=lambda item: len(item.get("city") or ""), reverse=True):
+        city = (row.get("city") or "").strip()
+        if city and re.search(r"(?<!\w)" + re.escape(city.casefold()) + r"(?!\w)", normalized_query):
+            return city
+    return None
+
+
+def _extract_requested_city(query: str) -> Optional[str]:
+    """Extract a city written after the usual city-DSA question phrases."""
+    match = re.search(
+        r"\b(?:city\s+|for\s+(?:city\s+)?|in\s+|at\s+|to\s+|of\s+)([a-z][a-z .'-]{1,60})",
+        query or "",
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+
+    city = re.split(r"\b(?:on|for|today|tomorrow)\b", match.group(1), maxsplit=1, flags=re.IGNORECASE)[0]
+    city = city.strip(" .,!?:;-'\"")
+    return city.title() if city else None
 
 
 def get_employee_travel_expense_policy_details(employee_id: Optional[str]) -> dict[str, Any]:
