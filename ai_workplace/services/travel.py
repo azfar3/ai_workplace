@@ -33,6 +33,111 @@ MAX_TRAVEL_ROWS = 8
 MAX_CLAIM_ROWS = 8
 
 
+def get_employee_travel_expense_policy_details(employee_id: Optional[str]) -> dict[str, Any]:
+    """Fetch the employee's assigned Expense Claim Structure policy/rates."""
+    res: dict[str, Any] = {
+        "has_travel_expense_policy": False,
+        "reason": "NO_ASSIGNED_POLICY",
+        "message": "No assigned travel or expense claim policy was found for this employee. Please contact HR.",
+    }
+    try:
+        if not employee_id or not _employee_exists(employee_id):
+            res["reason"] = "NO_EMPLOYEE"
+            return res
+
+        today_date = getdate(today())
+        assignments = frappe.get_all(
+            "Expense Claim Structure Assigment",
+            filters={
+                "employee": employee_id,
+                "from_date": ["<=", today_date],
+            },
+            fields=[
+                "name",
+                "expense_claim_structure",
+                "from_date",
+                "dsa_per_month",
+                "travel_days",
+                "total_dsa_allowed",
+                "project",
+                "contract",
+                "province",
+            ],
+            order_by="from_date desc, creation desc",
+            limit=1,
+        )
+        if not assignments:
+            return res
+
+        assignment = assignments[0]
+        structure_name = assignment.get("expense_claim_structure")
+        if not structure_name or not frappe.db.exists("Expense Claim Structure", structure_name):
+            res["reason"] = "STRUCTURE_NOT_FOUND"
+            res["assignment_name"] = assignment.get("name")
+            return res
+
+        structure = frappe.get_doc("Expense Claim Structure", structure_name)
+        res.update(
+            {
+                "has_travel_expense_policy": True,
+                "reason": "",
+                "message": "",
+                "assignment_name": assignment.get("name"),
+                "policy_name": structure_name,
+                "effective_from": str(assignment.get("from_date") or ""),
+                "project": assignment.get("project") or "",
+                "contract": assignment.get("contract") or "",
+                "province": assignment.get("province") or "",
+                "monthly_limits": {
+                    "dsa_ta_per_month": assignment.get("dsa_per_month") or 0,
+                    "total_dsa_ta_allowed": assignment.get("total_dsa_allowed") or 0,
+                    "travel_days": assignment.get("travel_days") or 0,
+                },
+                "expense_percentages": {
+                    "accommodation_percent": structure.get("accoumudation") or 0,
+                    "breakfast_percent": structure.get("brakfast") or 0,
+                    "lunch_percent": structure.get("lunch") or 0,
+                    "dinner_percent": structure.get("dinner") or 0,
+                    "others_percent": structure.get("others") or 0,
+                },
+                "same_day_trip": {
+                    "hours_threshold": structure.get("hours") or 0,
+                    "amount_percent": structure.get("amount") or 0,
+                    "same_day_dsa": bool(structure.get("same_day_dsa")),
+                },
+                "flags": {
+                    "actual_amount": bool(structure.get("actual_amount")),
+                    "group_travel": bool(structure.get("group_travel")),
+                    "old_logic": bool(structure.get("old_logic")),
+                },
+                "personal_vehicle_amount_per_km": structure.get("personal_vehicle_amount_per_km") or 0,
+                "hardship_and_tribal_amount": structure.get("hard_ship_and_tribal_amount") or 0,
+                "dsa_days_limit": structure.get("dsa_days_limit") or 0,
+                "dsa_rates": [
+                    {
+                        "level": row.get("level"),
+                        "amount": row.get("amount") or 0,
+                    }
+                    for row in structure.get("dsa", [])
+                    if row.get("level")
+                ],
+                "travel_rates": [
+                    {
+                        "type": row.get("type"),
+                        "amount_per_day": row.get("amount") or 0,
+                        "rate_per_km": row.get("rate_per_km") or 0,
+                    }
+                    for row in structure.get("travel", [])
+                    if row.get("type")
+                ],
+            }
+        )
+        return res
+    except Exception as exc:
+        frappe.log_error("Travel/Expense Policy Tool Error", str(exc))
+        return res
+
+
 def get_approved_travel_requests(employee_id: Optional[str]) -> list[dict[str, Any]]:
     """Return approved travel authorisation forms for the employee."""
     if not employee_id or not _employee_exists(employee_id):
