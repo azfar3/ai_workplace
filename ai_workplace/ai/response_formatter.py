@@ -21,13 +21,24 @@ class ResponseFormatter:
         if not items:
             return "📅 You currently have no active leave allocations recorded for this leave period."
 
-        res = "📅 *Your Leave Balance Summary*\n\n"
+        from frappe.utils import flt
+        tot_taken = sum(flt(item.get("approved_taken", item.get("leaves_taken", 0))) for item in items if isinstance(item, dict))
+        tot_pending = sum(flt(item.get("pending_taken", item.get("leaves_pending_approval", 0))) for item in items if isinstance(item, dict))
+        tot_rem = sum(flt(item.get("remaining_leaves", item.get("remaining", 0))) for item in items if isinstance(item, dict))
+        tot_alloc = sum(flt(item.get("total_allocated", item.get("allocated", 0))) for item in items if isinstance(item, dict))
+
+        pend_str = f" ({tot_pending:.1f} pending approval)" if tot_pending > 0 else ""
+
+        res = "📅 *Your Leave Summary (1 July – 30 June)*\n\n"
+        res += f"• *Total Leaves Taken*: {tot_taken:.1f} days{pend_str}\n"
+        res += f"• *Total Leaves Remaining*: {tot_rem:.1f} days (Allocated: {tot_alloc:.1f})\n\n"
+        res += "*Category Breakdown*:\n"
         for item in items:
             if isinstance(item, dict):
                 ltype = item.get("leave_type", "Leave")
                 rem = item.get("remaining_leaves", item.get("remaining", "0"))
                 alloc = item.get("total_allocated", item.get("allocated", "0"))
-                taken = item.get("leaves_taken", item.get("taken", "0"))
+                taken = item.get("taken", item.get("leaves_taken", "0"))
                 res += f"• *{ltype}*: {rem} days remaining (Allocated: {alloc}, Used: {taken})\n"
         return res.strip()
 
@@ -262,7 +273,16 @@ class ResponseFormatter:
         if not items or not isinstance(items, list):
             return "📜 I couldn't find any recent leave requests in your records."
 
+        from frappe.utils import flt
+        recent_approved = sum(flt(item.get("total_days", item.get("total_leave_days", 0))) for item in items if isinstance(item, dict) and item.get("status") == "Approved")
+        recent_pending = sum(flt(item.get("total_days", item.get("total_leave_days", 0))) for item in items if isinstance(item, dict) and item.get("status") in ("Open", "Draft", "Applied"))
+
         res = "📜 *Recent Leave Requests*\n\n"
+        res += f"• *Recent Approved Leaves*: {recent_approved:.1f} days"
+        if recent_pending > 0:
+            res += f" ({recent_pending:.1f} pending)"
+        res += "\n\n"
+
         for item in items[:5]:
             if isinstance(item, dict):
                 status_icon = "✅" if item.get("status") == "Approved" else ("⏳" if item.get("status") in ("Open", "Draft", "Applied") else "❌")

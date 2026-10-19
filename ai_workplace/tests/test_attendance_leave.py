@@ -262,6 +262,33 @@ class TestAttendanceLeaveServices(unittest.TestCase):
         self.assertEqual(res[0]["pending_taken"], 0.5)
         self.assertEqual(res[0]["remaining"], "9.5")
 
+    @patch("frappe.db.exists")
+    @patch("frappe.db.get_all")
+    def test_get_leave_balance_data_with_unallocated_leaves(self, mock_get_all, mock_exists):
+        from ai_workplace.services.attendance_leave import get_leave_balance_data
+        mock_exists.return_value = True
+        mock_get_all.side_effect = [
+            # 1. Allocation: only Annual Leave has allocation
+            [{"leave_type": "Annual Leave", "total_leaves_allocated": 22.0, "from_date": "2026-07-01", "to_date": "2027-06-30"}],
+            # 2. Applications for Annual Leave
+            [{"total_leave_days": 12.0, "status": "Approved", "docstatus": 1, "from_date": "2026-08-01", "to_date": "2026-08-12"}],
+            # 3. Applications for unallocated leave types in the tenure
+            [{"name": "LAP-1", "leave_type": "Casual Leave", "total_leave_days": 3.0, "status": "Approved", "docstatus": 1, "from_date": "2026-10-01", "to_date": "2026-10-03"}],
+        ]
+        res = get_leave_balance_data("EMP-001", ref_date="2026-10-19")
+        self.assertEqual(len(res), 2)
+        # Annual Leave
+        self.assertEqual(res[0]["leave_type"], "Annual Leave")
+        self.assertEqual(res[0]["allocated"], "22.0")
+        self.assertEqual(res[0]["taken"], "12.0")
+        self.assertEqual(res[0]["remaining"], "10.0")
+        # Casual Leave (unallocated)
+        self.assertEqual(res[1]["leave_type"], "Casual Leave")
+        self.assertEqual(res[1]["allocated"], "0.0")
+        self.assertEqual(res[1]["taken"], "3.0")
+        self.assertEqual(res[1]["leaves_taken"], 3.0)
+        self.assertEqual(res[1]["remaining"], "0.0")
+
     def test_build_apply_leave_response(self):
         res_en = build_apply_leave_response(self.context_en)
         self.assertIn("Apply for Leave", res_en)

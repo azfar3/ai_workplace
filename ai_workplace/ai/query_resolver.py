@@ -42,11 +42,13 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
         r"how is my leave (looking|status)",
     ],
     "leave_balance": [
-        r"how (many|much) leaves? (do i|i have|have i|are|left|remaining|available)",
+        r"how (many|much) leaves? (do i|i have|have i|are|left|remaining|available|taken|used|availed)",
+        r"(how many|kitni|kitne) leaves? (have i|i have) (taken|used|availed)",
+        r"(total |my )?(leaves?|chutti) (taken|used|availed)",
         r"(remaining|leftover|pending|available) leaves?",
         r"leave (balance|left|remaining|available|baqi)",
         r"kitne leaves? (hain|bache|baqi|hai)",
-        r"how many (annual|casual|sick|earned) leaves?(\?|$|\s*(are |do i have |i have )?(left|remaining|bache|baqi|available))",
+        r"how many (annual|casual|sick|earned) leaves?(\?|$|\s*(are |do i have |i have )?(left|remaining|bache|baqi|available|taken|used))",
     ],
     "apply_leave": [
         r"(apply|request|take|need|want|lena).{0,15}leave",

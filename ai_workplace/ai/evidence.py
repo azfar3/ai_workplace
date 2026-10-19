@@ -66,28 +66,41 @@ def sanitize_tool_evidence(tool_name: str, raw_result: Any, context: dict[str, A
 def _minimize_leave_balance(data: Any) -> dict[str, Any]:
     """Minimizes leave allocation dict to leave types and remaining days only."""
     if not data:
-        return {"leave_balances": []}
+        return {"leave_balances": [], "total_leaves_taken": 0.0, "total_leaves_remaining": 0.0, "total_leaves_allocated": 0.0}
     
+    from frappe.utils import flt
+
     minimized = []
     if isinstance(data, list):
         for item in data:
             if isinstance(item, dict):
                 minimized.append({
                     "leave_type": item.get("leave_type", "Leave"),
-                    "remaining_leaves": item.get("remaining", item.get("remaining_leaves", 0.0)),
-                    "total_allocated": item.get("allocated", item.get("total_leaves", 0.0)),
-                    "leaves_taken": item.get("taken", item.get("leaves_taken", 0.0)),
+                    "remaining_leaves": flt(item.get("remaining_leaves", item.get("remaining", 0.0))),
+                    "total_allocated": flt(item.get("total_allocated", item.get("allocated", 0.0))),
+                    "leaves_taken": flt(item.get("approved_taken", item.get("leaves_taken", 0.0))),
+                    "pending_taken": flt(item.get("pending_taken", item.get("leaves_pending_approval", 0.0))),
                 })
     elif isinstance(data, dict):
         for leave_type, stats in data.items():
             if isinstance(stats, dict):
                 minimized.append({
                     "leave_type": leave_type,
-                    "remaining_leaves": stats.get("remaining_leaves", stats.get("remaining", 0.0)),
-                    "total_allocated": stats.get("total_leaves", stats.get("allocated", 0.0)),
-                    "leaves_taken": stats.get("leaves_taken", stats.get("taken", 0.0)),
+                    "remaining_leaves": flt(stats.get("remaining_leaves", stats.get("remaining", 0.0))),
+                    "total_allocated": flt(stats.get("total_allocated", stats.get("allocated", 0.0))),
+                    "leaves_taken": flt(stats.get("approved_taken", stats.get("leaves_taken", stats.get("taken", 0.0)))),
+                    "pending_taken": flt(stats.get("pending_taken", stats.get("leaves_pending_approval", 0.0))),
                 })
-    return {"leave_balances": minimized}
+
+    tot_taken = sum(b.get("leaves_taken", 0.0) for b in minimized)
+    tot_rem = sum(b.get("remaining_leaves", 0.0) for b in minimized)
+    tot_alloc = sum(b.get("total_allocated", 0.0) for b in minimized)
+    return {
+        "leave_balances": minimized,
+        "total_leaves_taken": tot_taken,
+        "total_leaves_remaining": tot_rem,
+        "total_leaves_allocated": tot_alloc,
+    }
 
 
 def _minimize_leave_history(data: Any) -> dict[str, Any]:
