@@ -38,6 +38,9 @@ class OutboundMessage:
     def has_document(self) -> bool:
         return bool(self.document_bytes)
 
+    def has_media(self) -> bool:
+        return bool(self.document_bytes)
+
     @property
     def message_type(self) -> str:
         if self.has_document():

@@ -21,7 +21,7 @@ class LeaveHandler:
         
         if clean_intent in ("leave_balance", "att_leave_balance"):
             from ai_workplace.services.attendance_leave import build_leave_balance_response
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="attendance_leave")
             resp_text = build_leave_balance_response(context)
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_leave_balance"
@@ -33,7 +33,7 @@ class LeaveHandler:
             
         elif clean_intent in ("leave_requests", "leave_history", "att_leave_history", "att_leave_requests"):
             from ai_workplace.services.attendance_leave import build_leave_requests_response
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="attendance_leave")
             resp_text = build_leave_requests_response(context)
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_leave_requests"

@@ -131,16 +131,35 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
         ):
             return None
 
-        cached_obj = frappe.cache().get_value(f"custom_wa_menu_{wa_id}")
+        clean_phone = clean_sender or "".join(filter(str.isdigit, wa_id))
+        cached_obj = (
+            frappe.cache().get_value(f"custom_wa_menu_{clean_phone}")
+            or frappe.cache().get_value(f"custom_wa_menu_{wa_id}")
+            or frappe.cache().get_value(f"custom_wa_menu_{wa_id.split('@')[0]}")
+        )
         if cached_obj and isinstance(cached_obj, dict):
-            if "map" in cached_obj:
-                cached_map = cached_obj.get("map", {})
-            else:
-                cached_map = cached_obj
-                
-            if message_text in cached_map:
-                message_text = cached_map[message_text]
-            frappe.cache().delete_value(f"custom_wa_menu_{wa_id}")
+            cached_map = cached_obj.get("map", cached_obj)
+            cleaned_msg = message_text.strip()
+            
+            matched_id = (
+                cached_map.get(message_text)
+                or cached_map.get(cleaned_msg)
+                or cached_map.get(cleaned_msg.lower())
+                or cached_map.get(message_text.lower())
+            )
+            if not matched_id and "." in cleaned_msg:
+                first_num = cleaned_msg.split(".")[0].strip()
+                matched_id = cached_map.get(first_num)
+            if not matched_id and " " in cleaned_msg:
+                first_token = cleaned_msg.split()[0].strip()
+                if first_token.isdigit():
+                    matched_id = cached_map.get(first_token)
+            
+            if matched_id:
+                message_text = matched_id
+                if clean_phone:
+                    frappe.cache().delete_value(f"custom_wa_menu_{clean_phone}")
+                frappe.cache().delete_value(f"custom_wa_menu_{wa_id}")
 
         message_type = "text"
         if payload.get("media_base64"):

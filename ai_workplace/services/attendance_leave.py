@@ -412,7 +412,39 @@ def get_leave_balance_data(employee_id: Optional[str], ref_date: Optional[date |
                 elif st in ("Open", "Draft", "Applied") or ds == 0:
                     pending_taken += days
 
-            remaining = max(0.0, allocated - (approved_taken + pending_taken))
+            mm_bal = None
+            try:
+                from mm_app.overrides.hr.leave_application import get_leave_balance_on
+                from frappe.utils import today, nowdate
+                posting_d = str(ref_date) if ref_date else (today() if hasattr(frappe.utils, "today") else nowdate())
+                mm_bal = get_leave_balance_on(
+                    employee=employee_id,
+                    leave_type=leave_type,
+                    date=posting_d,
+                    to_date=to_d,
+                    consider_all_leaves_in_the_allocation_period=True,
+                    for_consumption=False,
+                )
+            except Exception:
+                try:
+                    from mm_app.overrides.hr.leave_application import get_leave_balance_on
+                    from frappe.utils import today, nowdate
+                    posting_d = str(ref_date) if ref_date else (today() if hasattr(frappe.utils, "today") else nowdate())
+                    mm_bal = get_leave_balance_on(
+                        employee=employee_id,
+                        leave_type=leave_type,
+                        date=posting_d,
+                    )
+                except Exception:
+                    mm_bal = None
+
+            if mm_bal is not None:
+                rem_from_mm = flt(mm_bal.get("leave_balance") if isinstance(mm_bal, dict) else mm_bal)
+                remaining = max(0.0, rem_from_mm)
+                if approved_taken == 0 and allocated > remaining:
+                    approved_taken = max(0.0, allocated - remaining)
+            else:
+                remaining = max(0.0, allocated - (approved_taken + pending_taken))
 
             taken_str = f"{approved_taken:.1f}"
             if pending_taken > 0:
@@ -948,12 +980,12 @@ def generate_monthly_attendance_excel(employee_id: str, employee_name: str = "")
         to_date = today
         from_date = today.replace(day=26) - dateutil.relativedelta.relativedelta(months=1)
         
-    emp = frappe.get_doc("Employee", employee_id)
+    emp = frappe.get_doc("Employee", employee_id) if frappe.db and hasattr(frappe.db, "exists") else None
     
     filters = {
         "from_date": from_date.strftime("%Y-%m-%d"),
         "to_date": to_date.strftime("%Y-%m-%d"),
-        "company": emp.company,
+        "company": getattr(emp, "company", None) or getattr(emp, "name", None) or "",
         "employee": employee_id
     }
     

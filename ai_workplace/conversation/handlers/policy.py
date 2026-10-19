@@ -66,7 +66,6 @@ class PolicyHandler:
                 build_letter_download_outbound,
                 build_letter_download_error,
             )
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             emp_id = context.get("employee") or ""
             lang = context.get("preferred_language", "English")
             if lang == "Urdu":
@@ -77,6 +76,7 @@ class PolicyHandler:
                 caption = "📄 Your *Experience Letter* is attached."
 
             parent_key = "documents" if "doc_" in clean_intent else "payroll"
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=parent_key)
             try:
                 pdf_bytes, filename = generate_experience_letter_pdf(emp_id)
                 outbound = build_letter_download_outbound(context, pdf_bytes, filename, caption, parent_key=parent_key)

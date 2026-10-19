@@ -99,13 +99,13 @@ class PayrollHandler:
             elif clean_intent == "tax_cert_latest" or text_lower in ("latest", "last generated"):
                 period = "latest"
 
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="payroll")
             outbound = build_tax_certificate_download_outbound(context, period=period)
             action = f"download_tax_cert_{period}"
             
         elif clean_intent in ("pay_bank_letter", "bank_letter"):
             from ai_workplace.services.employee_letters import generate_bank_letter_pdf, build_letter_download_outbound, build_letter_download_error, resolve_bank_name
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="payroll")
             bank_name = resolve_bank_name(context) or "Faysal Bank"
             try:
                 pdf_bytes, filename = generate_bank_letter_pdf(context.get("employee", ""), bank_name)
@@ -128,7 +128,6 @@ class PayrollHandler:
                 build_letter_download_outbound,
                 build_letter_download_error,
             )
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             emp_id = context.get("employee") or ""
             lang = context.get("preferred_language", "English")
             if lang == "Urdu":
@@ -147,6 +146,7 @@ class PayrollHandler:
                     else "payroll"
                 )
             )
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=parent_key)
             try:
                 pdf_bytes, filename = generate_experience_letter_pdf(emp_id)
                 outbound = build_letter_download_outbound(context, pdf_bytes, filename, caption, parent_key=parent_key)

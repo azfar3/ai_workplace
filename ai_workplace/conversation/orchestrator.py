@@ -1144,23 +1144,59 @@ def _process_message_internal(
             )
             return OutboundMessage(body_text=res_msg)
 
-    # ── Global: return to main menu ───────────────────────────────────────────
-    if cmd_lower in (
+    # ── Global: return to previous menu or main menu ───────────────────────────
+    is_back_cmd = cmd_lower in (
+        "back",
+        "svc_back",
+        "0",
+        "svc_0",
+        "wapas",
+        "previous",
+        "previous menu",
+        "pichla menu",
+        "pichle menu",
+        "واپس",
+        "پچھلا مینو",
+    )
+    is_main_menu_cmd = cmd_lower in (
         "menu",
         "home",
-        "back",
         "main menu",
         "main_menu",
         "svc_menu",
-        "svc_back",
         "svc_main_menu",
-        "0",
-        "svc_0",
         "back to main menu",
         "اصلی مینو",
         "🔙 main menu",
         "🔙 اصلی مینو",
-    ) or clean_text.lower() in ("svc_main_menu", "main_menu"):
+    ) or clean_text.lower() in ("svc_main_menu", "main_menu")
+
+    if is_back_cmd and conv.active_service:
+        parent_key = conv.active_service
+        from ai_workplace.services.registry import get_available_services_for_context
+        parent_services = get_available_services_for_context(context, parent_key=parent_key)
+        if parent_services:
+            update_conversation(
+                conv,
+                state=ConversationState.AWAITING_SELECTION,
+                current_intent=None,
+                active_service=parent_key,
+            )
+            menu_out, _unused = build_menu(context, parent_key=parent_key)
+            log_ai_action(
+                trace_id=trace_id,
+                conversation_name=conv.name,
+                whatsapp_identity=conv.whatsapp_identity,
+                erp_user=conv.erp_user or "",
+                employee=conv.employee or "",
+                intent=parent_key,
+                action="display_submenu_back",
+                result=menu_out.log_text(),
+                status="Success",
+            )
+            return menu_out
+
+    if is_back_cmd or is_main_menu_cmd:
         if current_state == ConversationState.LIVE_HR_CHAT and conv.active_hr_chat_session:
             from ai_workplace.services.hr_chat import close_session
 

@@ -418,10 +418,26 @@ def send_message(
 
 def _consolidate_custom_api_interactive(outbound: OutboundMessage) -> None:
     """
-    Consolidates multiple interactive follow-up messages into the first one 
+    Consolidates interactive follow-up messages into the primary message
     when using the Custom Baileys API, avoiding multi-message clutter.
     """
     interactives = [msg for msg in outbound.follow_up if msg.is_interactive()]
+    if not interactives:
+        return
+
+    # If outbound is plain text without media, absorb single interactive button directly
+    if not outbound.is_interactive() and not outbound.has_media() and len(interactives) == 1:
+        single = interactives[0]
+        outbound.interactive = single.interactive
+        orig_body = (outbound.body_text or "").strip()
+        btn_body = (single.interactive.get("body", {}).get("text") or "").strip()
+        if orig_body and btn_body:
+            outbound.interactive["body"] = {"text": f"{orig_body}\n\n{btn_body}"}
+        elif btn_body:
+            outbound.interactive["body"] = {"text": btn_body}
+        outbound.follow_up.remove(single)
+        return
+
     if len(interactives) <= 1:
         return
         
@@ -932,20 +948,14 @@ def _transform_to_baileys(
             full_text = f"{full_text}\n\n{footer_text}"
             
         import time
+        import re
         now = int(time.time())
         NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
         
         if itype == "button":
             menu_text = f"{full_text}\n"
-            existing_cache_obj = frappe.cache().get_value(f"custom_wa_menu_{number.lstrip('+')}")
-            
-            existing_map = {}
-            if existing_cache_obj and isinstance(existing_cache_obj, dict) and "map" in existing_cache_obj:
-                if existing_cache_obj.get("timestamp", 0) > now - 15:
-                    existing_map = existing_cache_obj.get("map", {})
-                
-            start_idx = len(existing_map) + 1
-            option_map = dict(existing_map)
+            start_idx = 1
+            option_map = {}
             
             buttons = interactive.get("action", {}).get("buttons", [])
             is_urdu = any("\u0600" <= ch <= "\u06ff" for ch in full_text) or any(
@@ -971,26 +981,54 @@ def _transform_to_baileys(
                 option_map[f"{opt_num}۔"] = opt_id
                 urdu_digit = opt_num.translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
                 option_map[urdu_digit] = opt_id
+                if btn_title:
+                    option_map[btn_title] = opt_id
+                    option_map[btn_title.strip()] = opt_id
+                    option_map[btn_title.lower()] = opt_id
+                    clean_btn = re.sub(r'[^\w\s]', '', btn_title).strip().lower()
+                    if clean_btn:
+                        option_map[clean_btn] = opt_id
+
+                is_nav_btn = (
+                    len(buttons) == 1
+                    or opt_id.startswith("svc_")
+                    or "back" in opt_id.lower()
+                    or "back" in btn_title.lower()
+                    or "wapas" in opt_id.lower()
+                    or "menu" in btn_title.lower()
+                    or "واپس" in btn_title
+                    or "پچھلا" in btn_title
+                )
+                if is_nav_btn:
+                    option_map["back"] = opt_id
+                    option_map["Back"] = opt_id
+                    option_map["b"] = opt_id
+                    option_map["0"] = opt_id
+                    option_map["wapas"] = opt_id
+                    option_map["previous"] = opt_id
+                    option_map["previous menu"] = opt_id
+                    option_map["pichla menu"] = opt_id
+                    option_map["pichle menu"] = opt_id
+                    option_map["واپس"] = opt_id
+                    option_map["پچھلا مینو"] = opt_id
+                    if len(buttons) == 1:
+                        option_map["menu"] = opt_id
                 
             message = menu_text.strip()
             if option_map:
                 new_cache_obj = {
-                    "timestamp": existing_cache_obj.get("timestamp") if (isinstance(existing_cache_obj, dict) and existing_cache_obj.get("timestamp", 0) > now - 15) else now,
+                    "timestamp": now,
                     "map": option_map
                 }
+                clean_num = "".join(filter(str.isdigit, number))
+                if clean_num:
+                    frappe.cache().set_value(f"custom_wa_menu_{clean_num}", new_cache_obj, expires_in_sec=86400)
                 frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=86400)
                 
         elif itype == "list":
             menu_text = f"{full_text}\n"
-            existing_cache_obj = frappe.cache().get_value(f"custom_wa_menu_{number.lstrip('+')}")
-            
-            existing_map = {}
-            if existing_cache_obj and isinstance(existing_cache_obj, dict) and "map" in existing_cache_obj:
-                if existing_cache_obj.get("timestamp", 0) > now - 15:
-                    existing_map = existing_cache_obj.get("map", {})
-                
-            opt_idx = len(existing_map) + 1
-            option_map = dict(existing_map)
+            opt_idx = 1
+            option_map = {}
             
             sections = interactive.get("action", {}).get("sections", [])
             is_urdu = any("\u0600" <= ch <= "\u06ff" for ch in full_text) or any(
@@ -1025,13 +1063,30 @@ def _transform_to_baileys(
                     option_map[f"{opt_num}۔"] = opt_id
                     urdu_digit = opt_num.translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
                     option_map[urdu_digit] = opt_id
+                    if row_title:
+                        option_map[row_title] = opt_id
+                        option_map[row_title.strip()] = opt_id
+                        option_map[row_title.lower()] = opt_id
+                        clean_row = re.sub(r'[^\w\s]', '', row_title).strip().lower()
+                        if clean_row:
+                            option_map[clean_row] = opt_id
+
+                    if opt_id in ("svc_main_menu", "svc_back") or "main menu" in row_title.lower() or "back" in row_title.lower():
+                        option_map["0"] = opt_id
+                        option_map["back"] = opt_id
+                        option_map["Back"] = opt_id
+                        option_map["menu"] = opt_id
+                        option_map["wapas"] = opt_id
                     opt_idx += 1
             message = menu_text.strip()
             if option_map:
                 new_cache_obj = {
-                    "timestamp": existing_cache_obj.get("timestamp") if (isinstance(existing_cache_obj, dict) and existing_cache_obj.get("timestamp", 0) > now - 15) else now,
+                    "timestamp": now,
                     "map": option_map
                 }
+                clean_num = "".join(filter(str.isdigit, number))
+                if clean_num:
+                    frappe.cache().set_value(f"custom_wa_menu_{clean_num}", new_cache_obj, expires_in_sec=86400)
                 frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=86400)
         else:
             message = full_text

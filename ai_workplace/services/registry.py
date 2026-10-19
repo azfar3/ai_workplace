@@ -94,6 +94,51 @@ FALLBACK_SERVICES: dict[str, dict[str, Any]] = {
         "mode": "available",
         "description": "Latest generated payslip",
     },
+    "attendance_leave": {
+        "key": "attendance_leave",
+        "title": "Attendance & Leave",
+        "title_urdu": "حاضری اور رخصت",
+        "title_roman_urdu": "Attendance & Leave",
+        "mode": "available",
+        "description": "Check in/out, view attendance, apply for leave and track requests.",
+        "aliases": ["attendance_leave", "attendance", "leave", "attendance & leave"],
+    },
+    "payroll": {
+        "key": "payroll",
+        "title": "Salary & Payroll",
+        "title_urdu": "تنخواہ اور پے رول",
+        "title_roman_urdu": "Salary & Payroll",
+        "mode": "available",
+        "description": "Salary slips, tax documents and payroll information.",
+        "aliases": ["payroll", "salary", "salary & payroll"],
+    },
+    "documents": {
+        "key": "documents",
+        "title": "Documents & Letters",
+        "title_urdu": "دستاویزات اور سرٹیفکیٹ",
+        "title_roman_urdu": "Documents & Letters",
+        "mode": "available",
+        "description": "Letters and official certificates.",
+        "aliases": ["documents", "letters", "certificates"],
+    },
+    "company_policy": {
+        "key": "company_policy",
+        "title": "Company Policies",
+        "title_urdu": "کمپنی کی پالیسیاں",
+        "title_roman_urdu": "Company Policies",
+        "mode": "available",
+        "description": "Company policies and rules.",
+        "aliases": ["company_policy", "policy", "policies"],
+    },
+    "contact_hr": {
+        "key": "contact_hr",
+        "title": "Contact HR",
+        "title_urdu": "HR سے رابطہ",
+        "title_roman_urdu": "Contact HR",
+        "mode": "available",
+        "description": "Get in touch with HR department.",
+        "aliases": ["contact_hr", "hr", "contact"],
+    },
 }
 
 BACK_TO_MAIN_MENU_ITEM: dict[str, Any] = FALLBACK_SERVICES["main_menu"]
@@ -172,14 +217,31 @@ def get_service_info(service_key: str) -> Optional[dict[str, Any]]:
 
     if frappe.db and frappe.db.exists("WhatsApp Menu Item", service_key):
         item = frappe.get_doc("WhatsApp Menu Item", service_key)
+        menu_k = getattr(item, "menu_key", None) or (item.get("menu_key") if hasattr(item, "get") else None) or getattr(item, "name", service_key)
+        title = getattr(item, "title", None) or (item.get("title") if hasattr(item, "get") else None)
+        title_ur = getattr(item, "title_urdu", None) or (item.get("title_urdu") if hasattr(item, "get") else None)
+        title_ru = getattr(item, "title_roman_urdu", None) or (item.get("title_roman_urdu") if hasattr(item, "get") else None)
+        desc = getattr(item, "description", None) or (item.get("description") if hasattr(item, "get") else None) or ""
+
+        if (not title or title == menu_k) and key_clean in FALLBACK_SERVICES:
+            fb = FALLBACK_SERVICES[key_clean]
+            title = fb.get("title") or title or menu_k
+            title_ur = fb.get("title_urdu") or title_ur or title
+            title_ru = fb.get("title_roman_urdu") or title_ru or title
+            desc = desc or fb.get("description", "")
+        else:
+            title = title or menu_k
+            title_ur = title_ur or title
+            title_ru = title_ru or title
+
         return {
-            "key": item.menu_key,
-            "title": item.title,
-            "title_urdu": item.title_urdu or item.title,
-            "title_roman_urdu": item.title_roman_urdu or item.title,
-            "description": item.description or "",
+            "key": menu_k,
+            "title": title,
+            "title_urdu": title_ur,
+            "title_roman_urdu": title_ru,
+            "description": desc,
             "mode": "available",
-            "aliases": [item.menu_key, (item.title or "").lower()],
+            "aliases": [menu_k, (title or "").lower()],
         }
 
     return FALLBACK_SERVICES.get(key_clean)
@@ -222,6 +284,20 @@ def get_flow_menu_items(flow_group: str, context: dict[str, Any]) -> list[dict[s
 
     ordered_keys = keys or [item["menu_key"] for item in grouped]
     ordered = [by_key[k] for k in ordered_keys if k in by_key]
+
+    if not ordered:
+        if flow_group == "att_monthly_summary":
+            ordered = [
+                {"menu_key": "att_monthly_last7", "title": "Last 7 Days", "sequence": 1},
+                {"menu_key": "att_monthly_download", "title": "Download Excel", "sequence": 2},
+                {"menu_key": "att_today", "title": "Today's Status", "sequence": 3},
+            ]
+        elif flow_group == "att_monthly_detail":
+            ordered = [
+                {"menu_key": "att_summary", "title": "Monthly Summary", "sequence": 1},
+                {"menu_key": "att_monthly_download", "title": "Download Excel", "sequence": 2},
+                {"menu_key": "att_today", "title": "Today's Status", "sequence": 3},
+            ]
 
     if keys and len(ordered) < len(keys):
         for key in keys:

@@ -24,14 +24,14 @@ class AttendanceHandler:
             
         elif clean_intent == "att_today":
             from ai_workplace.services.attendance_leave import build_today_attendance_response
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="attendance_leave")
             resp_text = build_today_attendance_response(context)
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_today_attendance"
             
         elif clean_intent in ("att_monthly", "att_summary"):
             from ai_workplace.services.attendance_leave import build_monthly_attendance_response, generate_monthly_attendance_excel
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="attendance_leave")
             resp_text = build_monthly_attendance_response(context)
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             
@@ -50,14 +50,14 @@ class AttendanceHandler:
             
         elif clean_intent == "att_monthly_last7":
             from ai_workplace.services.attendance_leave import build_last7_attendance_response
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="attendance_leave")
             resp_text = build_last7_attendance_response(context)
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_last_7_days_attendance"
             
         elif clean_intent == "att_monthly_download":
             from ai_workplace.services.attendance_leave import build_monthly_download_caption, generate_monthly_attendance_excel
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="attendance_leave")
             resp_text = build_monthly_download_caption(context)
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             
@@ -76,7 +76,7 @@ class AttendanceHandler:
             
         elif clean_intent == "att_missing":
             from ai_workplace.services.attendance_leave import build_missing_attendance_response
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="attendance_leave")
             resp_text = build_missing_attendance_response(context)
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_missing_attendance"
