@@ -300,6 +300,96 @@ def get_leave_balance_data(employee_id: Optional[str], ref_date: Optional[date |
             return balances
 
         fy_from, fy_to = get_fiscal_year_leave_period(ref_date)
+        from frappe.utils import today, nowdate
+        posting_d = str(ref_date) if ref_date else (today() if hasattr(frappe.utils, "today") else nowdate())
+
+        # Attempt to get authoritative leave details from mm_app (includes ledger-based used and remaining leaves)
+        mm_details = None
+        try:
+            from mm_app.overrides.hr.leave_application import get_leave_details
+            mm_details = get_leave_details(employee_id, posting_d)
+        except Exception as e:
+            try:
+                frappe.logger("ai_workplace").warning(f"get_leave_details for {employee_id} failed: {e}")
+            except Exception:
+                pass
+            mm_details = None
+
+        if mm_details and isinstance(mm_details, dict) and mm_details.get("leave_allocation"):
+            alloc_dict = mm_details.get("leave_allocation") or {}
+            for lt, data in alloc_dict.items():
+                tot = flt(data.get("total_leaves", 0))
+                taken = flt(data.get("leaves_taken", 0))
+                pending = flt(data.get("leaves_pending_approval", 0))
+                rem = flt(data.get("remaining_leaves", 0))
+                taken_str = f"{taken:.1f}"
+                if pending > 0:
+                    taken_str += f" ({pending:.1f} pending)"
+                balances.append({
+                    "leave_type": lt or "General Leave",
+                    "allocated": f"{tot:.1f}",
+                    "total_allocated": tot,
+                    "taken": taken_str,
+                    "leaves_taken": taken,
+                    "leaves_pending_approval": pending,
+                    "approved_taken": taken,
+                    "pending_taken": pending,
+                    "remaining": f"{rem:.1f}",
+                    "remaining_leaves": rem,
+                    "from_date": fy_from,
+                    "to_date": fy_to,
+                })
+
+            # Check for any unallocated leave types employee applied for in the tenure (e.g. Casual Leave)
+            unalloc_apps = frappe.db.get_all(
+                "Leave Application",
+                filters={
+                    "employee": employee_id,
+                    "docstatus": ["!=", 2],
+                    "status": ["!=", "Rejected"],
+                    "from_date": ["<=", fy_to],
+                    "to_date": [">=", fy_from],
+                },
+                fields=["name", "leave_type", "total_leave_days", "status", "docstatus"],
+            ) or []
+
+            unalloc_types: dict[str, dict[str, float]] = {}
+            for app in unalloc_apps:
+                lt = app.get("leave_type")
+                if not lt or lt in alloc_dict:
+                    continue
+                st = (app.get("status") or "").strip()
+                ds = cint(app.get("docstatus", 0))
+                days = flt(app.get("total_leave_days", 0)) or 1.0
+                if lt not in unalloc_types:
+                    unalloc_types[lt] = {"approved": 0.0, "pending": 0.0}
+                if st == "Approved" or ds == 1:
+                    unalloc_types[lt]["approved"] += days
+                elif st in ("Open", "Draft", "Applied") or ds == 0:
+                    unalloc_types[lt]["pending"] += days
+
+            for lt, udata in unalloc_types.items():
+                appr = udata["approved"]
+                pend = udata["pending"]
+                taken_str = f"{appr:.1f}"
+                if pend > 0:
+                    taken_str += f" ({pend:.1f} pending)"
+                balances.append({
+                    "leave_type": lt,
+                    "allocated": "0.0",
+                    "total_allocated": 0.0,
+                    "taken": taken_str,
+                    "leaves_taken": appr,
+                    "leaves_pending_approval": pend,
+                    "approved_taken": appr,
+                    "pending_taken": pend,
+                    "remaining": "0.0",
+                    "remaining_leaves": 0.0,
+                    "from_date": fy_from,
+                    "to_date": fy_to,
+                })
+
+            return balances
 
         # 1. Fetch active leave allocations overlapping the 1 July - 30 June tenure
         allocations = frappe.db.get_all(
@@ -441,7 +531,7 @@ def get_leave_balance_data(employee_id: Optional[str], ref_date: Optional[date |
             if mm_bal is not None:
                 rem_from_mm = flt(mm_bal.get("leave_balance") if isinstance(mm_bal, dict) else mm_bal)
                 remaining = max(0.0, rem_from_mm)
-                if approved_taken == 0 and allocated > remaining:
+                if (approved_taken == 0 or (approved_taken + remaining) > allocated) and allocated >= remaining:
                     approved_taken = max(0.0, allocated - remaining)
             else:
                 remaining = max(0.0, allocated - (approved_taken + pending_taken))

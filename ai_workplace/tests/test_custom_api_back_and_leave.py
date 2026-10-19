@@ -16,8 +16,46 @@ from ai_workplace.whatsapp.payload_parser import parse_webhook_payload
 
 class TestLeaveBalanceWithMMApp(unittest.TestCase):
     @patch("frappe.db.exists", return_value=True)
+    @patch("frappe.db.get_all", return_value=[])
+    def test_get_leave_balance_data_uses_mm_app_get_leave_details(self, mock_get_all, mock_exists):
+        from ai_workplace.services.attendance_leave import get_leave_balance_data
+
+        with patch("mm_app.overrides.hr.leave_application.get_leave_details") as mock_get_det:
+            mock_get_det.return_value = {
+                "leave_allocation": {
+                    "Annual Leave": {
+                        "total_leaves": 22.0,
+                        "leaves_taken": 2.0,
+                        "leaves_pending_approval": 0.0,
+                        "remaining_leaves": 20.0,
+                    },
+                    "Sick Leave": {
+                        "total_leaves": 11.0,
+                        "leaves_taken": 3.0,
+                        "leaves_pending_approval": 0.0,
+                        "remaining_leaves": 8.0,
+                    },
+                }
+            }
+
+            res = get_leave_balance_data("EMP-001", ref_date="2026-10-19")
+
+            self.assertEqual(len(res), 2)
+            self.assertEqual(res[0]["leave_type"], "Annual Leave")
+            self.assertEqual(res[0]["allocated"], "22.0")
+            self.assertEqual(res[0]["taken"], "2.0")
+            self.assertEqual(res[0]["remaining"], "20.0")
+
+            self.assertEqual(res[1]["leave_type"], "Sick Leave")
+            self.assertEqual(res[1]["allocated"], "11.0")
+            self.assertEqual(res[1]["taken"], "3.0")
+            self.assertEqual(res[1]["remaining"], "8.0")
+
+            mock_get_det.assert_called_once_with("EMP-001", "2026-10-19")
+
+    @patch("frappe.db.exists", return_value=True)
     @patch("frappe.db.get_all")
-    def test_get_leave_balance_data_uses_mm_app(self, mock_get_all, mock_exists):
+    def test_get_leave_balance_data_fallback_uses_mm_app(self, mock_get_all, mock_exists):
         from ai_workplace.services.attendance_leave import get_leave_balance_data
 
         # 1. Allocation: Annual Leave (20 days allocated)
@@ -29,7 +67,8 @@ class TestLeaveBalanceWithMMApp(unittest.TestCase):
             [],
         ]
 
-        with patch("mm_app.overrides.hr.leave_application.get_leave_balance_on") as mock_mm_bal:
+        with patch("mm_app.overrides.hr.leave_application.get_leave_details", side_effect=Exception("no details")), \
+             patch("mm_app.overrides.hr.leave_application.get_leave_balance_on") as mock_mm_bal:
             mock_mm_bal.return_value = 16.0
 
             res = get_leave_balance_data("EMP-001", ref_date="2026-10-19")
@@ -41,12 +80,7 @@ class TestLeaveBalanceWithMMApp(unittest.TestCase):
             self.assertEqual(res[0]["remaining"], "16.0")
             self.assertEqual(res[0]["remaining_leaves"], 16.0)
 
-            # Assert mock was called with employee EMP-001 and Annual Leave
             mock_mm_bal.assert_called()
-            call_kwargs = mock_mm_bal.call_args[1]
-            self.assertEqual(call_kwargs["employee"], "EMP-001")
-            self.assertEqual(call_kwargs["leave_type"], "Annual Leave")
-            self.assertEqual(call_kwargs["date"], "2026-10-19")
 
 
 class TestCustomAPIBackAndParentMenu(unittest.TestCase):

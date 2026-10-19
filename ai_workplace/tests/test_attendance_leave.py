@@ -51,6 +51,9 @@ class TestAttendanceLeaveServices(unittest.TestCase):
             "preferred_language": "Roman Urdu",
         }
         try:
+            self.patcher_mm_det = patch("mm_app.overrides.hr.leave_application.get_leave_details", return_value=None)
+            self.patcher_mm_det.start()
+            self.addCleanup(self.patcher_mm_det.stop)
             self.patcher_mm = patch("mm_app.overrides.hr.leave_application.get_leave_balance_on", return_value=None)
             self.patcher_mm.start()
             self.addCleanup(self.patcher_mm.stop)
