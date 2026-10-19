@@ -202,6 +202,66 @@ class TestAttendanceLeaveServices(unittest.TestCase):
         self.assertEqual(filters["from_date"], ["<=", "2026-12-31"])
         self.assertEqual(filters["to_date"], [">=", "2026-01-01"])
 
+    def test_get_fiscal_year_leave_period(self):
+        from ai_workplace.services.attendance_leave import get_fiscal_year_leave_period
+        # Month >= 7 (e.g. October 2026) -> 2026-07-01 to 2027-06-30
+        self.assertEqual(get_fiscal_year_leave_period("2026-10-19"), ("2026-07-01", "2027-06-30"))
+        # Month >= 7 (e.g. July 2026) -> 2026-07-01 to 2027-06-30
+        self.assertEqual(get_fiscal_year_leave_period("2026-07-01"), ("2026-07-01", "2027-06-30"))
+        # Month < 7 (e.g. March 2026) -> 2025-07-01 to 2026-06-30
+        self.assertEqual(get_fiscal_year_leave_period("2026-03-15"), ("2025-07-01", "2026-06-30"))
+        # Month < 7 (e.g. June 2026) -> 2025-07-01 to 2026-06-30
+        self.assertEqual(get_fiscal_year_leave_period("2026-06-30"), ("2025-07-01", "2026-06-30"))
+
+    @patch("frappe.db.exists")
+    @patch("frappe.db.get_all")
+    def test_get_leave_balance_data_with_pending_and_approved(self, mock_get_all, mock_exists):
+        from ai_workplace.services.attendance_leave import get_leave_balance_data
+        mock_exists.return_value = True
+        mock_get_all.side_effect = [
+            # Allocation
+            [{"leave_type": "Casual Leave", "total_leaves_allocated": 20.0, "from_date": "2026-07-01", "to_date": "2027-06-30"}],
+            # Applications (8 approved, 2 pending, 1 rejected ignored)
+            [
+                {"total_leave_days": 5.0, "status": "Approved", "docstatus": 1, "from_date": "2026-08-01", "to_date": "2026-08-05"},
+                {"total_leave_days": 3.0, "status": "Approved", "docstatus": 1, "from_date": "2026-09-01", "to_date": "2026-09-03"},
+                {"total_leave_days": 2.0, "status": "Open", "docstatus": 0, "from_date": "2026-10-01", "to_date": "2026-10-02"},
+                {"total_leave_days": 4.0, "status": "Rejected", "docstatus": 0, "from_date": "2026-10-10", "to_date": "2026-10-14"},
+            ]
+        ]
+        res = get_leave_balance_data("EMP-001", ref_date="2026-10-19")
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]["leave_type"], "Casual Leave")
+        self.assertEqual(res[0]["allocated"], "20.0")
+        self.assertEqual(res[0]["taken"], "8.0 (2.0 pending)")
+        self.assertEqual(res[0]["approved_taken"], 8.0)
+        self.assertEqual(res[0]["pending_taken"], 2.0)
+        self.assertEqual(res[0]["remaining"], "10.0")
+        self.assertEqual(res[0]["remaining_leaves"], 10.0)
+
+    @patch("frappe.db.exists")
+    @patch("frappe.db.get_all")
+    def test_get_leave_balance_data_with_zero_raw_days_and_half_day(self, mock_get_all, mock_exists):
+        from ai_workplace.services.attendance_leave import get_leave_balance_data
+        mock_exists.return_value = True
+        mock_get_all.side_effect = [
+            # Allocation
+            [{"leave_type": "Sick Leave", "total_leaves_allocated": 12.0, "from_date": "2026-07-01", "to_date": "2027-06-30"}],
+            # Applications with 0 total_leave_days
+            [
+                {"total_leave_days": 0.0, "status": "Approved", "docstatus": 1, "half_day": 0, "from_date": "2026-09-10", "to_date": "2026-09-11"}, # 2 days
+                {"total_leave_days": 0.0, "status": "Open", "docstatus": 0, "half_day": 1, "from_date": "2026-09-15", "to_date": "2026-09-15"},     # 0.5 days
+            ]
+        ]
+        res = get_leave_balance_data("EMP-001", ref_date="2026-10-19")
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]["leave_type"], "Sick Leave")
+        self.assertEqual(res[0]["allocated"], "12.0")
+        self.assertEqual(res[0]["taken"], "2.0 (0.5 pending)")
+        self.assertEqual(res[0]["approved_taken"], 2.0)
+        self.assertEqual(res[0]["pending_taken"], 0.5)
+        self.assertEqual(res[0]["remaining"], "9.5")
+
     def test_build_apply_leave_response(self):
         res_en = build_apply_leave_response(self.context_en)
         self.assertIn("Apply for Leave", res_en)
