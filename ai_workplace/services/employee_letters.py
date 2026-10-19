@@ -7,6 +7,7 @@ Uses the same Letter Template + Employee Letter flow as the HR profile.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 import frappe
@@ -14,6 +15,95 @@ from frappe.utils import fmt_money, formatdate, get_first_day, get_last_day, get
 
 
 BANK_CHOICES = ("Faysal Bank", "Standard Chartered Bank")
+
+WORK_HISTORY_TABLE_TEMPLATE = """
+<style>
+    .work-history-card {
+        width: 700px;
+        margin: 20px auto;
+        font-family: Arial, sans-serif;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e0e0e0;
+    }
+
+    .work-history-header {
+        background-color: #2c3e50;
+        color: white;
+        padding: 10px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .work-history-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .work-history-table th {
+        background-color: #f4f6f9;
+        padding: 10px;
+        font-size: 13px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .work-history-table td {
+        padding: 8px 10px;
+        font-size: 13px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .work-history-table tr:nth-child(even) {
+        background-color: #fafafa;
+    }
+
+    .work-history-table tr:hover {
+        background-color: #f1f7ff;
+    }
+
+    .date-column {
+        white-space: nowrap;
+        color: #555;
+    }
+</style>
+
+<div class="work-history-card">
+
+    <table class="work-history-table">
+        <thead>
+            <tr>
+                <th>Designation</th>
+                <th>From</th>
+                <th>To</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i in internal_work_history %}
+            <tr>
+                <td><strong>{{ i.designation }}</strong></td>
+                <td class="date-column">
+                    {% if i.from_date %}
+                        {{ frappe.utils.formatdate(i.from_date, "dd-MMM-yyyy") }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="date-column">
+                    {% if i.to_date %}
+                        {{ frappe.utils.formatdate(i.to_date, "dd-MMM-yyyy") }}
+                    {% else %}
+                        Present
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+"""
 
 
 def _decrypt_if_needed(doctype: str, docname: str, fieldname: str, value: str | None) -> str:
@@ -50,10 +140,32 @@ def _create_employee_letter(
     letter.actual_content = rendered_content
     letter.save(ignore_permissions=True)
     letter.reload()
-    if letter.qr_code and "{{ qr_code }}" in (letter.actual_content or ""):
-        qr_html = f'<img class="qr_code" src="{letter.qr_code}" style="width:120px;">'
-        letter.actual_content = letter.actual_content.replace("{{ qr_code }}", qr_html)
+
+    content = letter.actual_content or ""
+    needs_update = False
+
+    # Replace {{ series }} and {{ name }} with the assigned letter.name
+    if letter.name:
+        if "{{ series }}" in content or "{{series}}" in content:
+            content = re.sub(r"\{\{\s*series\s*\}\}", letter.name, content)
+            needs_update = True
+        if "{{ name }}" in content or "{{name}}" in content:
+            content = re.sub(r"\{\{\s*name\s*\}\}", letter.name, content)
+            needs_update = True
+
+    # Handle QR code placeholder
+    if letter.qr_code and ("{{ qr_code }}" in content or "{{qr_code}}" in content):
+        qr_html = f'<img class="qr_code" src="{letter.qr_code}" style="width:70px;">'
+        content = re.sub(r"\{\{\s*qr_code\s*\}\}", qr_html, content)
+        needs_update = True
+    elif "{{ qr_code }}" in content or "{{qr_code}}" in content:
+        content = re.sub(r"\{\{\s*qr_code\s*\}\}", "", content)
+        needs_update = True
+
+    if needs_update:
+        letter.actual_content = content
         letter.save(ignore_permissions=True)
+
     return letter.name
 
 
@@ -73,53 +185,99 @@ def _letter_pdf_bytes(letter_name: str) -> bytes:
         frappe.set_user(prev_user)
 
 
+def render_experience_letter_content(emp: Any, template_content: str) -> str:
+    """Render experience letter HTML from Letter Template content and employee doc/dict."""
+    args = emp.as_dict() if (hasattr(emp, "as_dict") and callable(getattr(emp, "as_dict", None))) else dict(emp)
+
+    raw_history = args.get("internal_work_history") or []
+    valid_history: list[dict[str, Any]] = []
+    for row in raw_history:
+        if isinstance(row, dict):
+            row_dict = dict(row)
+        elif hasattr(row, "as_dict") and callable(getattr(row, "as_dict", None)):
+            row_dict = row.as_dict()
+        else:
+            row_dict = dict(row)
+
+        if row_dict.get("designation"):
+            valid_history.append(row_dict)
+
+    if args.get("date_of_joining"):
+        args["date_of_joining"] = formatdate(args["date_of_joining"], "dd-MMM-yyyy")
+    else:
+        args["date_of_joining"] = "-"
+
+    if args.get("relieving_date"):
+        args["relieving_date"] = formatdate(args["relieving_date"], "dd-MMM-yyyy")
+    else:
+        args["relieving_date"] = "-"
+
+    employee_id = args.get("name") or getattr(emp, "name", "")
+    args["cnic"] = _decrypt_if_needed("Employee", employee_id, "cnic", args.get("cnic"))
+    args["fathers_name"] = _decrypt_if_needed("Employee", employee_id, "fathers_name", args.get("fathers_name"))
+    district = args.get("custom_district_name") or ""
+    province = args.get("custom_province_name") or ""
+    args["custom_district_name"] = district or "-"
+    args["custom_province_name"] = province or "-"
+
+    message = frappe.render_template(template_content, args)
+
+    # If internal_work_history is filled, render styled table and replace {table}
+    if valid_history and "{table}" in template_content:
+        table_html = frappe.render_template(
+            WORK_HISTORY_TABLE_TEMPLATE,
+            {"internal_work_history": valid_history},
+        )
+        if re.search(r"<p>\s*\{table\}(?:<strong>\s*</strong>)?\s*</p>", message):
+            message = re.sub(r"<p>\s*\{table\}(?:<strong>\s*</strong>)?\s*</p>", table_html, message)
+        else:
+            message = message.replace("{table}", table_html)
+    else:
+        # Otherwise, experience letter without table (simple one-designation role letter)
+        message = re.sub(r"<p>\s*\{table\}(?:<strong>\s*</strong>)?\s*</p>", "", message)
+        message = message.replace("{table}", "")
+
+    # Clean unused dynamic fields {{ first_field }}, {{ second_field }}, etc.
+    message = re.sub(
+        r"<p[^>]*>\s*(?:<strong[^>]*>)?\s*(?:\{\{\s*(?:first|second|third|fourth)_field\s*\}\}\s*)*(?:</strong>)?\s*</p>",
+        "",
+        message,
+    )
+    for field in ("first_field", "second_field", "third_field", "fourth_field"):
+        message = re.sub(r"\{\{\s*" + field + r"\s*\}\}", "", message)
+
+    message = re.sub(r"\{\{\s*today_date\s*\}\}", formatdate(today(), "dd-MMM-yyyy"), message)
+
+    code_parts = str(employee_id).split("-")
+    emp_code = code_parts[1] if len(code_parts) == 2 else code_parts[-1]
+    message = re.sub(r"\{\{\s*employee_code\s*\}\}", emp_code, message)
+
+    hr_sign = frappe.db.get_value("Employee", "EMP-MM-00075", "hr_signature") or ""
+    message = re.sub(r"\{\{\s*hr_signature\s*\}\}", str(hr_sign), message)
+
+    return message
+
+
 def generate_experience_letter_pdf(employee_id: str) -> tuple[bytes, str]:
     """Create and return Experience Letter PDF for an employee."""
     if not employee_id:
         frappe.throw("Employee ID is required.")
 
     hr_settings = frappe.get_single("HR Settings")
-    template_name = hr_settings.experience_letter_template
-    if not template_name:
-        frappe.throw("No experience letter template set in HR Settings.")
+    template_name = hr_settings.experience_letter_template or "Experience Letter"
+    if not frappe.db.exists("Letter Template", template_name):
+        frappe.throw(f"Experience letter template '{template_name}' not found.")
 
     emp = frappe.get_doc("Employee", employee_id)
-    args = emp.as_dict()
-    args["internal_work_history"] = args.get("internal_work_history") or []
-    args["date_of_joining"] = formatdate(args.get("date_of_joining"), "dd-MMM-yyyy")
-    args["cnic"] = _decrypt_if_needed("Employee", employee_id, "cnic", args.get("cnic"))
-    args["fathers_name"] = _decrypt_if_needed("Employee", employee_id, "fathers_name", args.get("fathers_name"))
-
-    table_html = frappe.render_template(
-        """
-        <table border="1" cellpadding="5" cellspacing="0">
-            <tr><th>Designation</th><th>From</th><th>To</th></tr>
-            {% for i in internal_work_history %}
-            <tr>
-                <td>{{ i.designation }}</td>
-                <td>{{ i.from_date }}</td>
-                <td>{{ i.to_date }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-        """,
-        args,
-    )
-
     email_template = frappe.get_doc("Letter Template", template_name)
-    message = frappe.render_template(email_template.letter_content, args)
-    message = message.replace("{{ today_date }}", formatdate(today(), "dd-MMM-yyyy"))
-    message = message.replace("{{ series }}", "0001")
-    message = message.replace("{table}", table_html)
-    hr_sign = frappe.db.get_value("Employee", "EMP-MM-00075", "hr_signature")
-    if hr_sign:
-        message = message.replace("{{ hr_signature }}", str(hr_sign))
+
+    rendered_message = render_experience_letter_content(emp, email_template.letter_content)
 
     letter_name = _create_employee_letter(
         employee_id,
         naming_series="EXP-LTR-.####",
         template_name=template_name,
-        rendered_content=message,
+        rendered_content=rendered_message,
         template_body=email_template.letter_content,
     )
     safe_name = (emp.employee_name or employee_id).replace("/", "-").replace(" ", "_")
