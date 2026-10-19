@@ -49,6 +49,11 @@ def send_text_message(
     phone_number: str,
     message: str,
     settings: Optional[Any] = None,
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Send a plain-text WhatsApp message via the Meta Cloud API."""
     payload = {
@@ -58,7 +63,16 @@ def send_text_message(
         "type": "text",
         "text": {"body": message, "preview_url": False},
     }
-    return _post_message(phone_number, payload, settings)
+    return _post_message(
+        phone_number,
+        payload,
+        settings,
+        session_name=session_name,
+        receiver=receiver,
+        receiver_name=receiver_name,
+        username=username,
+        session_id=session_id,
+    )
 
 
 def send_interactive_message(
@@ -66,6 +80,11 @@ def send_interactive_message(
     body_text: str,
     interactive: dict[str, Any],
     settings: Optional[Any] = None,
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Send a WhatsApp interactive message (list or button)."""
     payload = {
@@ -75,7 +94,16 @@ def send_interactive_message(
         "type": "interactive",
         "interactive": interactive,
     }
-    return _post_message(phone_number, payload, settings)
+    return _post_message(
+        phone_number,
+        payload,
+        settings,
+        session_name=session_name,
+        receiver=receiver,
+        receiver_name=receiver_name,
+        username=username,
+        session_id=session_id,
+    )
 
 
 def upload_media_file(
@@ -178,6 +206,11 @@ def send_image_message(
     media_id: str,
     caption: str = "",
     settings: Optional[Any] = None,
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Send a WhatsApp image message using a Meta media id."""
     image_payload: dict[str, Any] = {"id": media_id}
@@ -190,7 +223,16 @@ def send_image_message(
         "type": "image",
         "image": image_payload,
     }
-    return _post_message(phone_number, payload, settings)
+    return _post_message(
+        phone_number,
+        payload,
+        settings,
+        session_name=session_name,
+        receiver=receiver,
+        receiver_name=receiver_name,
+        username=username,
+        session_id=session_id,
+    )
 
 
 def send_document_message(
@@ -199,6 +241,11 @@ def send_document_message(
     filename: str,
     caption: str = "",
     settings: Optional[Any] = None,
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Send a WhatsApp document message using a Meta media id."""
     doc_payload: dict[str, Any] = {"id": media_id, "filename": filename or "file"}
@@ -211,7 +258,16 @@ def send_document_message(
         "type": "document",
         "document": doc_payload,
     }
-    return _post_message(phone_number, payload, settings)
+    return _post_message(
+        phone_number,
+        payload,
+        settings,
+        session_name=session_name,
+        receiver=receiver,
+        receiver_name=receiver_name,
+        username=username,
+        session_id=session_id,
+    )
 
 
 def send_video_message(
@@ -219,6 +275,11 @@ def send_video_message(
     media_id: str,
     caption: str = "",
     settings: Optional[Any] = None,
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Send a WhatsApp video message using a Meta media id."""
     video_payload: dict[str, Any] = {"id": media_id}
@@ -231,13 +292,27 @@ def send_video_message(
         "type": "video",
         "video": video_payload,
     }
-    return _post_message(phone_number, payload, settings)
+    return _post_message(
+        phone_number,
+        payload,
+        settings,
+        session_name=session_name,
+        receiver=receiver,
+        receiver_name=receiver_name,
+        username=username,
+        session_id=session_id,
+    )
 
 
 def send_audio_message(
     phone_number: str,
     media_id: str,
     settings: Optional[Any] = None,
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Send a WhatsApp audio message using a Meta media id."""
     payload = {
@@ -247,20 +322,49 @@ def send_audio_message(
         "type": "audio",
         "audio": {"id": media_id},
     }
-    return _post_message(phone_number, payload, settings)
+    return _post_message(
+        phone_number,
+        payload,
+        settings,
+        session_name=session_name,
+        receiver=receiver,
+        receiver_name=receiver_name,
+        username=username,
+        session_id=session_id,
+    )
 
 
 def send_message(
     phone_number: str,
     outbound: Union[OutboundMessage, str],
     settings: Optional[Any] = None,
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Send an OutboundMessage (text or interactive) or plain string.
     Falls back to text if interactive send fails.
     """
+    effective_receiver = receiver or (getattr(outbound, "receiver", None) if isinstance(outbound, OutboundMessage) else None)
+    effective_receiver_name = receiver_name or (getattr(outbound, "receiver_name", None) if isinstance(outbound, OutboundMessage) else None)
+    effective_username = username or (getattr(outbound, "username", None) if isinstance(outbound, OutboundMessage) else None)
+    effective_session_id = session_id or (getattr(outbound, "session_id", None) if isinstance(outbound, OutboundMessage) else None)
+    effective_session = session_name or (getattr(outbound, "session_name", None) if isinstance(outbound, OutboundMessage) else None) or effective_receiver or effective_receiver_name
+
     if isinstance(outbound, str):
-        return send_text_message(phone_number, outbound, settings=settings)
+        return send_text_message(
+            phone_number,
+            outbound,
+            settings=settings,
+            session_name=effective_session,
+            receiver=effective_receiver,
+            receiver_name=effective_receiver_name,
+            username=effective_username,
+            session_id=effective_session_id,
+        )
 
     cfg = settings
     if not cfg:
@@ -273,13 +377,37 @@ def send_message(
     if is_custom and outbound.follow_up:
         _consolidate_custom_api_interactive(outbound)
 
-    result = _send_single_message(phone_number, outbound, settings=settings)
+    result = _send_single_message(
+        phone_number,
+        outbound,
+        settings=settings,
+        session_name=effective_session,
+        receiver=effective_receiver,
+        receiver_name=effective_receiver_name,
+        username=effective_username,
+        session_id=effective_session_id,
+    )
     if not result.get("success"):
         return result
 
     last_result = result
     for extra in outbound.follow_up or []:
-        follow_result = send_message(phone_number, extra, settings=settings)
+        extra_receiver = getattr(extra, "receiver", None) or effective_receiver
+        extra_receiver_name = getattr(extra, "receiver_name", None) or effective_receiver_name
+        extra_username = getattr(extra, "username", None) or effective_username
+        extra_session_id = getattr(extra, "session_id", None) or effective_session_id
+        extra_session = getattr(extra, "session_name", None) or effective_session
+
+        follow_result = send_message(
+            phone_number,
+            extra,
+            settings=settings,
+            session_name=extra_session,
+            receiver=extra_receiver,
+            receiver_name=extra_receiver_name,
+            username=extra_username,
+            session_id=extra_session_id,
+        )
         if follow_result.get("success"):
             last_result = follow_result
         else:
@@ -340,7 +468,18 @@ def _send_single_message(
     phone_number: str,
     outbound: OutboundMessage,
     settings: Optional[Any] = None,
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> dict[str, Any]:
+    effective_receiver = receiver or getattr(outbound, "receiver", None)
+    effective_receiver_name = receiver_name or getattr(outbound, "receiver_name", None)
+    effective_username = username or getattr(outbound, "username", None)
+    effective_session_id = session_id or getattr(outbound, "session_id", None)
+    effective_session = session_name or getattr(outbound, "session_name", None) or effective_receiver or effective_receiver_name
+
     if outbound.body_text:
         try:
             from ai_workplace.ai.response_formatter import ResponseFormatter
@@ -383,7 +522,16 @@ def _send_single_message(
             }
             if outbound.document_caption or outbound.body_text:
                 payload["text"] = {"body": outbound.document_caption or outbound.body_text}
-            return _post_message(phone_number, payload, settings=settings)
+            return _post_message(
+                phone_number,
+                payload,
+                settings=settings,
+                session_name=effective_session,
+                receiver=effective_receiver,
+                receiver_name=effective_receiver_name,
+                username=effective_username,
+                session_id=effective_session_id,
+            )
 
         upload = upload_media_bytes(
             outbound.document_bytes or b"",
@@ -393,7 +541,16 @@ def _send_single_message(
         )
         if not upload.get("success"):
             if outbound.body_text:
-                return send_text_message(phone_number, outbound.body_text, settings=settings)
+                return send_text_message(
+                    phone_number,
+                    outbound.body_text,
+                    settings=settings,
+                    session_name=effective_session,
+                    receiver=effective_receiver,
+                    receiver_name=effective_receiver_name,
+                    username=effective_username,
+                    session_id=effective_session_id,
+                )
             return upload
 
         caption = outbound.document_caption or outbound.body_text or ""
@@ -403,6 +560,11 @@ def _send_single_message(
             outbound.document_filename or "file",
             caption=caption,
             settings=settings,
+            session_name=effective_session,
+            receiver=effective_receiver,
+            receiver_name=effective_receiver_name,
+            username=effective_username,
+            session_id=effective_session_id,
         )
 
     if outbound.is_interactive():
@@ -411,6 +573,11 @@ def _send_single_message(
             outbound.body_text,
             outbound.interactive,
             settings=settings,
+            session_name=effective_session,
+            receiver=effective_receiver,
+            receiver_name=effective_receiver_name,
+            username=effective_username,
+            session_id=effective_session_id,
         )
         if not result.get("success"):
             # If interactive payload contained a header (e.g. image header), retry without header
@@ -425,6 +592,11 @@ def _send_single_message(
                     outbound.body_text,
                     clean_interactive,
                     settings=settings,
+                    session_name=effective_session,
+                    receiver=effective_receiver,
+                    receiver_name=effective_receiver_name,
+                    username=effective_username,
+                    session_id=effective_session_id,
                 )
                 if retry_res.get("success"):
                     return retry_res
@@ -434,16 +606,39 @@ def _send_single_message(
                 frappe.logger("ai_workplace").warning(
                     f"AI Workplace: Interactive send failed ({result.get('error')}); falling back to text"
                 )
-                return send_text_message(phone_number, fallback, settings=settings)
+                return send_text_message(
+                    phone_number,
+                    fallback,
+                    settings=settings,
+                    session_name=effective_session,
+                    receiver=effective_receiver,
+                    receiver_name=effective_receiver_name,
+                    username=effective_username,
+                    session_id=effective_session_id,
+                )
         return result
 
-    return send_text_message(phone_number, outbound.body_text, settings=settings)
+    return send_text_message(
+        phone_number,
+        outbound.body_text,
+        settings=settings,
+        session_name=effective_session,
+        receiver=effective_receiver,
+        receiver_name=effective_receiver_name,
+        username=effective_username,
+        session_id=effective_session_id,
+    )
 
 
 def _post_message(
     phone_number: str,
     payload: dict[str, Any],
     settings: Optional[Any] = None,
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> dict[str, Any]:
     try:
         cfg = settings or frappe.get_single("AI Workplace Settings")
@@ -477,7 +672,14 @@ def _post_message(
         if custom_token:
             headers.extend(["-H", f"Authorization: Bearer {custom_token}"])
             
-        payload = _transform_to_baileys(payload)
+        payload = _transform_to_baileys(
+            payload,
+            session_name=session_name,
+            receiver=receiver,
+            receiver_name=receiver_name,
+            username=username,
+            session_id=session_id,
+        )
     else:
         if not access_token:
             return _error_result("Meta Access Token is not configured")
@@ -557,7 +759,151 @@ def _error_result(error_message: str) -> dict[str, Any]:
     return {"success": False, "message_id": None, "error": error_message}
 
 
-def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
+def _resolve_baileys_session(
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> dict[str, str]:
+    """
+    Resolve the Baileys session attributes (receiver, receiver_name, username, session_id).
+    Matches against 'Whatsapp Session' or propagates provided identifiers.
+    """
+    res = {
+        "receiver": str(receiver or "").strip(),
+        "receiver_name": str(receiver_name or "").strip(),
+        "username": str(username or "").strip(),
+        "session_id": str(session_id or "").strip(),
+    }
+
+    identifiers = [
+        res["receiver"],
+        res["username"],
+        res["session_id"],
+        session_name,
+        res["receiver_name"],
+    ]
+
+    matched_session = None
+    for ident in identifiers:
+        if not ident:
+            continue
+        ident_str = str(ident).strip()
+        try:
+            for field in ("session_id", "phone_number", "email", "full_name", "name"):
+                matched = frappe.get_all(
+                    "Whatsapp Session",
+                    filters={field: ident_str},
+                    fields=["session_id", "email", "name", "phone_number", "full_name"],
+                    limit=1,
+                )
+                if matched:
+                    matched_session = matched[0]
+                    break
+            if matched_session:
+                break
+
+            digits = "".join(filter(str.isdigit, ident_str))
+            if len(digits) >= 7:
+                all_sessions = frappe.get_all(
+                    "Whatsapp Session",
+                    fields=["session_id", "email", "name", "phone_number", "full_name"],
+                )
+                for s in all_sessions:
+                    s_phone_val = getattr(s, "phone_number", None) or (s.get("phone_number") if isinstance(s, dict) else "") or ""
+                    s_phone = "".join(filter(str.isdigit, str(s_phone_val)))
+                    if s_phone and (s_phone == digits or s_phone.endswith(digits[-9:]) or digits.endswith(s_phone[-9:])):
+                        matched_session = s
+                        break
+            if matched_session:
+                break
+        except Exception:
+            pass
+
+    if matched_session:
+        def _get_val(obj, key):
+            val = getattr(obj, key, None)
+            if val is None and isinstance(obj, dict):
+                val = obj.get(key)
+            return val
+
+        sid = _get_val(matched_session, "session_id") or _get_val(matched_session, "email") or _get_val(matched_session, "name") or ""
+        phone = _get_val(matched_session, "phone_number") or sid
+        fname = _get_val(matched_session, "full_name") or ""
+
+        # If username/session_id was not explicitly specified or was passed as display name/phone, canonicalize to sid
+        if not res["username"] or res["username"] == fname or res["username"] == phone:
+            res["username"] = sid
+        if not res["session_id"] or res["session_id"] == fname or res["session_id"] == phone:
+            res["session_id"] = sid
+        if not res["receiver"] or res["receiver"] == fname:
+            res["receiver"] = phone
+        if not res["receiver_name"] and fname:
+            res["receiver_name"] = fname
+
+    # If still not fully resolved, fill in from any available identifier
+    fallback_id = res["session_id"] or res["username"] or res["receiver"] or session_name or res["receiver_name"] or ""
+    if not res["username"] and fallback_id:
+        res["username"] = fallback_id
+    if not res["session_id"] and fallback_id:
+        res["session_id"] = fallback_id
+    if not res["receiver"] and fallback_id:
+        res["receiver"] = fallback_id
+
+    # If nothing was provided at all, fallback to the default active session
+    if not res["username"] and not res["receiver"]:
+        try:
+            active_sessions = frappe.get_all(
+                "Whatsapp Session",
+                filters={"status": "Connected"},
+                fields=["session_id", "email", "name", "phone_number", "full_name"],
+                limit=1,
+            )
+            if not active_sessions:
+                active_sessions = frappe.get_all(
+                    "Whatsapp Session",
+                    fields=["session_id", "email", "name", "phone_number", "full_name"],
+                    limit=1,
+                )
+            if active_sessions:
+                s = active_sessions[0]
+                def _get_val(obj, key):
+                    val = getattr(obj, key, None)
+                    if val is None and isinstance(obj, dict):
+                        val = obj.get(key)
+                    return val
+
+                s_id = _get_val(s, "session_id") or _get_val(s, "email") or _get_val(s, "name") or ""
+                res["username"] = s_id
+                res["session_id"] = s_id
+                res["receiver"] = _get_val(s, "phone_number") or s_id
+                res["receiver_name"] = _get_val(s, "full_name") or ""
+        except Exception:
+            pass
+
+    if not res["username"]:
+        res["username"] = "Administrator"
+    if not res["receiver"]:
+        res["receiver"] = res["username"]
+
+    return res
+
+
+def _resolve_baileys_username(session_name: Optional[str] = None) -> str:
+    """Backward compatibility helper for resolving username."""
+    sess = _resolve_baileys_session(session_name=session_name)
+    return sess.get("username") or "Administrator"
+
+
+def _transform_to_baileys(
+    payload: dict[str, Any],
+    session_name: Optional[str] = None,
+    receiver: Optional[str] = None,
+    receiver_name: Optional[str] = None,
+    username: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> dict[str, Any]:
     """Transforms a Meta Graph API payload into a Baileys-compatible payload."""
     number = payload.get("to", "")
     message: Any = ""
@@ -692,18 +1038,25 @@ def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         message = "Message type not supported by custom API."
     
-    try:
-        active_session = frappe.get_all("Whatsapp Session", filters={"status": "connected"}, fields=["email"], limit=1)
-        username = active_session[0].email if active_session and active_session[0].email else "AI Workplace"
-    except Exception:
-        username = "AI Workplace"
+    sess_info = _resolve_baileys_session(
+        session_name=session_name or payload.get("session_name"),
+        receiver=receiver or payload.get("receiver") or payload.get("receiver_number"),
+        receiver_name=receiver_name or payload.get("receiver_name"),
+        username=username or payload.get("username"),
+        session_id=session_id or payload.get("session_id"),
+    )
 
     out = {
         "number": number,
         "message": message,
-        "username": username
+        "username": sess_info["username"],
+        "session_id": sess_info["session_id"],
+        "receiver": sess_info["receiver"],
+        "receiver_number": sess_info["receiver"],
     }
-    
+    if sess_info.get("receiver_name"):
+        out["receiver_name"] = sess_info["receiver_name"]
+
     if media_url:
         out["media_url"] = media_url
         out["media_type"] = media_type
@@ -713,4 +1066,5 @@ def _transform_to_baileys(payload: dict[str, Any]) -> dict[str, Any]:
         out["mime_type"] = payload.get("mime_type")
         
     return out
+
 

@@ -61,8 +61,7 @@ def _letter_pdf_bytes(letter_name: str) -> bytes:
     print_format = frappe.get_meta("Employee Letter").default_print_format or "Employee Letter"
     prev_user = frappe.session.user
     try:
-        if prev_user == "Guest":
-            frappe.set_user("Administrator")
+        frappe.set_user("Administrator")
         return frappe.get_print(
             "Employee Letter",
             letter_name,
@@ -76,6 +75,9 @@ def _letter_pdf_bytes(letter_name: str) -> bytes:
 
 def generate_experience_letter_pdf(employee_id: str) -> tuple[bytes, str]:
     """Create and return Experience Letter PDF for an employee."""
+    if not employee_id:
+        frappe.throw("Employee ID is required.")
+
     hr_settings = frappe.get_single("HR Settings")
     template_name = hr_settings.experience_letter_template
     if not template_name:
@@ -191,7 +193,8 @@ def resolve_bank_name(context: dict[str, Any]) -> Optional[str]:
 def build_letter_download_error(context: dict[str, Any], letter_type: str) -> str:
     lang = context.get("preferred_language", "English")
     if lang == "Urdu":
-        return f"معذرت، {letter_type} PDF بن نہیں سکی۔ براہ کرم HR سے رابطہ کریں۔"
+        type_str = "تجربہ سرٹیفکیٹ" if "Experience" in letter_type else ("بینک لیٹر" if "Bank" in letter_type else letter_type)
+        return f"معذرت، {type_str} PDF بن نہیں سکی۔ براہ کرم HR سے رابطہ کریں۔"
     if lang == "Roman Urdu":
         return f"Maazrat, {letter_type} PDF generate nahi ho saki. HR se rabta karein."
     return f"Sorry, we couldn't generate your {letter_type} PDF. Please contact HR."

@@ -944,9 +944,30 @@ def _process_message_internal(
             )
             return menu_out
 
-        welcome_header = build_welcome_header(context)
-        outbound = build_language_selection_message(context, welcome_text=welcome_header)
-        return outbound
+        # If user typed a menu selection or an out-of-menu question instead of choosing language:
+        is_menu_sel = parse_menu_selection(clean_text, context)
+        is_service_cmd = clean_text.startswith("svc_")
+        is_direct_query = len(clean_text) >= 3 and not clean_text.isdigit()
+
+        if is_menu_sel or is_service_cmd or is_direct_query:
+            detected_lang = auto_detect_language(clean_text) or context.get("preferred_language") or "English"
+            persist_language(
+                whatsapp_identity=conv.whatsapp_identity,
+                language=detected_lang,
+                conversation=conv,
+            )
+            context["preferred_language"] = detected_lang
+            update_conversation(
+                conv,
+                state=ConversationState.AWAITING_SELECTION,
+                preferred_language=detected_lang,
+            )
+            current_state = ConversationState.AWAITING_SELECTION
+            # Fall through to process as menu selection or query below
+        else:
+            welcome_header = build_welcome_header(context)
+            outbound = build_language_selection_message(context, welcome_text=welcome_header)
+            return outbound
 
 
     # ── Step: Processing multi-step workflows ────────────────────────────────

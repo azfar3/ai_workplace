@@ -33,14 +33,15 @@
   "delivery_status",
   "media_file",
   "section_error",
-  "error"
+  "error",
+  "sender_name",
+  "receiver_name"
  ],
  "fields": [
   {
    "default": "WhatsApp",
    "fieldname": "channel",
    "fieldtype": "Select",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Channel",
    "options": "WhatsApp\nWeb Chat\nAPI"
@@ -49,14 +50,12 @@
    "description": "WhatsApp message ID (wamid) from Meta. Used for idempotency.",
    "fieldname": "meta_message_id",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Meta Message ID"
   },
   {
    "fieldname": "direction",
    "fieldtype": "Select",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Direction",
    "options": "\nInbound\nOutbound"
@@ -64,7 +63,6 @@
   {
    "fieldname": "status",
    "fieldtype": "Select",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
    "options": "\nReceived\nProcessing\nSent\nFailed\nDuplicate"
@@ -124,6 +122,7 @@
    "description": "Sender's WhatsApp ID (wa_id)",
    "fieldname": "whatsapp_id",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "WhatsApp ID"
   },
@@ -140,12 +139,14 @@
   {
    "fieldname": "erp_user",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "ERP User",
    "options": "User"
   },
   {
    "fieldname": "employee",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Employee",
    "options": "Employee"
   },
@@ -217,7 +218,7 @@
  ],
  "icon": "fa fa-comments",
  "links": [],
- "modified": "2026-09-03 16:32:58.889737",
+ "modified": "2026-10-19 11:59:30.695035",
  "modified_by": "Administrator",
  "module": "Ai Workplace",
  "name": "WhatsApp Message Log",

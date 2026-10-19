@@ -59,7 +59,26 @@ def mark_session_read(session_name: str) -> dict:
 def get_session_detail(session_name: str, start: int = 0, limit: int = 15) -> dict:
     _ensure_hr_agent()
     session = get_session_doc(session_name)
-    from ai_workplace.services.hr_chat import _session_payload, evaluate_reply_permission
+    user = frappe.session.user
+    from ai_workplace.services.hr_chat import (
+        _session_payload,
+        evaluate_reply_permission,
+        is_system_manager,
+        get_hr_agent_role_access,
+    )
+
+    if session.assigned_to and session.assigned_to != user and not is_system_manager(user):
+        access_role = get_hr_agent_role_access(user)
+        if access_role == "Assigned HR User (View & Reply Assigned Only)":
+            frappe.throw(
+                _("Access Restricted: You can only view chats that are assigned to you."),
+                frappe.PermissionError,
+            )
+        else:
+            frappe.throw(
+                _("Access Restricted: You can only view chats that are assigned to you or unassigned."),
+                frappe.PermissionError,
+            )
 
     start_val = frappe.utils.cint(start)
     limit_val = frappe.utils.cint(limit) or 15
@@ -200,8 +219,9 @@ def get_hr_agents() -> list[dict]:
 def get_user_access_info() -> dict:
     _ensure_hr_agent()
     user = frappe.session.user
-    from ai_workplace.services.hr_chat import get_hr_agent_role_access
+    from ai_workplace.services.hr_chat import get_hr_agent_role_access, is_system_manager
     return {
         "user": user,
-        "role_access": get_hr_agent_role_access(user)
+        "role_access": get_hr_agent_role_access(user),
+        "is_system_manager": is_system_manager(user),
     }

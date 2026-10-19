@@ -8,7 +8,19 @@ from ai_workplace.services.response_helpers import wrap_with_menu_again
 class PolicyHandler:
     def can_handle(self, intent: str, state: str) -> bool:
         clean = intent.replace("svc_", "")
-        return clean in ("pol_view_policies", "pol_ai_assistant", "doc_contract", "pol_policy_hub", "policies_help") or clean.startswith("pol_")
+        return (
+            clean in (
+                "pol_view_policies",
+                "pol_ai_assistant",
+                "doc_contract",
+                "pol_policy_hub",
+                "policies_help",
+                "doc_experience_letter",
+                "pay_experience_letter",
+                "experience_letter",
+            )
+            or clean.startswith("pol_")
+        )
 
     def handle(self, conv: Any, intent: str, clean_text: str, context: Dict[str, Any], trace_id: str) -> Optional[OutboundMessage]:
         outbound = None
@@ -43,16 +55,38 @@ class PolicyHandler:
             action = "start_hr_ai_agent"
             
         elif clean_intent in ("doc_contract", "contract"):
-            from ai_workplace.services.employee_letters import generate_experience_letter_pdf, build_letter_download_outbound, build_letter_download_error
+            from ai_workplace.services.documents_hub import build_contract_status
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            try:
-                pdf_bytes, filename = generate_experience_letter_pdf(context.get("employee", ""))
-                caption = "📄 Experience / Employment Document"
-                outbound = build_letter_download_outbound(context, pdf_bytes, filename, caption)
-            except Exception:
-                err = build_letter_download_error(context, "Experience Letter")
-                outbound = wrap_with_menu_again(err, context)
+            outbound = build_contract_status(context)
             action = "view_contract"
+
+        elif clean_intent in ("pay_experience_letter", "doc_experience_letter", "experience_letter"):
+            from ai_workplace.services.employee_letters import (
+                generate_experience_letter_pdf,
+                build_letter_download_outbound,
+                build_letter_download_error,
+            )
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            emp_id = context.get("employee") or ""
+            lang = context.get("preferred_language", "English")
+            if lang == "Urdu":
+                caption = "📄 آپ کا *تجربہ سرٹیفکیٹ* منسلک ہے۔"
+            elif lang == "Roman Urdu":
+                caption = "📄 Aap ka *Experience Letter* munsalik hai."
+            else:
+                caption = "📄 Your *Experience Letter* is attached."
+
+            parent_key = "documents" if "doc_" in clean_intent else "payroll"
+            try:
+                pdf_bytes, filename = generate_experience_letter_pdf(emp_id)
+                outbound = build_letter_download_outbound(context, pdf_bytes, filename, caption, parent_key=parent_key)
+            except Exception:
+                import frappe
+                frappe.log_error(frappe.get_traceback(), "Experience Letter Generation Failed")
+                err = build_letter_download_error(context, "Experience Letter")
+                from ai_workplace.services.response_helpers import wrap_with_parent_menu
+                outbound = wrap_with_parent_menu(err, context, parent_key)
+            action = "download_experience_letter"
 
         if outbound:
             log_ai_action(

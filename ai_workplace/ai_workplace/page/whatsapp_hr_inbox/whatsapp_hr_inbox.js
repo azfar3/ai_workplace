@@ -1208,18 +1208,26 @@ frappe.whatsapp_hr_inbox = {
 		frappe.call({
 			method: "ai_workplace.api.hr_chat.get_user_access_info",
 			callback: (res) => {
-				if (res.message && res.message.role_access === "Assigned HR User (View & Reply Assigned Only)") {
-					this.is_assigned_only = true;
-					this.current_filter = "mine";
-					this.wrapper.find('.wa-filter-btn[data-filter="queue"]').hide();
-					this.wrapper.find('.wa-filter-btn[data-filter="all"]').hide();
-					this.wrapper.find(".wa-filter-btn").removeClass("active");
-					this.wrapper.find('.wa-filter-btn[data-filter="mine"]').addClass("active");
+				if (res.message) {
+					if (res.message.role_access === "Assigned HR User (View & Reply Assigned Only)") {
+						this.is_assigned_only = true;
+						this.current_filter = "mine";
+						this.wrapper.find('.wa-filter-btn[data-filter="queue"]').hide();
+						this.wrapper.find('.wa-filter-btn[data-filter="all"]').hide();
+						this.wrapper.find(".wa-filter-btn").removeClass("active");
+						this.wrapper.find('.wa-filter-btn[data-filter="mine"]').addClass("active");
+					}
+					if (res.message.is_system_manager || frappe.user_roles.includes("System Manager") || frappe.session.user === "Administrator") {
+						this.is_system_manager = true;
+					}
 				}
 				this.load_inbox();
 				this.start_live_poll();
 			},
 			error: () => {
+				if (frappe.user_roles.includes("System Manager") || frappe.session.user === "Administrator") {
+					this.is_system_manager = true;
+				}
 				this.load_inbox();
 				this.start_live_poll();
 			},
@@ -1544,6 +1552,7 @@ frappe.whatsapp_hr_inbox = {
 		const status = s.status;
 		const assigned = s.assigned_to;
 		const user = frappe.session.user;
+		const is_sys_manager = Boolean(this.is_system_manager || frappe.user_roles.includes("System Manager") || user === "Administrator");
 
 		if (this.current_filter === "mine") {
 			return (status === "Assigned" || status === "Active") && assigned === user;
@@ -1552,10 +1561,19 @@ frappe.whatsapp_hr_inbox = {
 			return status === "Queued" && !assigned;
 		}
 		if (this.current_filter === "closed") {
+			if (is_sys_manager) {
+				return status === "Closed";
+			}
 			return status === "Closed" && (!assigned || assigned === user);
 		}
 		if (this.current_filter === "all") {
+			if (is_sys_manager) {
+				return ["Queued", "Assigned", "Active", "Closed", "Expired"].includes(status);
+			}
 			return ["Queued", "Assigned", "Active", "Closed", "Expired"].includes(status) && (!assigned || assigned === user);
+		}
+		if (is_sys_manager) {
+			return true;
 		}
 		return (!assigned || assigned === user);
 	},

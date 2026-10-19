@@ -13,6 +13,8 @@ from ai_workplace.whatsapp.sender import (
     _build_http_session,
     send_interactive_message,
     send_text_message,
+    _resolve_baileys_session,
+    _transform_to_baileys,
 )
 
 
@@ -233,3 +235,78 @@ class TestWhatsAppSender(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(captured["type"], "interactive")
         self.assertEqual(captured["interactive_type"], "list")
+
+    @patch("frappe.get_all")
+    def test_resolve_baileys_session_micromerger(self, mock_get_all):
+        """13. Test resolving Baileys session for MicroMerger."""
+        def fake_get_all(doctype, filters=None, fields=None, limit=None):
+            if doctype == "Whatsapp Session":
+                sessions = [
+                    {"name": "923111123702", "email": "923111123702", "phone_number": "923111123702", "session_id": "923111123702", "full_name": "Micromerger Staff Support"},
+                    {"name": "Administrator", "email": "administrator", "phone_number": "923184221489", "session_id": "Administrator", "full_name": "MicroMerger"},
+                ]
+                if filters:
+                    matched = [s for s in sessions if all(str(s.get(k, "")).lower() == str(v).lower() for k, v in filters.items())]
+                    return matched[:limit] if limit else matched
+                return sessions[:limit] if limit else sessions
+            return []
+        mock_get_all.side_effect = fake_get_all
+
+        sess = _resolve_baileys_session(receiver_name="MicroMerger")
+        self.assertEqual(sess["receiver"], "923184221489")
+        self.assertEqual(sess["session_id"], "Administrator")
+        self.assertEqual(sess["username"], "Administrator")
+        self.assertEqual(sess["receiver_name"], "MicroMerger")
+
+    @patch("frappe.get_all")
+    def test_resolve_baileys_session_staff_support(self, mock_get_all):
+        """14. Test resolving Baileys session for Micromerger Staff Support."""
+        def fake_get_all(doctype, filters=None, fields=None, limit=None):
+            if doctype == "Whatsapp Session":
+                sessions = [
+                    {"name": "923111123702", "email": "923111123702", "phone_number": "923111123702", "session_id": "923111123702", "full_name": "Micromerger Staff Support"},
+                    {"name": "Administrator", "email": "administrator", "phone_number": "923184221489", "session_id": "Administrator", "full_name": "MicroMerger"},
+                ]
+                if filters:
+                    matched = [s for s in sessions if all(str(s.get(k, "")).lower() == str(v).lower() for k, v in filters.items())]
+                    return matched[:limit] if limit else matched
+                return sessions[:limit] if limit else sessions
+            return []
+        mock_get_all.side_effect = fake_get_all
+
+        sess = _resolve_baileys_session(receiver_name="Micromerger Staff Support")
+        self.assertEqual(sess["receiver"], "923111123702")
+        self.assertEqual(sess["session_id"], "923111123702")
+        self.assertEqual(sess["username"], "923111123702")
+        self.assertEqual(sess["receiver_name"], "Micromerger Staff Support")
+
+    @patch("frappe.get_all")
+    def test_transform_to_baileys_multi_session(self, mock_get_all):
+        """15. Test transforming payload to Baileys with separate bot sessions."""
+        def fake_get_all(doctype, filters=None, fields=None, limit=None):
+            if doctype == "Whatsapp Session":
+                sessions = [
+                    {"name": "923111123702", "email": "923111123702", "phone_number": "923111123702", "session_id": "923111123702", "full_name": "Micromerger Staff Support"},
+                    {"name": "Administrator", "email": "administrator", "phone_number": "923184221489", "session_id": "Administrator", "full_name": "MicroMerger"},
+                ]
+                if filters:
+                    matched = [s for s in sessions if all(str(s.get(k, "")).lower() == str(v).lower() for k, v in filters.items())]
+                    return matched[:limit] if limit else matched
+                return sessions[:limit] if limit else sessions
+            return []
+        mock_get_all.side_effect = fake_get_all
+
+        payload = {"to": "923001234567", "type": "text", "text": {"body": "Test"}}
+        out_mm = _transform_to_baileys(payload, receiver_name="MicroMerger")
+        self.assertEqual(out_mm["username"], "Administrator")
+        self.assertEqual(out_mm["session_id"], "Administrator")
+        self.assertEqual(out_mm["receiver"], "923184221489")
+        self.assertEqual(out_mm["receiver_number"], "923184221489")
+        self.assertEqual(out_mm["receiver_name"], "MicroMerger")
+
+        out_ss = _transform_to_baileys(payload, receiver_name="Micromerger Staff Support")
+        self.assertEqual(out_ss["username"], "923111123702")
+        self.assertEqual(out_ss["session_id"], "923111123702")
+        self.assertEqual(out_ss["receiver"], "923111123702")
+        self.assertEqual(out_ss["receiver_number"], "923111123702")
+        self.assertEqual(out_ss["receiver_name"], "Micromerger Staff Support")

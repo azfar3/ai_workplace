@@ -307,6 +307,46 @@ def _process_receive():
         )
         return Response("ok", status=200, mimetype="text/plain")
 
+    wa_id = parsed.get("wa_id", "")
+    raw_phone = parsed.get("phone_number", wa_id)
+    inbound_text_preview = (parsed.get("text") or "").strip()
+
+    # Guard against bot self-echo and infinite loops across all message types
+    clean_sender = "".join(filter(str.isdigit, raw_phone or wa_id or ""))
+    is_echo = False
+    if clean_sender.endswith("3111123702"):
+        is_echo = True
+    elif inbound_text_preview and (
+        inbound_text_preview.startswith("📋 *All Staff Services*")
+        or inbound_text_preview.startswith("📋 All Staff Services")
+        or inbound_text_preview.startswith("Welcome to *MicroMerger Staff Support*")
+    ):
+        is_echo = True
+    else:
+        try:
+            hr_phone = "".join(filter(str.isdigit, frappe.db.get_single_value("AI Workplace Settings", "hr_contact_phone") or ""))
+            if hr_phone and len(hr_phone) >= 7 and (clean_sender == hr_phone or clean_sender.endswith(hr_phone[-9:])):
+                is_echo = True
+        except Exception:
+            pass
+
+        if not is_echo:
+            try:
+                bot_sessions = frappe.get_all("Whatsapp Session", fields=["phone_number", "session_id", "email"])
+                for bs in bot_sessions:
+                    b_phone = "".join(filter(str.isdigit, bs.phone_number or ""))
+                    if b_phone and len(b_phone) >= 7 and (clean_sender == b_phone or clean_sender.endswith(b_phone[-9:])):
+                        is_echo = True
+                        break
+            except Exception:
+                pass
+
+    if is_echo:
+        frappe.logger("ai_workplace").info(
+            f"AI Workplace [{trace_id}]: Dropping self-echo / bot-loop message from {clean_sender}"
+        )
+        return Response("ok", status=200, mimetype="text/plain")
+
     if message_type in MEDIA_TYPES:
         return _process_inbound_media(parsed, trace_id)
 
@@ -315,8 +355,6 @@ def _process_receive():
 
     # ── 5. Idempotency check ──────────────────────────────────────────────────
     message_id = parsed.get("message_id", "")
-    wa_id = parsed.get("wa_id", "")
-    raw_phone = parsed.get("phone_number", wa_id)
 
     if _is_duplicate(message_id):
         frappe.logger("ai_workplace").info(
@@ -334,6 +372,9 @@ def _process_receive():
     # ── 5b. Identity resolution (before log for PIN redaction) ─────────────────
     sender_name = parsed.get("sender_name", "")
     receiver_name = parsed.get("receiver_name", "")
+    receiver = parsed.get("receiver") or parsed.get("receiver_number") or ""
+    session_id = parsed.get("session_id", "")
+    username = parsed.get("username", "")
 
     identity = resolve_identity(raw_phone)
     if identity.status == "guest" and sender_name:
@@ -363,7 +404,7 @@ def _process_receive():
         meta_message_id=message_id,
         direction="Inbound",
         sender=raw_phone,
-        recipient="",
+        recipient=receiver or "",
         wa_id=wa_id,
         message_type=message_type,
         message=log_message,
@@ -408,6 +449,8 @@ def _process_receive():
     except Exception:
         pass
 
+    session_name = parsed.get("session_name") or parsed.get("receiving_session") or parsed.get("receiver_name") or ""
+
     if use_async:
         frappe.enqueue(
             "ai_workplace.api.whatsapp_webhook.process_async_whatsapp_message",
@@ -422,6 +465,10 @@ def _process_receive():
             trace_id=trace_id,
             sender_name=sender_name,
             receiver_name=receiver_name,
+            session_name=session_name,
+            receiver=receiver,
+            session_id=session_id,
+            username=username,
         )
         frappe.logger("ai_workplace").info(
             f"AI Workplace [{trace_id}]: Enqueued background job for message_id={message_id}"
@@ -435,20 +482,20 @@ def _process_receive():
         append_inbound_message,
     )
 
-    session_name = get_active_session_for_identity(wa_identity_name)
-    if session_name:
-        session = get_session_doc(session_name)
-        if session.ready_for_hr and session.status in ("Queued", "Assigned", "Active"):
+    hr_session_name = get_active_session_for_identity(wa_identity_name)
+    if hr_session_name:
+        hr_session = get_session_doc(hr_session_name)
+        if hr_session.ready_for_hr and hr_session.status in ("Queued", "Assigned", "Active"):
             if not is_hr_session_exit_command(inbound_text):
                 _finalize_log(inbound_log, status="Received")
                 append_inbound_message(
-                    session,
+                    hr_session,
                     inbound_text,
                     meta_message_id=message_id,
                     message_type=message_type,
                 )
                 frappe.logger("ai_workplace").info(
-                    f"AI Workplace [{trace_id}]: Routed inbound text to active HR session {session_name} without bot reply."
+                    f"AI Workplace [{trace_id}]: Routed inbound text to active HR session {hr_session_name} without bot reply."
                 )
                 return Response("ok", status=200, mimetype="text/plain")
 
@@ -485,9 +532,25 @@ def _process_receive():
     if skip_send:
         send_result = {"success": True, "message_id": "", "skipped": True}
     else:
+        if isinstance(outbound, OutboundMessage):
+            if session_name and not outbound.session_name:
+                outbound.session_name = session_name
+            if receiver and not outbound.receiver:
+                outbound.receiver = receiver
+            if receiver_name and not outbound.receiver_name:
+                outbound.receiver_name = receiver_name
+            if session_id and not outbound.session_id:
+                outbound.session_id = session_id
+            if username and not outbound.username:
+                outbound.username = username
         send_result = send_message(
             phone_number=identity.normalized_phone,
             outbound=outbound,
+            session_name=session_name,
+            receiver=receiver,
+            receiver_name=receiver_name,
+            session_id=session_id,
+            username=username,
         )
     _maybe_store_attendance_location_request_id(
         identity, outbound, send_result, wa_id=wa_id, trace_id=trace_id
@@ -521,7 +584,7 @@ def _process_receive():
         _create_message_log(
             meta_message_id=send_result.get("message_id") or "",
             direction="Outbound",
-            sender="",
+            sender=receiver or "",
             recipient=identity.normalized_phone,
             wa_id=wa_id,
             message_type=outbound_type,
@@ -534,7 +597,7 @@ def _process_receive():
             latency=latency_ms,
             error=outbound_error,
             sender_type="System",
-            sender_name="System",
+            sender_name=receiver_name or "System",
             receiver_name=sender_name,
         )
 
@@ -556,6 +619,11 @@ def process_async_whatsapp_message(
     trace_id: str = "",
     sender_name: str = "",
     receiver_name: str = "",
+    session_name: str = "",
+    receiver: str = "",
+    session_id: str = "",
+    username: str = "",
+    **kwargs,
 ) -> dict[str, Any]:
     """
     Background worker job for processing incoming WhatsApp messages asynchronously.
@@ -604,28 +672,37 @@ def process_async_whatsapp_message(
 
     inbound_log = frappe.get_doc("WhatsApp Message Log", inbound_log_name)
 
+    if not receiver and getattr(inbound_log, "recipient", None):
+        receiver = inbound_log.recipient
+    if not receiver_name and getattr(inbound_log, "receiver_name", None):
+        receiver_name = inbound_log.receiver_name
+    if not sender_name and getattr(inbound_log, "sender_name", None):
+        sender_name = inbound_log.sender_name
+    if not session_name:
+        session_name = receiver_name or receiver or ""
+
     from ai_workplace.services.hr_chat import (
         get_active_session_for_identity,
         get_session_doc,
         append_inbound_message,
     )
 
-    session_name = get_active_session_for_identity(
+    hr_session_name = get_active_session_for_identity(
         wa_identity_name, employee=identity.employee or "", wa_id=wa_id or ""
     )
-    if session_name:
-        session = get_session_doc(session_name)
-        if session.ready_for_hr and session.status in ("Queued", "Assigned", "Active"):
+    if hr_session_name:
+        hr_session = get_session_doc(hr_session_name)
+        if hr_session.ready_for_hr and hr_session.status in ("Queued", "Assigned", "Active"):
             if not is_hr_session_exit_command(message_text):
                 _finalize_log(inbound_log, status="Received")
                 append_inbound_message(
-                    session,
+                    hr_session,
                     message_text,
                     meta_message_id=message_id,
                     message_type="text",
                 )
                 frappe.logger("ai_workplace").info(
-                    f"AI Workplace [{trace_id}]: Routed async inbound text to active HR session {session_name} without bot reply."
+                    f"AI Workplace [{trace_id}]: Routed async inbound text to active HR session {hr_session_name} without bot reply."
                 )
                 frappe.cache().set_value(lock_key, "1")
                 return {"success": True}
@@ -664,9 +741,26 @@ def process_async_whatsapp_message(
     if skip_send:
         send_result = {"success": True, "message_id": "", "skipped": True}
     else:
+        effective_session = session_name or receiver_name or ""
+        if isinstance(outbound, OutboundMessage):
+            if effective_session and not outbound.session_name:
+                outbound.session_name = effective_session
+            if receiver and not outbound.receiver:
+                outbound.receiver = receiver
+            if receiver_name and not outbound.receiver_name:
+                outbound.receiver_name = receiver_name
+            if session_id and not outbound.session_id:
+                outbound.session_id = session_id
+            if username and not outbound.username:
+                outbound.username = username
         send_result = send_message(
             phone_number=identity.normalized_phone,
             outbound=outbound,
+            session_name=effective_session,
+            receiver=receiver,
+            receiver_name=receiver_name,
+            session_id=session_id,
+            username=username,
         )
     _maybe_store_attendance_location_request_id(
         identity, outbound, send_result, wa_id=wa_id, trace_id=trace_id
@@ -693,7 +787,7 @@ def process_async_whatsapp_message(
         _create_message_log(
             meta_message_id=send_result.get("message_id") or "",
             direction="Outbound",
-            sender="",
+            sender=receiver or "",
             recipient=identity.normalized_phone,
             wa_id=wa_id,
             message_type=outbound_type,
@@ -706,7 +800,7 @@ def process_async_whatsapp_message(
             latency=latency_ms,
             error=outbound_error,
             sender_type="System",
-            sender_name="System",
+            sender_name=receiver_name or "System",
             receiver_name=sender_name,
         )
 
@@ -997,6 +1091,9 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
 
     sender_name = parsed.get("sender_name", "")
     receiver_name = parsed.get("receiver_name", "")
+    receiver = parsed.get("receiver") or parsed.get("receiver_number") or ""
+    session_id = parsed.get("session_id", "")
+    username = parsed.get("username", "")
     
     identity = resolve_identity(raw_phone)
     if identity.status == "guest" and sender_name:
@@ -1030,7 +1127,7 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
         meta_message_id=message_id,
         direction="Inbound",
         sender=raw_phone,
-        recipient="",
+        recipient=receiver or "",
         wa_id=wa_id,
         message_type=message_type,
         message=display_message,
@@ -1141,15 +1238,33 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
                 )
             )
 
+        session_name = parsed.get("session_name") or parsed.get("receiving_session") or parsed.get("receiver_name") or ""
         if outbound is not None:
+            if isinstance(outbound, OutboundMessage):
+                if session_name and not outbound.session_name:
+                    outbound.session_name = session_name
+                if receiver and not outbound.receiver:
+                    outbound.receiver = receiver
+                if receiver_name and not outbound.receiver_name:
+                    outbound.receiver_name = receiver_name
+                if session_id and not outbound.session_id:
+                    outbound.session_id = session_id
+                if username and not outbound.username:
+                    outbound.username = username
             _finalize_log(inbound_log, status="Received")
             send_result = send_message(
-                phone_number=identity.normalized_phone, outbound=outbound
+                phone_number=identity.normalized_phone,
+                outbound=outbound,
+                session_name=session_name,
+                receiver=receiver,
+                receiver_name=receiver_name,
+                session_id=session_id,
+                username=username,
             )
             _create_message_log(
                 meta_message_id=send_result.get("message_id") or "",
                 direction="Outbound",
-                sender="",
+                sender=receiver or "",
                 recipient=identity.normalized_phone,
                 wa_id=wa_id,
                 message_type=(
@@ -1165,7 +1280,7 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
                 status="Sent" if send_result.get("success") else "Failed",
                 trace_id=trace_id,
                 sender_type="System",
-                sender_name="System",
+                sender_name=receiver_name or "System",
                 receiver_name=sender_name,
             )
             frappe.logger("ai_workplace").info(
@@ -1185,14 +1300,31 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
         error=media_result.get("error") or "download failed",
     )
     if fail_out is not None:
+        if isinstance(fail_out, OutboundMessage):
+            if session_name and not fail_out.session_name:
+                fail_out.session_name = session_name
+            if receiver and not fail_out.receiver:
+                fail_out.receiver = receiver
+            if receiver_name and not fail_out.receiver_name:
+                fail_out.receiver_name = receiver_name
+            if session_id and not fail_out.session_id:
+                fail_out.session_id = session_id
+            if username and not fail_out.username:
+                fail_out.username = username
         _finalize_log(inbound_log, status="Received")
         send_result = send_message(
-            phone_number=identity.normalized_phone, outbound=fail_out
+            phone_number=identity.normalized_phone,
+            outbound=fail_out,
+            session_name=session_name,
+            receiver=receiver,
+            receiver_name=receiver_name,
+            session_id=session_id,
+            username=username,
         )
         _create_message_log(
             meta_message_id=send_result.get("message_id") or "",
             direction="Outbound",
-            sender="",
+            sender=receiver or "",
             recipient=identity.normalized_phone,
             wa_id=wa_id,
             message_type="text",
@@ -1201,6 +1333,9 @@ def _process_inbound_media(parsed: dict, trace_id: str) -> Response:
             ),
             status="Sent" if send_result.get("success") else "Failed",
             trace_id=trace_id,
+            sender_type="System",
+            sender_name=receiver_name or "System",
+            receiver_name=sender_name,
         )
         return Response("ok", status=200, mimetype="text/plain")
 
@@ -1262,6 +1397,9 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
 
     sender_name = parsed.get("sender_name", "")
     receiver_name = parsed.get("receiver_name", "")
+    receiver = parsed.get("receiver") or parsed.get("receiver_number") or ""
+    session_id = parsed.get("session_id", "")
+    username = parsed.get("username", "")
     
     identity = resolve_identity(raw_phone)
     if identity.status == "guest" and sender_name:
@@ -1290,12 +1428,14 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
         meta_message_id=message_id,
         direction="Inbound",
         sender=raw_phone,
-        recipient="",
+        recipient=receiver or "",
         wa_id=wa_id,
         message_type="location",
         message=loc_text,
         status="Processing",
         trace_id=trace_id,
+        sender_name=sender_name,
+        receiver_name=receiver_name,
     )
     _update_log_identity(inbound_log, identity)
 
@@ -1351,10 +1491,28 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
             body_text=_("Sorry, we could not process your location. Please try again.")
         )
 
+    session_name = parsed.get("session_name") or parsed.get("receiving_session") or parsed.get("receiver_name") or ""
     if outbound is not None:
+        if isinstance(outbound, OutboundMessage):
+            if session_name and not outbound.session_name:
+                outbound.session_name = session_name
+            if receiver and not outbound.receiver:
+                outbound.receiver = receiver
+            if receiver_name and not outbound.receiver_name:
+                outbound.receiver_name = receiver_name
+            if session_id and not outbound.session_id:
+                outbound.session_id = session_id
+            if username and not outbound.username:
+                outbound.username = username
         _finalize_log(inbound_log, status="Received")
         send_result = send_message(
-            phone_number=identity.normalized_phone, outbound=outbound
+            phone_number=identity.normalized_phone,
+            outbound=outbound,
+            session_name=session_name,
+            receiver=receiver,
+            receiver_name=receiver_name,
+            session_id=session_id,
+            username=username,
         )
         _maybe_store_attendance_location_request_id(
             identity, outbound, send_result, wa_id=wa_id, trace_id=trace_id
@@ -1362,7 +1520,7 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
         _create_message_log(
             meta_message_id=send_result.get("message_id") or "",
             direction="Outbound",
-            sender="",
+            sender=receiver or "",
             recipient=identity.normalized_phone,
             wa_id=wa_id,
             message_type=(
@@ -1373,6 +1531,9 @@ def _process_inbound_location(parsed: dict, trace_id: str) -> Response:
             ),
             status="Sent" if send_result.get("success") else "Failed",
             trace_id=trace_id,
+            sender_type="System",
+            sender_name=receiver_name or "System",
+            receiver_name=sender_name,
         )
     else:
         _finalize_log(inbound_log, status="Received")

@@ -10,6 +10,17 @@ _KEYWORD_ROUTES: list[tuple[tuple[str, ...], str]] = [
     (("leave balance", "apply leave", "leave request", "chutti", "leave"), "attendance_leave"),
     (("check in", "checkin", "check out", "checkout", "attendance", "hazri"), "attendance_leave"),
     (("travel", "dsa", "safar", "claim"), "travel"),
+    (
+        (
+            "experience letter",
+            "experience certificate",
+            "service letter",
+            "service certificate",
+            "tajurba certificate",
+            "tajurba letter",
+        ),
+        "pay_experience_letter",
+    ),
     (("contract", "document", "letter", "certificate"), "documents"),
     (("profile", "supervisor", "my hr", "update details"), "hr"),
     (("policy", "policies", "sop"), "policies"),

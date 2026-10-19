@@ -1439,8 +1439,15 @@ def send_hr_reply(
         cfg = frappe.get_single("AI Workplace Settings")
         is_custom = cfg.get("custom_whatsapp_api_enabled")
 
+        session_name = None
+        if session.whatsapp_identity:
+            try:
+                session_name = frappe.db.get_value("WhatsApp Identity", session.whatsapp_identity, "receiver_name")
+            except Exception:
+                pass
+
         if is_custom:
-            result = send_message(phone, OutboundMessage(body_text=text))
+            result = send_message(phone, OutboundMessage(body_text=text), session_name=session_name)
             
             end_instruction = "To end your chat with HR, type *1*"
             if lang == "Urdu":
@@ -1448,7 +1455,7 @@ def send_hr_reply(
             elif lang == "Roman Urdu":
                 end_instruction = "HR ke sath apni chat khatam karne ke liye *1* type karein"
                 
-            send_message(phone, OutboundMessage(body_text=end_instruction))
+            send_message(phone, OutboundMessage(body_text=end_instruction), session_name=session_name)
         else:
             outbound_msg = build_button_message(
                 body=text,
@@ -1456,7 +1463,7 @@ def send_hr_reply(
                     {"id": "svc_end_hr_chat", "title": btn_title[:20]},
                 ]
             )
-            result = send_message(phone, outbound_msg)
+            result = send_message(phone, outbound_msg, session_name=session_name)
 
     now = _now()
     session.last_hr_reply_at = now
@@ -1501,6 +1508,16 @@ def send_hr_reply(
         "message_id": result.get("message_id"),
         "session": _session_payload(session),
     }
+
+
+def is_system_manager(user: Optional[str] = None) -> bool:
+    """Return True if user has the System Manager role (or is Administrator)."""
+    user = user or frappe.session.user
+    if not user:
+        return False
+    if user == "Administrator":
+        return True
+    return "System Manager" in frappe.get_roles(user)
 
 
 def is_admin_or_system_manager(user: Optional[str] = None) -> bool:
@@ -1707,8 +1724,26 @@ def get_inbox_sessions(
     or_filters: Optional[list[dict[str, Any]]] = None
 
     access_role = get_hr_agent_role_access(user)
+    sys_manager = is_system_manager(user)
 
-    if access_role == "Assigned HR User (View & Reply Assigned Only)":
+    if sys_manager:
+        # System Manager sees all chats: assigned to him, not assigned, or assigned to someone else
+        if status_filter == "queue":
+            filters["status"] = "Queued"
+            or_filters = [{"assigned_to": ["is", "not set"]}]
+        elif status_filter == "mine":
+            filters["assigned_to"] = user
+            filters["status"] = ["in", ["Assigned", "Active"]]
+        elif status_filter == "closed":
+            filters["status"] = "Closed"
+            or_filters = None
+        elif status_filter == "expired":
+            filters["status"] = "Expired"
+            or_filters = None
+        else:
+            filters["status"] = ["in", list(INBOX_STATUSES)]
+            or_filters = None
+    elif access_role == "Assigned HR User (View & Reply Assigned Only)":
         filters["assigned_to"] = user
         if status_filter in ("queue", "mine"):
             filters["status"] = ["in", ["Assigned", "Active"]]
@@ -1719,6 +1754,7 @@ def get_inbox_sessions(
         else:
             filters["status"] = ["in", list(INBOX_STATUSES)]
     else:
+        # Regular HR agents / users can only see chats that are assigned to them or not assigned
         if status_filter == "queue":
             filters["status"] = "Queued"
             or_filters = [{"assigned_to": ["is", "not set"]}]
@@ -1900,6 +1936,7 @@ def get_inbox_tab_counts() -> dict[str, int]:
     """Return badge counts for inbox tabs (My Chats, Queue, Closed, All)."""
     user = frappe.session.user
     access_role = get_hr_agent_role_access(user)
+    sys_manager = is_system_manager(user)
 
     # Queue count
     queue_filters = _inbox_base_filters()
@@ -1932,7 +1969,9 @@ def get_inbox_tab_counts() -> dict[str, int]:
     # Closed count
     closed_filters = _inbox_base_filters()
     closed_filters["status"] = "Closed"
-    if access_role == "Assigned HR User (View & Reply Assigned Only)":
+    if sys_manager:
+        closed_or_filters = None
+    elif access_role == "Assigned HR User (View & Reply Assigned Only)":
         closed_filters["assigned_to"] = user
         closed_or_filters = None
     else:
@@ -1948,7 +1987,9 @@ def get_inbox_tab_counts() -> dict[str, int]:
     # All unread count
     all_filters = _inbox_base_filters()
     all_filters["status"] = ["in", list(INBOX_STATUSES)]
-    if access_role == "Assigned HR User (View & Reply Assigned Only)":
+    if sys_manager:
+        all_or_filters = None
+    elif access_role == "Assigned HR User (View & Reply Assigned Only)":
         all_filters["assigned_to"] = user
         all_or_filters = None
     else:

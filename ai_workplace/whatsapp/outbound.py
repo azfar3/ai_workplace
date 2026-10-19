@@ -23,6 +23,11 @@ class OutboundMessage:
     document_filename: str = ""
     document_mimetype: str = ""
     document_caption: str = ""
+    session_name: str = ""
+    receiver: str = ""
+    receiver_name: str = ""
+    username: str = ""
+    session_id: str = ""
 
     def is_interactive(self) -> bool:
         return bool(self.interactive)

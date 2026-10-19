@@ -118,6 +118,70 @@ class TestPayrollServices(unittest.TestCase):
         msg = build_salary_slip_not_found(self.context_en, 6)
         self.assertIn("6 month", msg)
 
+    def test_payroll_handler_can_handle_experience_letters(self):
+        from ai_workplace.conversation.handlers.payroll import PayrollHandler
+
+        handler = PayrollHandler()
+        self.assertTrue(handler.can_handle("pay_experience_letter", "awaiting_selection"))
+        self.assertTrue(handler.can_handle("svc_pay_experience_letter", "awaiting_selection"))
+        self.assertTrue(handler.can_handle("doc_experience_letter", "awaiting_selection"))
+        self.assertTrue(handler.can_handle("former_letter", "awaiting_selection"))
+        self.assertTrue(handler.can_handle("experience_letter", "awaiting_selection"))
+
+    @patch("ai_workplace.conversation.handlers.payroll.log_ai_action")
+    @patch("ai_workplace.conversation.handlers.payroll.update_conversation")
+    @patch("ai_workplace.services.employee_letters.generate_experience_letter_pdf")
+    def test_payroll_handler_experience_letter_success(self, mock_gen_pdf, mock_update, mock_log):
+        from ai_workplace.conversation.handlers.payroll import PayrollHandler
+
+        mock_gen_pdf.return_value = (b"%PDF-experience", "Experience_Letter_EMP-001.pdf")
+        handler = PayrollHandler()
+        mock_conv = MagicMock()
+        mock_conv.name = "CONV-001"
+        mock_conv.whatsapp_identity = "+923001234567"
+        mock_conv.erp_user = "test@example.com"
+        mock_conv.employee = "EMP-001"
+        mock_conv.active_service = "payroll"
+
+        outbound = handler.handle(
+            conv=mock_conv,
+            intent="pay_experience_letter",
+            clean_text="experience letter",
+            context=self.context_en,
+            trace_id="test-trace-123",
+        )
+        self.assertIsNotNone(outbound)
+        self.assertTrue(outbound.has_document())
+        self.assertEqual(outbound.document_filename, "Experience_Letter_EMP-001.pdf")
+        mock_gen_pdf.assert_called_once_with("EMP-001")
+
+    @patch("ai_workplace.conversation.handlers.payroll.log_ai_action")
+    @patch("ai_workplace.conversation.handlers.payroll.update_conversation")
+    @patch("ai_workplace.services.employee_letters.generate_experience_letter_pdf")
+    def test_payroll_handler_experience_letter_error_fallback(self, mock_gen_pdf, mock_update, mock_log):
+        from ai_workplace.conversation.handlers.payroll import PayrollHandler
+
+        mock_gen_pdf.side_effect = Exception("Template missing")
+        handler = PayrollHandler()
+        mock_conv = MagicMock()
+        mock_conv.name = "CONV-001"
+        mock_conv.whatsapp_identity = "+923001234567"
+        mock_conv.erp_user = "test@example.com"
+        mock_conv.employee = "EMP-001"
+        mock_conv.active_service = "payroll"
+
+        outbound = handler.handle(
+            conv=mock_conv,
+            intent="pay_experience_letter",
+            clean_text="experience letter",
+            context=self.context_en,
+            trace_id="test-trace-123",
+        )
+        self.assertIsNotNone(outbound)
+        self.assertFalse(outbound.has_document())
+        self.assertIn("couldn't generate your Experience Letter PDF", outbound.body_text)
+
 
 if __name__ == "__main__":
     unittest.main()
+

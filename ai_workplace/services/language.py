@@ -30,10 +30,38 @@ for _lang in SUPPORTED_LANGUAGES:
     _LANG_ALIASES[_lang["canonical"].lower()] = _lang["canonical"]
     _LANG_ALIASES[_lang["code"]] = _lang["canonical"]
 
+# Explicit aliases including numbered list choices (1. English, 2. Urdu, 3. Roman Urdu)
+_ADDITIONAL_ALIASES: dict[str, str] = {
+    "1": "English",
+    "1.": "English",
+    "1۔": "English",
+    "1️⃣": "English",
+    "۱": "English",
+    "eng": "English",
+    "english": "English",
+    "angrezi": "English",
+    "2": "Urdu",
+    "2.": "Urdu",
+    "2۔": "Urdu",
+    "2️⃣": "Urdu",
+    "۲": "Urdu",
+    "urdu": "Urdu",
+    "اردو": "Urdu",
+    "3": "Roman Urdu",
+    "3.": "Roman Urdu",
+    "3۔": "Roman Urdu",
+    "3️⃣": "Roman Urdu",
+    "۳": "Roman Urdu",
+    "roman": "Roman Urdu",
+    "roman urdu": "Roman Urdu",
+    "roman_urdu": "Roman Urdu",
+}
+_LANG_ALIASES.update(_ADDITIONAL_ALIASES)
+
 
 def parse_language_selection(user_input: str) -> Optional[str]:
     """
-    Parse language choice from button id or free text.
+    Parse language choice from button id, menu number (1, 2, 3), or free text.
     Returns canonical language name (English / Urdu / Roman Urdu) or None.
     """
     if not user_input:
@@ -41,8 +69,28 @@ def parse_language_selection(user_input: str) -> Optional[str]:
     clean = user_input.strip().lower()
     if clean in _LANG_ALIASES:
         return _LANG_ALIASES[clean]
-    if clean.replace("_", " ") in _LANG_ALIASES:
-        return _LANG_ALIASES[clean.replace("_", " ")]
+
+    clean_stripped = clean.rstrip(".").rstrip("۔").strip()
+    if clean_stripped in _LANG_ALIASES:
+        return _LANG_ALIASES[clean_stripped]
+
+    normalized = clean.replace("_", " ")
+    if normalized in _LANG_ALIASES:
+        return _LANG_ALIASES[normalized]
+
+    normalized_stripped = clean_stripped.replace("_", " ")
+    if normalized_stripped in _LANG_ALIASES:
+        return _LANG_ALIASES[normalized_stripped]
+
+    # Handle digit extraction if user typed e.g. "option 1" or "#1"
+    digit_trans = str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")
+    digit_clean = clean.translate(digit_trans)
+    import re
+    match = re.search(r"\b([1-3])\b", digit_clean)
+    if match:
+        digit = match.group(1)
+        return {"1": "English", "2": "Urdu", "3": "Roman Urdu"}.get(digit)
+
     return None
 
 

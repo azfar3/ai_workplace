@@ -11,8 +11,23 @@ class PayrollHandler:
         return (
             clean.startswith("pay_")
             or intent.startswith("svc_pay_")
-            or clean in ("former_payslip", "pay_slip", "pay_previous_slips", "pay_slip_latest", "pay_slip_3m", "pay_slip_6m", "latest_salary_slip", "my_salary", "tax_deductions")
-            or clean in ("tax_cert_current", "tax_cert_previous", "tax_cert_latest")
+            or clean in (
+                "former_payslip",
+                "former_letter",
+                "doc_experience_letter",
+                "experience_letter",
+                "pay_slip",
+                "pay_previous_slips",
+                "pay_slip_latest",
+                "pay_slip_3m",
+                "pay_slip_6m",
+                "latest_salary_slip",
+                "my_salary",
+                "tax_deductions",
+                "tax_cert_current",
+                "tax_cert_previous",
+                "tax_cert_latest",
+            )
         )
 
     def handle(self, conv: Any, intent: str, clean_text: str, context: Dict[str, Any], trace_id: str) -> Optional[OutboundMessage]:
@@ -95,12 +110,53 @@ class PayrollHandler:
             try:
                 pdf_bytes, filename = generate_bank_letter_pdf(context.get("employee", ""), bank_name)
                 caption = f"📄 Bank Letter for {bank_name}"
-                outbound = build_letter_download_outbound(context, pdf_bytes, filename, caption)
+                outbound = build_letter_download_outbound(context, pdf_bytes, filename, caption, parent_key="payroll")
             except Exception:
                 err = build_letter_download_error(context, "Bank Letter")
                 from ai_workplace.services.response_helpers import wrap_with_parent_menu
                 outbound = wrap_with_parent_menu(err, context, "payroll")
             action = "download_bank_letter"
+
+        elif clean_intent in (
+            "pay_experience_letter",
+            "doc_experience_letter",
+            "former_letter",
+            "experience_letter",
+        ):
+            from ai_workplace.services.employee_letters import (
+                generate_experience_letter_pdf,
+                build_letter_download_outbound,
+                build_letter_download_error,
+            )
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
+            emp_id = context.get("employee") or ""
+            lang = context.get("preferred_language", "English")
+            if lang == "Urdu":
+                caption = "📄 آپ کا *تجربہ سرٹیفکیٹ* منسلک ہے۔"
+            elif lang == "Roman Urdu":
+                caption = "📄 Aap ka *Experience Letter* munsalik hai."
+            else:
+                caption = "📄 Your *Experience Letter* is attached."
+
+            parent_key = (
+                "main_menu"
+                if clean_intent == "former_letter"
+                else (
+                    "documents"
+                    if ("doc_" in clean_intent or getattr(conv, "active_service", None) == "documents")
+                    else "payroll"
+                )
+            )
+            try:
+                pdf_bytes, filename = generate_experience_letter_pdf(emp_id)
+                outbound = build_letter_download_outbound(context, pdf_bytes, filename, caption, parent_key=parent_key)
+            except Exception:
+                import frappe
+                frappe.log_error(frappe.get_traceback(), "Experience Letter Generation Failed")
+                err = build_letter_download_error(context, "Experience Letter")
+                from ai_workplace.services.response_helpers import wrap_with_parent_menu
+                outbound = wrap_with_parent_menu(err, context, parent_key)
+            action = "download_experience_letter"
 
         if outbound:
             log_ai_action(

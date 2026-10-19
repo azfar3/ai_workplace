@@ -51,6 +51,11 @@ class TestKeywordRouter(unittest.TestCase):
     def test_hr_chat_routes_to_contact(self):
         self.assertEqual(match_keyword_service("chat with hr"), "contact_hr")
 
+    def test_experience_letter_routes_to_pay_experience_letter(self):
+        self.assertEqual(match_keyword_service("I need my experience letter"), "pay_experience_letter")
+        self.assertEqual(match_keyword_service("download experience certificate"), "pay_experience_letter")
+        self.assertEqual(match_keyword_service("service letter please"), "pay_experience_letter")
+
     def test_short_text_no_match(self):
         self.assertIsNone(match_keyword_service("hi"))
 
