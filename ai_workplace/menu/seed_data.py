@@ -341,8 +341,8 @@ FLOW_GROUP_SPECS: dict[str, list[str]] = {
     "salary_slip_period": ["pay_slip_latest", "pay_slip_3m", "pay_slip_6m"],
     "tax_certificate_period": ["tax_cert_current", "tax_cert_previous", "tax_cert_latest"],
     "bank_letter_select": ["pay_bank_faysal", "pay_bank_scb"],
-    "att_monthly_summary": ["att_monthly_last7", "att_monthly_download", "attendance_leave"],
-    "att_monthly_detail": ["att_monthly_download", "att_monthly", "attendance_leave"],
+    "att_monthly_summary": ["att_monthly_last7", "attendance_leave"],
+    "att_monthly_detail": ["att_monthly", "attendance_leave"],
     "main_nav": ["main_menu"],
 }
 

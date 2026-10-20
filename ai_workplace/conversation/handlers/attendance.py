@@ -30,22 +30,10 @@ class AttendanceHandler:
             action = "view_today_attendance"
             
         elif clean_intent in ("att_monthly", "att_summary"):
-            from ai_workplace.services.attendance_leave import build_monthly_attendance_response, generate_monthly_attendance_excel
+            from ai_workplace.services.attendance_leave import build_monthly_attendance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="attendance_leave")
             resp_text = build_monthly_attendance_response(context)
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
-            
-            try:
-                emp_id = context.get("employee")
-                if emp_id:
-                    file_bytes, file_name = generate_monthly_attendance_excel(emp_id, context.get("full_name", ""))
-                    outbound.document_bytes = file_bytes
-                    outbound.document_filename = file_name
-                    outbound.document_mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            except Exception as e:
-                import frappe
-                frappe.log_error(title="AI Workplace Attendance Excel Error", message=str(e))
-                
             action = "view_monthly_attendance"
             
         elif clean_intent == "att_monthly_last7":
@@ -56,23 +44,12 @@ class AttendanceHandler:
             action = "view_last_7_days_attendance"
             
         elif clean_intent == "att_monthly_download":
-            from ai_workplace.services.attendance_leave import build_monthly_download_caption, generate_monthly_attendance_excel
+            from ai_workplace.services.attendance_leave import build_monthly_attendance_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="attendance_leave")
-            resp_text = build_monthly_download_caption(context)
+            # Keep old/stale download buttons harmless while document export is disabled.
+            resp_text = build_monthly_attendance_response(context)
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
-            
-            try:
-                emp_id = context.get("employee")
-                if emp_id:
-                    file_bytes, file_name = generate_monthly_attendance_excel(emp_id, context.get("full_name", ""))
-                    outbound.document_bytes = file_bytes
-                    outbound.document_filename = file_name
-                    outbound.document_mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            except Exception as e:
-                import frappe
-                frappe.log_error(title="AI Workplace Attendance Excel Error", message=str(e))
-                
-            action = "download_monthly_attendance"
+            action = "view_monthly_attendance"
             
         elif clean_intent == "att_missing":
             from ai_workplace.services.attendance_leave import build_missing_attendance_response

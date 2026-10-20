@@ -289,13 +289,11 @@ def get_flow_menu_items(flow_group: str, context: dict[str, Any]) -> list[dict[s
         if flow_group == "att_monthly_summary":
             ordered = [
                 {"menu_key": "att_monthly_last7", "title": "Last 7 Days", "sequence": 1},
-                {"menu_key": "att_monthly_download", "title": "Download Excel", "sequence": 2},
                 {"menu_key": "att_today", "title": "Today's Status", "sequence": 3},
             ]
         elif flow_group == "att_monthly_detail":
             ordered = [
                 {"menu_key": "att_summary", "title": "Monthly Summary", "sequence": 1},
-                {"menu_key": "att_monthly_download", "title": "Download Excel", "sequence": 2},
                 {"menu_key": "att_today", "title": "Today's Status", "sequence": 3},
             ]
 
