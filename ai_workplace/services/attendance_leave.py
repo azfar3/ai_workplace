@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 from datetime import datetime, date
+from io import BytesIO
+from zipfile import is_zipfile
 
 import frappe
 from frappe.utils import today, getdate, formatdate, flt, cint, add_months, get_first_day, get_last_day, add_days
@@ -971,20 +973,33 @@ def generate_monthly_attendance_excel(employee_id: str, employee_name: str = "")
         xlsx_rows = []
         for row in data:
             if isinstance(row, dict):
-                xlsx_rows.append([row.get(col.get("fieldname", col.get("label", "")))
-                                  if isinstance(col, dict) else row.get(col, "")
-                                  for col in columns])
+                values = []
+                for col in columns:
+                    if isinstance(col, dict):
+                        label = col.get("label", "")
+                        fieldname = col.get("fieldname") or col.get("name") or ""
+                    else:
+                        parts = col.split(":")
+                        label = parts[0]
+                        fieldname = parts[1].split("/")[0] if len(parts) > 1 else ""
+                    value = row.get(fieldname) if fieldname else None
+                    if value is None:
+                        value = row.get(label, row.get(label.lower().replace(" ", "_"), ""))
+                    values.append(value)
+                xlsx_rows.append(values)
             else:
                 xlsx_rows.append(list(row))
         xlsx_data = [xlsx_columns] + xlsx_rows
         xlsx = make_xlsx(xlsx_data, "Monthly Attendance")
+        content = xlsx.getvalue() if hasattr(xlsx, "getvalue") else bytes(xlsx)
+        if not is_zipfile(BytesIO(content)):
+            raise ValueError("Generated attendance workbook is not a valid XLSX file")
     except Exception as e:
         frappe.log_error(title="AI Workplace Excel Error", message=str(e))
         raise RuntimeError("Could not generate monthly attendance Excel file") from e
         
     safe_name = (employee_name or employee_id or "Employee").replace("/", "-").replace(" ", "_")
     filename = f"Monthly_Attendance_{safe_name}_{from_date.strftime('%b%Y')}.xlsx"
-    content = xlsx.getvalue() if hasattr(xlsx, "getvalue") else bytes(xlsx)
     return content, filename
 
 
@@ -1086,6 +1101,9 @@ def build_leave_balance_response(context: dict[str, Any]) -> str:
     emp_id = context.get("employee")
     balances = get_leave_balance_data(emp_id)
     balances = [b for b in balances if flt(b.get("total_allocated", b.get("allocated", 0))) > 0]
+    fy_from, fy_to = get_fiscal_year_leave_period()
+    fy_from_label = formatdate(fy_from, "d MMMM YYYY")
+    fy_to_label = formatdate(fy_to, "d MMMM YYYY")
 
     if lang == "Urdu":
         if not balances:
@@ -1099,7 +1117,7 @@ def build_leave_balance_response(context: dict[str, Any]) -> str:
         ]
         bal_str = "\n\n".join(lines)
         return (
-            f"📊 *آپ کی چھٹیوں کی تفصیل (1 جولائی تا 30 جون)*\n\n"
+            f"📊 *آپ کی چھٹیوں کی تفصیل ({fy_from_label} تا {fy_to_label})*\n\n"
             f"*تفصیل بلحاظ قسم:*\n"
             f"{bal_str}\n\n"
             f"💡 *چھٹی اپلائی کرنے کے لیے 'Apply for Leave' مینو منتخب کریں۔*"
@@ -1117,7 +1135,7 @@ def build_leave_balance_response(context: dict[str, Any]) -> str:
         ]
         bal_str = "\n\n".join(lines)
         return (
-            f"📊 *Aap Ka Leave Balance Summary (1 July - 30 June)*\n\n"
+            f"📊 *Aap Ka Leave Balance Summary ({fy_from_label} - {fy_to_label})*\n\n"
             f"*Category Breakdown*:\n"
             f"{bal_str}\n\n"
             f"💡 *Chhutti apply karne ke liye 'Apply for Leave' select karein.*"
@@ -1135,7 +1153,7 @@ def build_leave_balance_response(context: dict[str, Any]) -> str:
     ]
     bal_str = "\n\n".join(lines)
     return (
-        f"📊 *Your Leave Balance Summary (1 July – 30 June)*\n\n"
+        f"📊 *Your Leave Balance Summary ({fy_from_label} – {fy_to_label})*\n\n"
         f"*Breakdown by Category*:\n"
         f"{bal_str}\n\n"
         f"💡 *To request leave, select 'Apply for Leave' from the Attendance & Leave menu.*"
