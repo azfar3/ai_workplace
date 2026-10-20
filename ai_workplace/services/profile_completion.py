@@ -12,6 +12,7 @@ import frappe
 from ai_workplace.conversation.manager import update_conversation
 from ai_workplace.conversation.state import ConversationState
 from ai_workplace.services.profile_gaps import gap_flow_key, get_employee_profile_gaps
+from ai_workplace.services.response_helpers import wrap_with_parent_menu
 from ai_workplace.whatsapp.outbound import OutboundMessage
 from ai_workplace.whatsapp.interactive import build_button_message
 
@@ -535,8 +536,8 @@ def build_my_requests_response(context: dict[str, Any]) -> OutboundMessage:
 
     pending = get_pending_profile_requests(context.get("employee") or "")
     if not pending:
-        return OutboundMessage(body_text="No pending profile change requests.")
+        return wrap_with_parent_menu("No pending profile change requests.", context, "hr")
     lines = ["📋 *Your Profile Requests*\n"]
     for req in pending:
         lines.append(f"• {req['name']} — {req.get('request_type')} — {req.get('status')}")
-    return OutboundMessage(body_text="\n".join(lines))
+    return wrap_with_parent_menu("\n".join(lines), context, "hr")
