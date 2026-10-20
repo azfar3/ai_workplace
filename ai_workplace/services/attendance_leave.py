@@ -720,8 +720,7 @@ def build_monthly_attendance_response(context: dict[str, Any]) -> str:
             f"👤 **ملازم کا نام:** {context.get('full_name', 'Employee')}\n"
             f"✅ **موجود دن (Present):** {data['present']} دن\n"
             f"❌ **غیر حاضر دن (Absent):** {data['absent']} دن\n"
-            f"🏖️ **چھٹیاں (Leaves):** {data['leave']} دن\n"
-            f"⏱️ **کل ریکارڈر اوقات:** {data['total_hours']:.1f} گھنٹے"
+            f"🏖️ **چھٹیاں (Leaves):** {data['leave']} دن"
         )
 
     if lang == "Roman Urdu":
@@ -730,8 +729,7 @@ def build_monthly_attendance_response(context: dict[str, Any]) -> str:
             f"👤 **Employee:** {context.get('full_name', 'Employee')}\n"
             f"✅ **Present Days:** {data['present']} days\n"
             f"❌ **Absent Days:** {data['absent']} days\n"
-            f"🏖️ **Leaves Taken:** {data['leave']} days\n"
-            f"⏱️ **Total Recorded Hours:** {data['total_hours']:.1f} hrs"
+            f"🏖️ **Leaves Taken:** {data['leave']} days"
         )
 
     return (
@@ -739,8 +737,7 @@ def build_monthly_attendance_response(context: dict[str, Any]) -> str:
         f"👤 **Employee:** {context.get('full_name', 'Employee')}\n"
         f"✅ **Present Days:** {data['present']}\n"
         f"❌ **Absent Days:** {data['absent']}\n"
-        f"🏖️ **Leaves Taken:** {data['leave']}\n"
-        f"⏱️ **Total Recorded Hours:** {data['total_hours']:.1f} hrs"
+        f"🏖️ **Leaves Taken:** {data['leave']}"
     )
 
 
@@ -969,11 +966,21 @@ def generate_monthly_attendance_excel(employee_id: str, employee_name: str = "")
             else:
                 xlsx_columns.append(col.split(":")[0] if ":" in col else col)
                 
-        xlsx_data = [xlsx_columns] + data
+        # Frappe reports may return rows as mappings; make_xlsx expects a
+        # rectangular list of values in the same order as the report columns.
+        xlsx_rows = []
+        for row in data:
+            if isinstance(row, dict):
+                xlsx_rows.append([row.get(col.get("fieldname", col.get("label", "")))
+                                  if isinstance(col, dict) else row.get(col, "")
+                                  for col in columns])
+            else:
+                xlsx_rows.append(list(row))
+        xlsx_data = [xlsx_columns] + xlsx_rows
         xlsx = make_xlsx(xlsx_data, "Monthly Attendance")
     except Exception as e:
         frappe.log_error(title="AI Workplace Excel Error", message=str(e))
-        xlsx = make_xlsx([["Error generating report"]], "Error")
+        raise RuntimeError("Could not generate monthly attendance Excel file") from e
         
     safe_name = (employee_name or employee_id or "Employee").replace("/", "-").replace(" ", "_")
     filename = f"Monthly_Attendance_{safe_name}_{from_date.strftime('%b%Y')}.xlsx"
@@ -1307,4 +1314,3 @@ def get_employee_leave_policy_details(employee_id: str) -> dict[str, Any]:
     except Exception as e:
         frappe.log_error("Leave Policy Tool Error", str(e))
         return res
-
