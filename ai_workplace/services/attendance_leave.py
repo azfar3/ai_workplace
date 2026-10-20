@@ -533,7 +533,17 @@ def get_recent_leave_requests(employee_id: Optional[str]) -> list[dict[str, Any]
         apps = frappe.db.get_all(
             "Leave Application",
             filters={"employee": employee_id, "docstatus": ["!=", 2]},
-            fields=["leave_type", "from_date", "to_date", "total_leave_days", "half_day", "half_day_date", "status"],
+            fields=[
+                "leave_type",
+                "custom_policy_table",
+                "custom_leave_reason",
+                "from_date",
+                "to_date",
+                "total_leave_days",
+                "half_day",
+                "half_day_date",
+                "status",
+            ],
             order_by="creation desc",
             limit=5,
         )
@@ -552,8 +562,13 @@ def get_recent_leave_requests(employee_id: Optional[str]) -> list[dict[str, Any]
                 if tot_days <= 0:
                     tot_days = 1.0
 
+            leave_label = (
+                app.get("custom_leave_reason")
+                if cint(app.get("custom_policy_table"))
+                else app.get("leave_type")
+            )
             requests.append({
-                "leave_type": app.get("leave_type") or "Leave",
+                "leave_type": leave_label or app.get("leave_type") or "Leave",
                 "from_date": formatdate(app.get("from_date"), "dd MMM"),
                 "to_date": formatdate(app.get("to_date"), "dd MMM YYYY"),
                 "total_days": f"{tot_days:.1f}",
