@@ -44,6 +44,17 @@ class ParseError(Exception):
     """Raised when the webhook payload cannot be understood at all."""
 
 
+def _is_numbered_menu_reply(value: str) -> bool:
+    """Return True for a typed numeric choice, which must be resolved by session state.
+
+    Menu-number mappings are cached per phone number. A stale mapping can turn a
+    submenu's ``1`` into the first item from a previous menu before the
+    conversation router gets a chance to use the active submenu.
+    """
+    normalized = (value or "").strip().rstrip(".۔").strip()
+    return bool(normalized) and normalized.isdigit()
+
+
 def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
     """
     Parse a Meta WhatsApp Cloud API webhook payload or Custom Baileys payload.
@@ -139,7 +150,7 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict):
+        if cached_obj and isinstance(cached_obj, dict) and not _is_numbered_menu_reply(message_text):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = message_text.strip()
             
@@ -297,7 +308,7 @@ def _parse_message(msg: dict[str, Any], value: dict[str, Any]) -> dict[str, Any]
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict):
+        if cached_obj and isinstance(cached_obj, dict) and not _is_numbered_menu_reply(text):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = text.strip()
             matched_id = (

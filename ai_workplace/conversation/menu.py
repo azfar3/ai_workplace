@@ -89,6 +89,10 @@ def parse_menu_selection(
         return None
 
     clean_input = user_input.strip().lower()
+    # Numbered replies from custom WhatsApp adapters may include a trailing
+    # period or Urdu full stop (for example ``1.``). Keep the number raw until
+    # this point so it is interpreted against the currently active menu.
+    numeric_input = clean_input.rstrip(".۔").strip()
     services = get_available_services_for_context(context, parent_key=parent_key)
 
     # Interactive list/button ids: svc_hr, svc_policy, ...
@@ -100,8 +104,8 @@ def parse_menu_selection(
         return None
 
     # Numeric selection (1-indexed)
-    if clean_input.isdigit():
-        idx = int(clean_input) - 1
+    if numeric_input.isdigit():
+        idx = int(numeric_input) - 1
         if 0 <= idx < len(services):
             return services[idx]
         return None
@@ -125,4 +129,3 @@ def build_invalid_selection_message(context: dict[str, Any]) -> OutboundMessage:
     error_text = build_invalid_selection_response(context, services)
     err_prefix = error_text.split("\n\n")[0]
     return build_service_list_message(context, services, header_prefix=err_prefix)
-
