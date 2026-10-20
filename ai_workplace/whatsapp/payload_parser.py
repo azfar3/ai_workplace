@@ -56,7 +56,20 @@ def _should_resolve_from_menu_cache(value: str, cached_obj: dict[str, Any]) -> b
         return True
     # A text list is resolved by the conversation's active menu/submenu. Buttons
     # can be navigation choices whose numbers differ from that menu's numbering.
-    return cached_obj.get("menu_type") == "button"
+    menu_type = cached_obj.get("menu_type")
+    if menu_type:
+        return menu_type == "button"
+
+    # Older cache records predate menu_type. Infer short choice prompts from the
+    # number of numbered entries. Full menus have more than three options and
+    # should always be routed using the active conversation menu.
+    cached_map = cached_obj.get("map", cached_obj)
+    numbered_options = {
+        key.rstrip(".۔")
+        for key in cached_map
+        if isinstance(key, str) and key.rstrip(".۔").isdigit() and key.rstrip(".۔") != "0"
+    }
+    return 0 < len(numbered_options) <= 3
 
 
 def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
