@@ -110,9 +110,10 @@ def get_supervisor_reporting_data(employee_id: Optional[str]) -> dict[str, Any]:
 
         emp = frappe.get_doc("Employee", employee_id)
 
-        # 1. Direct Supervisor
-        if emp.reports_to and frappe.db.exists("Employee", emp.reports_to):
-            sup = frappe.get_doc("Employee", emp.reports_to)
+        # 1. Direct Supervisor: use the configured first-line approver.
+        supervisor_id = getattr(emp, "custom_1st_line_approver", None)
+        if supervisor_id and frappe.db.exists("Employee", supervisor_id):
+            sup = frappe.get_doc("Employee", supervisor_id)
             res["has_supervisor"] = True
             res["supervisor"] = {
                 "employee_id": sup.name,
@@ -136,9 +137,14 @@ def get_supervisor_reporting_data(employee_id: Optional[str]) -> dict[str, Any]:
             res["expense_approver"] = res["supervisor"]["employee_name"]
 
         # 3. Direct Reports (if user is a manager)
+        reports_field = (
+            "custom_1st_line_approver"
+            if frappe.db.has_column("Employee", "custom_1st_line_approver")
+            else "reports_to"
+        )
         reports = frappe.db.get_all(
             "Employee",
-            filters={"reports_to": employee_id, "status": "Active"},
+            filters={reports_field: employee_id, "status": "Active"},
             fields=["name", "employee_name", "designation"],
             order_by="employee_name asc",
         )
@@ -378,4 +384,3 @@ def _hr_contact_footer(lang: str) -> list[str]:
         f"• Email: {email}",
         "• Select *Chat with HR* from the menu to speak with HR directly.",
     ]
-
