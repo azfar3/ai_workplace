@@ -41,10 +41,9 @@ class GeneralHandler:
             action = "start_concern_report"
             
         elif clean_intent == "hr_pin_help":
-            from ai_workplace.services.security import build_pin_help_response
-            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
-            resp_text = build_pin_help_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            from ai_workplace.services.documents_hub import build_pin_help
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="hr")
+            outbound = build_pin_help(context)
             action = "view_pin_help"
             
         elif clean_intent == "my_day":

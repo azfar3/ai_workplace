@@ -102,5 +102,9 @@ def build_pin_help(context: dict[str, Any]) -> OutboundMessage:
         )
     return build_button_message(
         body,
-        [{"id": "svc_open_hrmis", "title": "Open Portal"}, {"id": "svc_main_menu", "title": "Main Menu"}],
+        [
+            {"id": "svc_open_hrmis", "title": "Open Portal"},
+            {"id": "svc_hr", "title": "👤 Profile & Docs"},
+            {"id": "svc_main_menu", "title": "Main Menu"},
+        ],
     )
