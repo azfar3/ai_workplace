@@ -84,7 +84,14 @@ def is_greeting_message(text: str) -> bool:
 
     greetings_exact = {
         "hi",
+        "hu",
+        "hii",
+        "hiii",
         "hello",
+        "helo",
+        "helloo",
+        "hlo",
+        "hllo",
         "hey",
         "heya",
         "hola",
@@ -98,6 +105,10 @@ def is_greeting_message(text: str) -> bool:
     }
     greetings_phrases = {
         "assalam o alikum",
+        "asalaom o alikum",
+        "assalamoalikum",
+        "asalam o alaikum",
+        "assalamualaikum",
         "assalam o alaykum",
         "assalam o alaikum",
         "assalam alaikum",
@@ -118,6 +129,31 @@ def is_greeting_message(text: str) -> bool:
             return True
 
     return False
+
+
+def is_thank_you_message(text: str) -> bool:
+    """Recognize short thank-you messages without swallowing longer requests."""
+    if not text:
+        return False
+    cleaned = text.strip().lower()
+    for p in ["!", ".", ",", "?", "-", "_", ":", ";"]:
+        cleaned = cleaned.replace(p, " ")
+    cleaned = " ".join(cleaned.split())
+    return cleaned in {
+        "thanks",
+        "thank you",
+        "thankyou",
+        "thx",
+        "ty",
+        "thanks a lot",
+        "thank you so much",
+        "shukriya",
+        "bohot shukriya",
+        "bohat shukriya",
+        "jazakallah",
+        "جزاک اللہ",
+        "شکریہ",
+    }
 
 
 def _download_bank_letter_outbound(conv, context, identity, trace_id, bank_name, service_key):
@@ -873,6 +909,18 @@ def _process_message_internal(
             status="Success",
         )
         return outbound
+
+    # ── Global: short thank-you reply ─────────────────────────────────────────
+    if current_state in (ConversationState.AWAITING_SELECTION, ConversationState.MENU) and is_thank_you_message(clean_text):
+        lang = context.get("preferred_language", "English")
+        if lang == "Urdu":
+            thank_you_reply = "آپ کا خیر مقدم ہے! 😊 ہمیں مدد کر کے خوشی ہوئی۔ کوئی اور سوال ہو تو ہمیں بتائیں۔"
+        elif lang == "Roman Urdu":
+            thank_you_reply = "Khushi hui madad karke! 😊 Agar koi aur sawal ho to zaroor batayein."
+        else:
+            thank_you_reply = "You’re welcome! 😊 We’re happy to help. If you have any other questions, just send us a message."
+
+        return wrap_with_menu_again(thank_you_reply, context)
 
 
     # ── Global: explicit language change command ──────────────────────────────
