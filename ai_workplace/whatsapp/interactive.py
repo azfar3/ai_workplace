@@ -11,7 +11,6 @@ from typing import Any
 from ai_workplace.response.builder import (
     build_menu_header_text,
     _translate_service_title,
-    _translate_service_description,
 )
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
@@ -118,11 +117,10 @@ def build_service_list_message(
     for svc in services[:10]:
         key = svc["key"]
         title = _translate_service_title(key, svc["title"], lang, title_urdu=svc.get("title_urdu", ""), title_roman_urdu=svc.get("title_roman_urdu", ""))
-        description = _translate_service_description(key, svc.get("description") or title, lang, desc_urdu=svc.get("description_urdu", ""), desc_roman_urdu=svc.get("description_roman_urdu", ""))
         rows.append({
             "id": f"svc_{key}",
             "title": _truncate(title, 24),
-            "description": _truncate(description, 72),
+            "description": "",
         })
 
     section_title = "Services"
@@ -254,11 +252,10 @@ def build_grouped_service_list_message(
         for svc in services[:10]:
             key = svc["key"]
             title = _translate_service_title(key, svc["title"], lang, title_urdu=svc.get("title_urdu", ""), title_roman_urdu=svc.get("title_roman_urdu", ""))
-            description = _translate_service_description(key, svc.get("description") or title, lang, desc_urdu=svc.get("description_urdu", ""), desc_roman_urdu=svc.get("description_roman_urdu", ""))
             rows.append({
                 "id": f"svc_{key}",
                 "title": _truncate(title, 24),
-                "description": _truncate(description, 72),
+                "description": "",
             })
 
     section_title = "Services"
@@ -338,11 +335,10 @@ def build_submenu_remaining_list_message(
     for svc in remaining[:10]:
         key = svc["key"]
         title = _translate_service_title(key, svc["title"], lang, title_urdu=svc.get("title_urdu", ""), title_roman_urdu=svc.get("title_roman_urdu", ""))
-        description = _translate_service_description(key, svc.get("description") or title, lang, desc_urdu=svc.get("description_urdu", ""), desc_roman_urdu=svc.get("description_roman_urdu", ""))
         rows.append({
             "id": f"svc_{key}",
             "title": _truncate(title, 24),
-            "description": _truncate(description, 72),
+            "description": "",
         })
     return build_grouped_service_list_message(context, services, rows_override=rows, parent_key=parent_key)
 
@@ -582,11 +578,10 @@ def build_flow_group_message(context: dict[str, Any], flow_group: str) -> Outbou
         rows = []
         for item in items[:10]:
             title = _translate_service_title(item["key"], item["title"], lang, title_urdu=item.get("title_urdu", ""), title_roman_urdu=item.get("title_roman_urdu", ""))
-            desc = _translate_service_description(item["key"], item.get("description") or title, lang, desc_urdu=item.get("description_urdu", ""), desc_roman_urdu=item.get("description_roman_urdu", ""))
             rows.append({
                 "id": f"svc_{item['key']}",
                 "title": _truncate(title, 24),
-                "description": _truncate(desc, 72),
+                "description": "",
             })
         btn_text = "منتخب کریں" if lang == "Urdu" else ("Intekhab karein" if lang == "Roman Urdu" else "Select Option")
         sec_title = "اختیارات" if lang == "Urdu" else "Options"
