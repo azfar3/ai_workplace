@@ -81,6 +81,11 @@ class AttendanceHandler:
             outbound = wrap_with_parent_menu(resp_text, context, "attendance_leave")
             action = "view_missing_attendance"
 
+        elif clean_intent in ("att_request_apply", "att_request"):
+            from ai_workplace.services.attendance_request_apply import start_attendance_request_application
+            outbound = start_attendance_request_application(conv, context)
+            action = "start_attendance_request_application"
+
         if outbound:
             log_ai_action(
                 trace_id=trace_id,

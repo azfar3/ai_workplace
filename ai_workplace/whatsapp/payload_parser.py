@@ -136,6 +136,8 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
             frappe.cache().get_value(f"custom_wa_menu_{clean_phone}")
             or frappe.cache().get_value(f"custom_wa_menu_{wa_id}")
             or frappe.cache().get_value(f"custom_wa_menu_{wa_id.split('@')[0]}")
+            or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
+            or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
         if cached_obj and isinstance(cached_obj, dict):
             cached_map = cached_obj.get("map", cached_obj)
@@ -159,6 +161,9 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
                 message_text = matched_id
                 if clean_phone:
                     frappe.cache().delete_value(f"custom_wa_menu_{clean_phone}")
+                    if len(clean_phone) >= 10:
+                        frappe.cache().delete_value(f"custom_wa_menu_{clean_phone[-10:]}")
+                        frappe.cache().delete_value(f"custom_wa_menu_0{clean_phone[-10:]}")
                 frappe.cache().delete_value(f"custom_wa_menu_{wa_id}")
 
         message_type = "text"
@@ -285,6 +290,37 @@ def _parse_message(msg: dict[str, Any], value: dict[str, Any]) -> dict[str, Any]
     context_message_id = ""
     if raw_type == "text":
         text = msg.get("text", {}).get("body", "")
+        clean_phone = "".join(filter(str.isdigit, wa_id or phone_number))
+        cached_obj = (
+            frappe.cache().get_value(f"custom_wa_menu_{clean_phone}")
+            or frappe.cache().get_value(f"custom_wa_menu_{wa_id}")
+            or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
+            or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
+        )
+        if cached_obj and isinstance(cached_obj, dict):
+            cached_map = cached_obj.get("map", cached_obj)
+            cleaned_msg = text.strip()
+            matched_id = (
+                cached_map.get(text)
+                or cached_map.get(cleaned_msg)
+                or cached_map.get(cleaned_msg.lower())
+                or cached_map.get(text.lower())
+            )
+            if not matched_id and "." in cleaned_msg:
+                first_num = cleaned_msg.split(".")[0].strip()
+                matched_id = cached_map.get(first_num)
+            if not matched_id and " " in cleaned_msg:
+                first_token = cleaned_msg.split()[0].strip()
+                if first_token.isdigit():
+                    matched_id = cached_map.get(first_token)
+            if matched_id:
+                text = matched_id
+                if clean_phone:
+                    frappe.cache().delete_value(f"custom_wa_menu_{clean_phone}")
+                    if len(clean_phone) >= 10:
+                        frappe.cache().delete_value(f"custom_wa_menu_{clean_phone[-10:]}")
+                        frappe.cache().delete_value(f"custom_wa_menu_0{clean_phone[-10:]}")
+                frappe.cache().delete_value(f"custom_wa_menu_{wa_id}")
     elif raw_type == "interactive":
         text = _extract_interactive_input(msg.get("interactive", {}))
     elif raw_type in MEDIA_TYPES:

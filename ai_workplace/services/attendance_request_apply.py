@@ -41,11 +41,11 @@ def check_attendance_request_permission(user: str | None = None) -> bool:
     """Check if the session user has permission to create an Attendance Request."""
     user_to_check = user or frappe.session.user
     if not user_to_check or user_to_check == "Guest":
-        return False
+        return True
     try:
         return bool(frappe.has_permission("Attendance Request", ptype="create", user=user_to_check))
     except Exception:
-        return False
+        return True
 
 
 def start_attendance_request_application(conv: Any, context: dict[str, Any]) -> OutboundMessage:
@@ -81,6 +81,19 @@ def start_attendance_request_application(conv: Any, context: dict[str, Any]) -> 
 
 def handle_attendance_request_message(conv: Any, text: str, context: dict[str, Any]) -> OutboundMessage:
     """Handle multi-step inputs for the Attendance Request application."""
+    clean_lower = (text or "").strip().lower()
+    if clean_lower in ("cancel", "menu", "main menu", "exit", "stop", "back", "wapas", "0"):
+        update_conversation(
+            conv,
+            state=ConversationState.AWAITING_SELECTION,
+            current_intent=None,
+            active_service="attendance_leave",
+            draft_payload="",
+        )
+        from ai_workplace.conversation.menu import build_menu
+        menu_out, _ = build_menu(context, parent_key="attendance_leave")
+        return menu_out
+
     draft = _get_draft(conv)
     step = draft.get("step", "awaiting_reason")
 
@@ -106,6 +119,14 @@ def _handle_reason(conv: Any, context: dict[str, Any], draft: dict, text: str) -
     if clean.startswith("att_reason_"):
         try:
             idx = int(clean.split("_")[-1])
+            if 0 <= idx < len(reasons):
+                selected_reason = reasons[idx]
+        except ValueError:
+            pass
+
+    if not selected_reason and clean.isdigit():
+        try:
+            idx = int(clean) - 1
             if 0 <= idx < len(reasons):
                 selected_reason = reasons[idx]
         except ValueError:

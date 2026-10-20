@@ -319,6 +319,8 @@ def get_leave_balance_data(employee_id: Optional[str], ref_date: Optional[date |
             alloc_dict = mm_details.get("leave_allocation") or {}
             for lt, data in alloc_dict.items():
                 tot = flt(data.get("total_leaves", 0))
+                if tot <= 0:
+                    continue
                 taken = flt(data.get("leaves_taken", 0))
                 pending = flt(data.get("leaves_pending_approval", 0))
                 rem = flt(data.get("remaining_leaves", 0))
@@ -340,56 +342,7 @@ def get_leave_balance_data(employee_id: Optional[str], ref_date: Optional[date |
                     "to_date": fy_to,
                 })
 
-            # Check for any unallocated leave types employee applied for in the tenure (e.g. Casual Leave)
-            unalloc_apps = frappe.db.get_all(
-                "Leave Application",
-                filters={
-                    "employee": employee_id,
-                    "docstatus": ["!=", 2],
-                    "status": ["!=", "Rejected"],
-                    "from_date": ["<=", fy_to],
-                    "to_date": [">=", fy_from],
-                },
-                fields=["name", "leave_type", "total_leave_days", "status", "docstatus"],
-            ) or []
-
-            unalloc_types: dict[str, dict[str, float]] = {}
-            for app in unalloc_apps:
-                lt = app.get("leave_type")
-                if not lt or lt in alloc_dict:
-                    continue
-                st = (app.get("status") or "").strip()
-                ds = cint(app.get("docstatus", 0))
-                days = flt(app.get("total_leave_days", 0)) or 1.0
-                if lt not in unalloc_types:
-                    unalloc_types[lt] = {"approved": 0.0, "pending": 0.0}
-                if st == "Approved" or ds == 1:
-                    unalloc_types[lt]["approved"] += days
-                elif st in ("Open", "Draft", "Applied") or ds == 0:
-                    unalloc_types[lt]["pending"] += days
-
-            for lt, udata in unalloc_types.items():
-                appr = udata["approved"]
-                pend = udata["pending"]
-                taken_str = f"{appr:.1f}"
-                if pend > 0:
-                    taken_str += f" ({pend:.1f} pending)"
-                balances.append({
-                    "leave_type": lt,
-                    "allocated": "0.0",
-                    "total_allocated": 0.0,
-                    "taken": taken_str,
-                    "leaves_taken": appr,
-                    "leaves_pending_approval": pend,
-                    "approved_taken": appr,
-                    "pending_taken": pend,
-                    "remaining": "0.0",
-                    "remaining_leaves": 0.0,
-                    "from_date": fy_from,
-                    "to_date": fy_to,
-                })
-
-            return balances
+            return [b for b in balances if flt(b.get("total_allocated", b.get("allocated", 0))) > 0]
 
         # 1. Fetch active leave allocations overlapping the 1 July - 30 June tenure
         allocations = frappe.db.get_all(
@@ -423,6 +376,8 @@ def get_leave_balance_data(employee_id: Optional[str], ref_date: Optional[date |
         for alloc in (allocations or []):
             lt = alloc.get("leave_type") or "General Leave"
             tot_alloc = flt(alloc.get("total_leaves_allocated", 0))
+            if tot_alloc <= 0:
+                continue
             from_d = alloc.get("from_date") or fy_from
             to_d = alloc.get("to_date") or fy_to
 
@@ -443,6 +398,8 @@ def get_leave_balance_data(employee_id: Optional[str], ref_date: Optional[date |
         for lt, alloc_info in alloc_groups.items():
             leave_type = lt
             allocated = flt(alloc_info.get("total_leaves_allocated", 0))
+            if allocated <= 0:
+                continue
             from_d = alloc_info.get("from_date") or fy_from
             to_d = alloc_info.get("to_date") or fy_to
 
@@ -555,85 +512,7 @@ def get_leave_balance_data(employee_id: Optional[str], ref_date: Optional[date |
                 "to_date": str(to_d),
             })
 
-        # Check for any unallocated leave types employee applied for in the tenure (e.g. Casual Leave)
-        unalloc_apps = frappe.db.get_all(
-            "Leave Application",
-            filters={
-                "employee": employee_id,
-                "docstatus": ["!=", 2],
-                "status": ["!=", "Rejected"],
-                "from_date": ["<=", fy_to],
-                "to_date": [">=", fy_from],
-            },
-            fields=["name", "leave_type", "total_leave_days", "from_date", "to_date", "half_day", "status", "docstatus"],
-        ) or []
-
-        by_type: dict[str, list[dict[str, Any]]] = {}
-        for app in unalloc_apps:
-            lt = app.get("leave_type") or "General Leave"
-            if lt not in alloc_groups:
-                by_type.setdefault(lt, []).append(app)
-
-        for lt, apps_list in by_type.items():
-            appr_taken = 0.0
-            pend_taken = 0.0
-            for app in apps_list:
-                st = (app.get("status") or "").strip()
-                ds = cint(app.get("docstatus", 0))
-                if st == "Rejected" or ds == 2:
-                    continue
-
-                raw_days = flt(app.get("total_leave_days", 0))
-                is_half = bool(app.get("half_day"))
-                app_from = getdate(app.get("from_date")) if app.get("from_date") else None
-                app_to = getdate(app.get("to_date")) if app.get("to_date") else None
-                period_from = getdate(fy_from)
-                period_to = getdate(fy_to)
-
-                if raw_days > 0 and app_from and app_to and app_from >= period_from and app_to <= period_to:
-                    days = raw_days
-                elif app_from and app_to:
-                    overlap_start = max(app_from, period_from)
-                    overlap_end = min(app_to, period_to)
-                    if overlap_start <= overlap_end:
-                        days = 0.5 if is_half else float((overlap_end - overlap_start).days + 1)
-                    else:
-                        days = 0.0
-                elif raw_days > 0:
-                    days = raw_days
-                elif is_half:
-                    days = 0.5
-                elif app_from and app_to:
-                    days = max(1.0, float((app_to - app_from).days + 1))
-                else:
-                    days = 1.0
-
-                if st == "Approved" or ds == 1:
-                    appr_taken += days
-                elif st in ("Open", "Draft", "Applied") or ds == 0:
-                    pend_taken += days
-
-            if appr_taken > 0 or pend_taken > 0 or not balances:
-                taken_str = f"{appr_taken:.1f}"
-                if pend_taken > 0:
-                    taken_str += f" ({pend_taken:.1f} pending)"
-
-                balances.append({
-                    "leave_type": lt,
-                    "allocated": "0.0",
-                    "total_allocated": 0.0,
-                    "taken": taken_str,
-                    "leaves_taken": appr_taken,
-                    "leaves_pending_approval": pend_taken,
-                    "approved_taken": appr_taken,
-                    "pending_taken": pend_taken,
-                    "remaining": "0.0",
-                    "remaining_leaves": 0.0,
-                    "from_date": fy_from,
-                    "to_date": fy_to,
-                })
-
-        return balances
+        return [b for b in balances if flt(b.get("total_allocated", b.get("allocated", 0))) > 0]
     except Exception as e:
         try:
             frappe.log_error(title="Leave Balance Calculation Error", message=f"Employee {employee_id}: {str(e)}")
@@ -1199,15 +1078,7 @@ def build_leave_balance_response(context: dict[str, Any]) -> str:
     lang = context.get("preferred_language", "English")
     emp_id = context.get("employee")
     balances = get_leave_balance_data(emp_id)
-
-    tot_taken = sum(flt(b.get("approved_taken", b.get("leaves_taken", 0))) for b in balances)
-    tot_pending = sum(flt(b.get("pending_taken", b.get("leaves_pending_approval", 0))) for b in balances)
-    tot_rem = sum(flt(b.get("remaining_leaves", 0)) for b in balances)
-    tot_alloc = sum(flt(b.get("total_allocated", 0)) for b in balances)
-
-    pend_str_en = f" ({tot_pending:.1f} pending approval)" if tot_pending > 0 else ""
-    pend_str_ur = f" ({tot_pending:.1f} زیرِ التواء)" if tot_pending > 0 else ""
-    pend_str_ru = f" ({tot_pending:.1f} pending approval)" if tot_pending > 0 else ""
+    balances = [b for b in balances if flt(b.get("total_allocated", b.get("allocated", 0))) > 0]
 
     if lang == "Urdu":
         if not balances:
@@ -1222,8 +1093,6 @@ def build_leave_balance_response(context: dict[str, Any]) -> str:
         bal_str = "\n\n".join(lines)
         return (
             f"📊 *آپ کی چھٹیوں کی تفصیل (1 جولائی تا 30 جون)*\n\n"
-            f"• *مجموعی استعمال شدہ چھٹیاں*: {tot_taken:.1f} دن{pend_str_ur}\n"
-            f"• *مجموعی بقیہ چھٹیاں*: {tot_rem:.1f} دن (کل مختص: {tot_alloc:.1f})\n\n"
             f"*تفصیل بلحاظ قسم:*\n"
             f"{bal_str}\n\n"
             f"💡 *چھٹی اپلائی کرنے کے لیے 'Apply for Leave' مینو منتخب کریں۔*"
@@ -1242,8 +1111,6 @@ def build_leave_balance_response(context: dict[str, Any]) -> str:
         bal_str = "\n\n".join(lines)
         return (
             f"📊 *Aap Ka Leave Balance Summary (1 July - 30 June)*\n\n"
-            f"• *Total Leaves Taken*: {tot_taken:.1f} din{pend_str_ru}\n"
-            f"• *Total Leaves Remaining*: {tot_rem:.1f} din (Allocated: {tot_alloc:.1f})\n\n"
             f"*Category Breakdown*:\n"
             f"{bal_str}\n\n"
             f"💡 *Chhutti apply karne ke liye 'Apply for Leave' select karein.*"
@@ -1262,8 +1129,6 @@ def build_leave_balance_response(context: dict[str, Any]) -> str:
     bal_str = "\n\n".join(lines)
     return (
         f"📊 *Your Leave Balance Summary (1 July – 30 June)*\n\n"
-        f"• *Total Leaves Taken*: {tot_taken:.1f} days{pend_str_en}\n"
-        f"• *Total Leaves Remaining*: {tot_rem:.1f} days (of {tot_alloc:.1f} allocated)\n\n"
         f"*Breakdown by Category*:\n"
         f"{bal_str}\n\n"
         f"💡 *To request leave, select 'Apply for Leave' from the Attendance & Leave menu.*"

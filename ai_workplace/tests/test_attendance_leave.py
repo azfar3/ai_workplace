@@ -182,14 +182,20 @@ class TestAttendanceLeaveServices(unittest.TestCase):
     @patch("ai_workplace.services.attendance_leave.get_leave_balance_data")
     def test_build_leave_balance_response(self, mock_get_data):
         mock_get_data.return_value = [
-            {"leave_type": "Casual Leave", "allocated": "10.0", "taken": "2.0", "remaining": "8.0"},
-            {"leave_type": "Sick Leave", "allocated": "8.0", "taken": "0.0", "remaining": "8.0"},
+            {"leave_type": "Casual Leave", "allocated": "10.0", "taken": "2.0", "remaining": "8.0", "total_allocated": 10.0},
+            {"leave_type": "Sick Leave", "allocated": "8.0", "taken": "0.0", "remaining": "8.0", "total_allocated": 8.0},
+            {"leave_type": "Special Leaves", "allocated": "0.0", "taken": "4.0", "remaining": "0.0", "total_allocated": 0.0},
         ]
 
         res_en = build_leave_balance_response(self.context_en)
         self.assertIn("Your Leave Balance Summary", res_en)
         self.assertIn("Casual Leave", res_en)
         self.assertIn("Remaining: 8.0", res_en)
+        # Unallocated leaves (0.0 allocated) must be excluded
+        self.assertNotIn("Special Leaves", res_en)
+        # Top summary lines must be removed
+        self.assertNotIn("Total Leaves Taken", res_en)
+        self.assertNotIn("Total Leaves Remaining", res_en)
 
     @patch("frappe.db.exists")
     @patch("frappe.db.get_all")
@@ -281,22 +287,15 @@ class TestAttendanceLeaveServices(unittest.TestCase):
             [{"leave_type": "Annual Leave", "total_leaves_allocated": 22.0, "from_date": "2026-07-01", "to_date": "2027-06-30"}],
             # 2. Applications for Annual Leave
             [{"total_leave_days": 12.0, "status": "Approved", "docstatus": 1, "from_date": "2026-08-01", "to_date": "2026-08-12"}],
-            # 3. Applications for unallocated leave types in the tenure
-            [{"name": "LAP-1", "leave_type": "Casual Leave", "total_leave_days": 3.0, "status": "Approved", "docstatus": 1, "from_date": "2026-10-01", "to_date": "2026-10-03"}],
         ]
         res = get_leave_balance_data("EMP-001", ref_date="2026-10-19")
-        self.assertEqual(len(res), 2)
+        # Only leaves with allocated > 0 must be returned; unallocated types (e.g. Special Leaves, LWP) are excluded
+        self.assertEqual(len(res), 1)
         # Annual Leave
         self.assertEqual(res[0]["leave_type"], "Annual Leave")
         self.assertEqual(res[0]["allocated"], "22.0")
         self.assertEqual(res[0]["taken"], "12.0")
         self.assertEqual(res[0]["remaining"], "10.0")
-        # Casual Leave (unallocated)
-        self.assertEqual(res[1]["leave_type"], "Casual Leave")
-        self.assertEqual(res[1]["allocated"], "0.0")
-        self.assertEqual(res[1]["taken"], "3.0")
-        self.assertEqual(res[1]["leaves_taken"], 3.0)
-        self.assertEqual(res[1]["remaining"], "0.0")
 
     def test_build_apply_leave_response(self):
         res_en = build_apply_leave_response(self.context_en)

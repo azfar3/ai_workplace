@@ -1145,7 +1145,10 @@ def _process_message_internal(
             return OutboundMessage(body_text=res_msg)
 
     # ── Global: return to previous menu or main menu ───────────────────────────
-    is_back_cmd = cmd_lower in (
+    is_leaf_response_active = bool(conv.current_intent and conv.current_intent not in ("menu", "main_menu"))
+    is_single_button_press = is_leaf_response_active and cmd_lower in ("1", "1.", "1۔", "۱", "۱۔")
+
+    is_back_cmd = is_single_button_press or (cmd_lower in (
         "back",
         "svc_back",
         "0",
@@ -1157,7 +1160,8 @@ def _process_message_internal(
         "pichle menu",
         "واپس",
         "پچھلا مینو",
-    )
+    )) or bool(conv.active_service and cmd_lower in (f"svc_{conv.active_service.lower()}", conv.active_service.lower()))
+
     is_main_menu_cmd = cmd_lower in (
         "menu",
         "home",

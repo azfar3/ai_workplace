@@ -1023,6 +1023,9 @@ def _transform_to_baileys(
                 clean_num = "".join(filter(str.isdigit, number))
                 if clean_num:
                     frappe.cache().set_value(f"custom_wa_menu_{clean_num}", new_cache_obj, expires_in_sec=86400)
+                    if len(clean_num) >= 10:
+                        frappe.cache().set_value(f"custom_wa_menu_{clean_num[-10:]}", new_cache_obj, expires_in_sec=86400)
+                        frappe.cache().set_value(f"custom_wa_menu_0{clean_num[-10:]}", new_cache_obj, expires_in_sec=86400)
                 frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=86400)
                 
         elif itype == "list":
@@ -1087,6 +1090,9 @@ def _transform_to_baileys(
                 clean_num = "".join(filter(str.isdigit, number))
                 if clean_num:
                     frappe.cache().set_value(f"custom_wa_menu_{clean_num}", new_cache_obj, expires_in_sec=86400)
+                    if len(clean_num) >= 10:
+                        frappe.cache().set_value(f"custom_wa_menu_{clean_num[-10:]}", new_cache_obj, expires_in_sec=86400)
+                        frappe.cache().set_value(f"custom_wa_menu_0{clean_num[-10:]}", new_cache_obj, expires_in_sec=86400)
                 frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=86400)
         else:
             message = full_text

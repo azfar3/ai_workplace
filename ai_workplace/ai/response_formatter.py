@@ -22,16 +22,14 @@ class ResponseFormatter:
             return "📅 You currently have no active leave allocations recorded for this leave period."
 
         from frappe.utils import flt
-        tot_taken = sum(flt(item.get("approved_taken", item.get("leaves_taken", 0))) for item in items if isinstance(item, dict))
-        tot_pending = sum(flt(item.get("pending_taken", item.get("leaves_pending_approval", 0))) for item in items if isinstance(item, dict))
-        tot_rem = sum(flt(item.get("remaining_leaves", item.get("remaining", 0))) for item in items if isinstance(item, dict))
-        tot_alloc = sum(flt(item.get("total_allocated", item.get("allocated", 0))) for item in items if isinstance(item, dict))
-
-        pend_str = f" ({tot_pending:.1f} pending approval)" if tot_pending > 0 else ""
+        items = [
+            item for item in items
+            if isinstance(item, dict) and flt(item.get("total_allocated", item.get("allocated", 0))) > 0
+        ]
+        if not items:
+            return "📅 You currently have no active leave allocations recorded for this leave period."
 
         res = "📅 *Your Leave Summary (1 July – 30 June)*\n\n"
-        res += f"• *Total Leaves Taken*: {tot_taken:.1f} days{pend_str}\n"
-        res += f"• *Total Leaves Remaining*: {tot_rem:.1f} days (Allocated: {tot_alloc:.1f})\n\n"
         res += "*Category Breakdown*:\n"
         for item in items:
             if isinstance(item, dict):
