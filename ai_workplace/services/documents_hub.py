@@ -86,25 +86,6 @@ def build_contract_status(context: dict[str, Any]) -> OutboundMessage:
 
 
 def build_pin_help(context: dict[str, Any]) -> OutboundMessage:
-    lang = context.get("preferred_language", "English")
-    if lang == "Urdu":
-        body = (
-            "🔐 *Support PIN*\n\n"
-            f"Support PIN صرف HRMIS Portal پر بنایا/تبدیل کیا جا سکتا ہے:\n{PORTAL_URL}\n\n"
-            "*Settings* → *Security* → *Support PIN* (4 digits)"
-        )
-    else:
-        body = (
-            "🔐 *Support PIN Help*\n\n"
-            f"Your Support PIN can only be created or changed on the HRMIS Portal:\n{PORTAL_URL}\n\n"
-            "Go to *Settings* → *Security* → *Support PIN* (4 digits).\n\n"
-            "WhatsApp only verifies your PIN — it cannot reset it."
-        )
-    return build_button_message(
-        body,
-        [
-            {"id": "svc_open_hrmis", "title": "Open Portal"},
-            {"id": "svc_hr", "title": "👤 Profile & Docs"},
-            {"id": "svc_main_menu", "title": "Main Menu"},
-        ],
-    )
+    from ai_workplace.security.pin_flow import build_hrmis_portal_guide_message
+
+    return build_hrmis_portal_guide_message(context)
