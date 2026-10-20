@@ -374,7 +374,10 @@ def build_show_menu_again_button(context: dict[str, Any]) -> OutboundMessage:
 
 
 def build_return_to_parent_button(context: dict[str, Any], parent_key: str) -> OutboundMessage:
-    """Single button to return to a parent menu."""
+    """Offer parent and main-menu navigation after a service response."""
+    if (parent_key or "").strip().lower() in ("main_menu", "main menu", "menu", "back_to_main"):
+        return build_show_menu_again_button(context)
+
     from ai_workplace.services.registry import get_service_info
     
     lang = context.get("preferred_language", "English")
@@ -390,20 +393,29 @@ def build_return_to_parent_button(context: dict[str, Any], parent_key: str) -> O
             title = parent_info.get("title")
             
     if lang == "Urdu":
-        body = "مزید اختیارات کے لیے پچھلے مینو پر واپس جائیں:"
+        body = "مزید اختیارات کے لیے کہاں جانا چاہتے ہیں؟"
+        main_title = "🏠 مین مینو"
     elif lang == "Roman Urdu":
-        body = "Aur options ke liye pichle menu par wapas jayen:"
+        body = "Mazeed options ke liye kahan jana chahte hain?"
+        main_title = "🏠 Main Menu"
     else:
-        body = "Need something else? Tap below to open the previous menu:"
+        body = "Need something else? Choose where to go:"
+        main_title = "🏠 Main Menu"
 
     interactive = {
         "type": "button",
         "body": {"text": body},
         "action": {
-            "buttons": [{
-                "type": "reply",
-                "reply": {"id": f"svc_{parent_key}", "title": _truncate(title, 20)},
-            }],
+            "buttons": [
+                {
+                    "type": "reply",
+                    "reply": {"id": f"svc_{parent_key}", "title": _truncate(title, 20)},
+                },
+                {
+                    "type": "reply",
+                    "reply": {"id": "svc_main_menu", "title": _truncate(main_title, 20)},
+                },
+            ],
         },
     }
     return OutboundMessage(body_text=body, interactive=interactive)
