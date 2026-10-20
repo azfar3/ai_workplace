@@ -368,7 +368,7 @@ def build_supervisor_reporting_response(context: dict[str, Any]) -> str:
 def _hr_contact_footer(lang: str) -> list[str]:
     from ai_workplace.services.hr_contact_prompt import get_hr_contact_details
 
-    phone, email = get_hr_contact_details()
+    phone, _whatsapp, email = get_hr_contact_details()
     if lang == "Urdu":
         return [
             "",
