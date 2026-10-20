@@ -376,7 +376,14 @@ def get_upcoming_travel_trips(employee_id: Optional[str]) -> list[dict[str, Any]
         SELECT
             p.name AS request_name,
             p.purpose_of_travel,
-            p.workflow_state,
+            COALESCE(
+                NULLIF(p.workflow_state, ''),
+                CASE p.docstatus
+                    WHEN 0 THEN 'Draft'
+                    WHEN 1 THEN 'Submitted'
+                    ELSE 'Unknown'
+                END
+            ) AS workflow_state,
             t.from_date,
             t.to_date,
             t.source,
@@ -732,13 +739,13 @@ def _format_upcoming_trip_block_en(trip: dict[str, Any]) -> str:
     mode = trip.get("mode_of_travel") or "—"
     vehicle = trip.get("vehicle_type") or ""
     vehicle_part = f" | Vehicle: {vehicle}" if vehicle else ""
-    status = trip.get("workflow_state") or "Scheduled"
+    status = trip.get("workflow_state") or "Unknown"
     dates = f"{_format_date(trip.get('from_date'))} to {_format_date(trip.get('to_date'))}"
     purpose = (trip.get("purpose_of_travel") or "Travel").strip()
     return (
         f"📅 *{dates}*\n"
         f"   {route} ({mode}){vehicle_part}\n"
-        f"   Status: {status} | Ref: {trip.get('request_name')}\n"
+        f"   📊 Status: *{status}* | Ref: {trip.get('request_name')}\n"
         f"   {purpose[:80]}"
     )
 
@@ -1231,4 +1238,3 @@ def _create_travel_authorisation(draft: dict[str, Any], context: dict[str, Any])
         raise exc
     finally:
         frappe.set_user(previous_user)
-
