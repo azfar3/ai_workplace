@@ -415,6 +415,9 @@ def _create_attendance_request(draft: dict[str, Any], context: dict[str, Any]) -
             frappe.set_user(erp_user)
 
         employee = frappe.get_cached_doc("Employee", employee_id)
+        if employee.status != "Active":
+            frappe.throw(_("Attendance Requests can only be submitted for active employees."))
+
         doc = frappe.new_doc("Attendance Request")
         doc.employee = employee_id
         doc.from_date = draft.get("from_date")
@@ -422,6 +425,8 @@ def _create_attendance_request(draft: dict[str, Any], context: dict[str, Any]) -
         doc.reason = draft.get("reason")
         doc.explanation = draft.get("explanation") or ""
         doc.company = employee.company
+        doc.half_day = 0
+        doc.include_holidays = 0
 
         # Populate mandatory leave_approver field
         leave_approver = employee.leave_approver
@@ -433,6 +438,7 @@ def _create_attendance_request(draft: dict[str, Any], context: dict[str, Any]) -
         doc.leave_approver = leave_approver
 
         doc.insert(ignore_permissions=True)
+        doc.submit()
         frappe.db.commit()
         return doc.name
     except Exception as exc:
