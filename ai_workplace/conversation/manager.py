@@ -18,6 +18,9 @@ from ai_workplace.conversation.state import ConversationStatus, ConversationStat
 from ai_workplace.identity.resolver import get_or_create_whatsapp_identity
 
 
+_UNSET = object()
+
+
 def get_default_ttl_minutes() -> int:
     """Read conversation TTL in minutes from AI Workplace Settings."""
     try:
@@ -143,10 +146,10 @@ def get_or_create_conversation(
 def update_conversation(
     conversation: "frappe.Document",
     state: Optional[str] = None,
-    current_intent: Optional[str] = None,
-    active_service: Optional[str] = None,
-    active_record: Optional[str] = None,
-    draft_payload: Optional[str] = None,
+    current_intent: Any = _UNSET,
+    active_service: Any = _UNSET,
+    active_record: Any = _UNSET,
+    draft_payload: Any = _UNSET,
     preferred_language: Optional[str] = None,
     last_message_id: Optional[str] = None,
     active_hr_chat_session: Optional[str] = None,
@@ -165,13 +168,13 @@ def update_conversation(
 
     if state:
         conversation.current_state = state
-    if current_intent is not None:
+    if current_intent is not _UNSET:
         conversation.current_intent = current_intent or None
-    if active_service is not None:
+    if active_service is not _UNSET:
         conversation.active_service = active_service or None
-    if active_record is not None:
+    if active_record is not _UNSET:
         conversation.active_record = active_record or None
-    if draft_payload is not None:
+    if draft_payload is not _UNSET:
         conversation.draft_payload = draft_payload or None
     if preferred_language is not None:
         conversation.preferred_language = preferred_language
@@ -426,4 +429,3 @@ def close_inactive_sessions() -> dict[str, Any]:
             )
 
     return {"status": "success", "closed_count": closed_count}
-

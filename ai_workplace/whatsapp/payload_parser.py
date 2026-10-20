@@ -45,14 +45,18 @@ class ParseError(Exception):
 
 
 def _is_numbered_menu_reply(value: str) -> bool:
-    """Return True for a typed numeric choice, which must be resolved by session state.
-
-    Menu-number mappings are cached per phone number. A stale mapping can turn a
-    submenu's ``1`` into the first item from a previous menu before the
-    conversation router gets a chance to use the active submenu.
-    """
+    """Return True when text is a numbered option, including common punctuation."""
     normalized = (value or "").strip().rstrip(".۔").strip()
     return bool(normalized) and normalized.isdigit()
+
+
+def _should_resolve_from_menu_cache(value: str, cached_obj: dict[str, Any]) -> bool:
+    """Use cached IDs for labels and button numbers, but route list numbers by state."""
+    if not _is_numbered_menu_reply(value):
+        return True
+    # A text list is resolved by the conversation's active menu/submenu. Buttons
+    # can be navigation choices whose numbers differ from that menu's numbering.
+    return cached_obj.get("menu_type") == "button"
 
 
 def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
@@ -150,7 +154,7 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict) and not _is_numbered_menu_reply(message_text):
+        if cached_obj and isinstance(cached_obj, dict) and _should_resolve_from_menu_cache(message_text, cached_obj):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = message_text.strip()
             
@@ -308,7 +312,7 @@ def _parse_message(msg: dict[str, Any], value: dict[str, Any]) -> dict[str, Any]
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict) and not _is_numbered_menu_reply(text):
+        if cached_obj and isinstance(cached_obj, dict) and _should_resolve_from_menu_cache(text, cached_obj):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = text.strip()
             matched_id = (

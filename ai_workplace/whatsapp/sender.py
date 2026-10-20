@@ -1018,6 +1018,7 @@ def _transform_to_baileys(
             if option_map:
                 new_cache_obj = {
                     "timestamp": now,
+                    "menu_type": "button",
                     "map": option_map
                 }
                 clean_num = "".join(filter(str.isdigit, number))
@@ -1085,6 +1086,7 @@ def _transform_to_baileys(
             if option_map:
                 new_cache_obj = {
                     "timestamp": now,
+                    "menu_type": "list",
                     "map": option_map
                 }
                 clean_num = "".join(filter(str.isdigit, number))
@@ -1127,5 +1129,4 @@ def _transform_to_baileys(
         out["mime_type"] = payload.get("mime_type")
         
     return out
-
 
