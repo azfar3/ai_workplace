@@ -110,19 +110,32 @@ def get_supervisor_reporting_data(employee_id: Optional[str]) -> dict[str, Any]:
 
         emp = frappe.get_doc("Employee", employee_id)
 
-        # 1. Direct Supervisor: use the configured first-line approver.
-        supervisor_id = getattr(emp, "custom_1st_line_approver", None)
-        if supervisor_id and frappe.db.exists("Employee", supervisor_id):
-            sup = frappe.get_doc("Employee", supervisor_id)
+        # 1. Direct Supervisor: use the employee's configured leave approver name.
+        supervisor_name = getattr(emp, "custom_leave_approver_name", None)
+        supervisor_id = None
+        if supervisor_name:
+            if frappe.db.exists("Employee", supervisor_name):
+                supervisor_id = supervisor_name
+            else:
+                supervisor_id = frappe.db.get_value(
+                    "Employee", {"employee_name": supervisor_name}, "name"
+                )
+
+        if supervisor_name:
+            sup = frappe.get_doc("Employee", supervisor_id) if supervisor_id else None
             res["has_supervisor"] = True
             res["supervisor"] = {
-                "employee_id": sup.name,
-                "employee_name": sup.employee_name or f"{sup.first_name or ''} {sup.last_name or ''}".strip(),
-                "designation": sup.designation or "N/A",
-                "department": sup.department or "N/A",
-                "branch": getattr(sup, "branch", None) or getattr(sup, "location", None) or "N/A",
-                "company_email": getattr(sup, "company_email", None) or getattr(sup, "prefered_email", None) or "N/A",
-                "cell_number": getattr(sup, "cell_number", None) or getattr(sup, "mobile_number", None) or "N/A",
+                "employee_id": sup.name if sup else None,
+                "employee_name": (
+                    (sup.employee_name or f"{sup.first_name or ''} {sup.last_name or ''}".strip())
+                    if sup
+                    else supervisor_name
+                ),
+                "designation": (sup.designation or "N/A") if sup else "N/A",
+                "department": (sup.department or "N/A") if sup else "N/A",
+                "branch": (getattr(sup, "branch", None) or getattr(sup, "location", None) or "N/A") if sup else "N/A",
+                "company_email": (getattr(sup, "company_email", None) or getattr(sup, "prefered_email", None) or "N/A") if sup else "N/A",
+                "cell_number": (getattr(sup, "cell_number", None) or getattr(sup, "mobile_number", None) or "N/A") if sup else "N/A",
             }
 
         # 2. Approvers
@@ -137,14 +150,9 @@ def get_supervisor_reporting_data(employee_id: Optional[str]) -> dict[str, Any]:
             res["expense_approver"] = res["supervisor"]["employee_name"]
 
         # 3. Direct Reports (if user is a manager)
-        reports_field = (
-            "custom_1st_line_approver"
-            if frappe.db.has_column("Employee", "custom_1st_line_approver")
-            else "reports_to"
-        )
         reports = frappe.db.get_all(
             "Employee",
-            filters={reports_field: employee_id, "status": "Active"},
+            filters={"reports_to": employee_id, "status": "Active"},
             fields=["name", "employee_name", "designation"],
             order_by="employee_name asc",
         )
