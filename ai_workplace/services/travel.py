@@ -24,7 +24,7 @@ from frappe.utils import flt, formatdate, get_first_day, get_last_day, getdate, 
 
 from ai_workplace.conversation.manager import update_conversation
 from ai_workplace.conversation.state import ConversationState
-from ai_workplace.services.response_helpers import wrap_with_menu_again
+from ai_workplace.services.response_helpers import wrap_with_parent_menu
 from ai_workplace.whatsapp.interactive import build_yes_no_buttons
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
@@ -620,13 +620,13 @@ def build_travel_sop_outbound(context: dict[str, Any]) -> OutboundMessage:
 
     if not policy or not policy.get("policy_document"):
         body = _travel_sop_not_found(lang)
-        return wrap_with_menu_again(body, context)
+        return wrap_with_parent_menu(body, context, "travel")
 
     try:
         pdf_bytes, filename = load_policy_pdf_bytes(policy["policy_document"])
     except Exception:
         frappe.log_error(title="WhatsApp travel SOP PDF failed", message=frappe.get_traceback())
-        return wrap_with_menu_again(_travel_sop_error(lang), context)
+        return wrap_with_parent_menu(_travel_sop_error(lang), context, "travel")
 
     subject = policy.get("subject") or "Travel SOP"
     version = policy.get("version")
@@ -640,7 +640,7 @@ def build_travel_sop_outbound(context: dict[str, Any]) -> OutboundMessage:
         document_filename=filename,
         document_mimetype="application/pdf",
     )
-    menu = wrap_with_menu_again("", context)
+    menu = wrap_with_parent_menu("", context, "travel")
     document.follow_up = [menu]
     return document
 
@@ -877,22 +877,24 @@ def start_travel_authorization(conv: Any, context: dict[str, Any]) -> OutboundMe
     """Begin step-by-step Travel Authorisation Request workflow."""
     employee_id = context.get("employee") or conv.employee or ""
     if not employee_id:
-        return wrap_with_menu_again(
+        return wrap_with_parent_menu(
             _("Travel Authorisation request is only available for linked employees."),
             context,
+            "travel",
         )
 
     # Validate Expense Claim Structure Assignment upfront
     has_assignment = frappe.db.exists("Expense Claim Structure Assigment", {"employee": employee_id})
     if not has_assignment:
         employee_name = context.get("full_name") or conv.employee or "your account"
-        return wrap_with_menu_again(
+        return wrap_with_parent_menu(
             _(
                 "⚠️ *Travel Request Not Allowed*\n\n"
                 "No active Expense Claim Structure Assignment was found for *{0}* in ERPNext.\n\n"
                 "Please contact HR to assign an Expense Claim Structure before submitting travel authorisation requests."
             ).format(employee_name),
             context,
+            "travel",
         )
 
     draft = {
@@ -943,7 +945,7 @@ def handle_travel_authorization_message(
     if step == "awaiting_confirm":
         return _handle_travel_confirm(conv, context, draft, text)
 
-    return wrap_with_menu_again(_("Something went wrong. Type 'menu' to start again."), context)
+    return wrap_with_parent_menu(_("Something went wrong. Type 'menu' to start again."), context, "travel")
 
 
 def _load_draft(conv: Any) -> dict[str, Any]:
@@ -967,7 +969,7 @@ def _cancel_travel_flow(conv: Any, context: dict[str, Any]) -> OutboundMessage:
         active_service="travel",
         draft_payload=None,
     )
-    return wrap_with_menu_again(_("Travel Authorisation request cancelled."), context)
+    return wrap_with_parent_menu(_("Travel Authorisation request cancelled."), context, "travel")
 
 
 def _handle_travel_purpose(conv: Any, context: dict[str, Any], draft: dict, text: str) -> OutboundMessage:
@@ -1165,9 +1167,10 @@ def _handle_travel_confirm(conv: Any, context: dict[str, Any], draft: dict, text
             active_service="travel",
             draft_payload=None,
         )
-        return wrap_with_menu_again(
+        return wrap_with_parent_menu(
             _("Could not submit Travel Authorisation:\n\n{0}").format(str(exc)),
             context,
+            "travel",
         )
 
     update_conversation(
@@ -1177,7 +1180,7 @@ def _handle_travel_confirm(conv: Any, context: dict[str, Any], draft: dict, text
         active_service="travel",
         draft_payload=None,
     )
-    return wrap_with_menu_again(
+    return wrap_with_parent_menu(
         _(
             "✅ *Travel Authorisation Submitted*\n\n"
             "Reference: *{0}*\n"
@@ -1185,6 +1188,7 @@ def _handle_travel_confirm(conv: Any, context: dict[str, Any], draft: dict, text
             "Your travel authorisation request has been submitted for approval."
         ).format(doc_name),
         context,
+        "travel",
     )
 
 

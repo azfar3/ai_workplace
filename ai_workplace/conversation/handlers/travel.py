@@ -3,7 +3,7 @@ from ai_workplace.conversation.handlers.base import ServiceHandler
 from ai_workplace.whatsapp.outbound import OutboundMessage
 from ai_workplace.conversation.manager import update_conversation, ConversationState
 from ai_workplace.conversation.orchestrator import log_ai_action
-from ai_workplace.services.response_helpers import wrap_with_menu_again
+from ai_workplace.services.response_helpers import wrap_with_parent_menu
 
 class TravelHandler:
     def can_handle(self, intent: str, state: str) -> bool:
@@ -33,28 +33,28 @@ class TravelHandler:
             from ai_workplace.services.travel import build_approved_travel_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_approved_travel_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "travel")
             action = "view_approved_travel"
             
         elif intent == "trv_upcoming":
             from ai_workplace.services.travel import build_upcoming_travel_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_upcoming_travel_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "travel")
             action = "view_upcoming_travel"
             
         elif intent == "trv_claim_status":
             from ai_workplace.services.travel import build_claim_status_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_claim_status_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "travel")
             action = "view_travel_claim_status"
             
         elif intent == "trv_vehicle_info":
             from ai_workplace.services.travel import build_vehicle_info_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_vehicle_info_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_parent_menu(resp_text, context, "travel")
             action = "view_vehicle_info"
 
         if outbound:
