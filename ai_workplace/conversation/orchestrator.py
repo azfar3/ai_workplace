@@ -71,6 +71,20 @@ def _resolve_service_key(service_key: str) -> str:
     return SERVICE_ALIASES.get(key, key)
 
 
+def _parent_menu_target(outbound: OutboundMessage) -> str | None:
+    """Return the parent key when an outbound follow-up offers parent/main-menu buttons."""
+    for follow_up in outbound.follow_up:
+        interactive = follow_up.interactive or {}
+        buttons = interactive.get("action", {}).get("buttons", [])
+        button_ids = [
+            (button.get("reply") or {}).get("id", "")
+            for button in buttons
+        ]
+        if len(button_ids) == 2 and button_ids[0].startswith("svc_") and button_ids[1] == "svc_main_menu":
+            return button_ids[0][4:]
+    return None
+
+
 def is_greeting_message(text: str) -> bool:
     """
     Check if user message is a greeting keyword or session restart command.
@@ -1149,7 +1163,9 @@ def _process_message_internal(
 
     # ── Global: return to previous menu or main menu ───────────────────────────
     is_leaf_response_active = bool(conv.current_intent and conv.current_intent not in ("menu", "main_menu"))
-    is_single_button_press = is_leaf_response_active and cmd_lower in ("1", "1.", "1۔", "۱", "۱۔")
+    is_parent_menu_navigation = conv.current_intent == "parent_menu_navigation" and bool(conv.active_service)
+    is_single_button_press = is_leaf_response_active and not is_parent_menu_navigation and cmd_lower in ("1", "1.", "1۔", "۱", "۱۔")
+    is_parent_menu_choice = is_parent_menu_navigation and cmd_lower in ("1", "1.", "1۔", "۱", "۱۔")
 
     is_back_cmd = is_single_button_press or (cmd_lower in (
         "back",
@@ -1165,7 +1181,7 @@ def _process_message_internal(
         "پچھلا مینو",
     )) or bool(conv.active_service and cmd_lower in (f"svc_{conv.active_service.lower()}", conv.active_service.lower()))
 
-    is_main_menu_cmd = cmd_lower in (
+    is_main_menu_cmd = (is_parent_menu_navigation and cmd_lower in ("2", "2.", "2۔", "۲", "۲۔")) or cmd_lower in (
         "menu",
         "home",
         "main menu",
@@ -1178,7 +1194,7 @@ def _process_message_internal(
         "🔙 اصلی مینو",
     ) or clean_text.lower() in ("svc_main_menu", "main_menu")
 
-    if is_back_cmd and conv.active_service:
+    if (is_back_cmd or is_parent_menu_choice) and conv.active_service:
         parent_key = conv.active_service
         from ai_workplace.services.registry import get_available_services_for_context
         parent_services = get_available_services_for_context(context, parent_key=parent_key)
@@ -1469,6 +1485,14 @@ def _process_message_internal(
                 
             outbound = ServiceRegistry.dispatch(conv, svc_key, clean_text, context, trace_id)
             if outbound:
+                parent_target = _parent_menu_target(outbound)
+                if parent_target:
+                    update_conversation(
+                        conv,
+                        state=ConversationState.AWAITING_SELECTION,
+                        current_intent="parent_menu_navigation",
+                        active_service=parent_target,
+                    )
                 return outbound
 
             # Now, attempt to dynamically render submenu if it has children
