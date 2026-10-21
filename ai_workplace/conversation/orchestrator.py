@@ -671,7 +671,6 @@ def _process_message_internal(
              )
         elif lang == "Roman Urdu":
             bye_text = (
-                "🤖 MicroMerger HR Assistant | Automated Response\n\n"
                 "Aap se baat kar ke khushi hui! 👋\n\n"
                 "Aap ka session kamyabi se khatam ho gaya hai. "
                 "Agar aap ko HR policies ya employee services ke hawale se mazeed madad chahiye, "
@@ -680,7 +679,6 @@ def _process_message_internal(
             )
         else:
             bye_text = (
-                "🤖 MicroMerger HR Assistant | Automated Response\n\n"
                 "It was a pleasure assisting you! 👋\n\n"
                 "Your session has ended successfully. "
                 "Whenever you need help with HR policies or employee services, "
