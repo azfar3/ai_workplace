@@ -75,17 +75,11 @@ def handle_hr_agent_message(
         return handle_onboarding_message(conv, clean, context)
 
     if not is_ai_chat_enabled():
-        from ai_workplace.services.response_helpers import label_automated_response
-
-        return build_button_message(
-            label_automated_response(
-                "AI chat is currently unavailable due to a system issue. You can still use the HR services menu "
-                "or connect with HR for assistance."
-            ),
-            [
-                {"id": "svc_contact_hr", "title": "Contact HR"},
-                {"id": "svc_main_menu", "title": "Main Menu"},
-            ],
+        return _build_ai_response_message(
+            "AI chat is currently unavailable due to a system issue. You can still use the HR services menu "
+            "or connect with HR for assistance.",
+            context,
+            conv,
         )
 
     # 1. Build Safe AI Request Context
@@ -422,8 +416,8 @@ def handle_hr_agent_message(
                         f"Full Response: {res}"
                     ),
                 )
-                return _build_feedback_message(
-                    "I am experiencing technical difficulties.", context
+                return _build_ai_response_message(
+                    "I am experiencing technical difficulties.", context, conv
                 )
 
             # Append assistant message (clean extra non-standard fields like 'reasoning')
@@ -475,7 +469,7 @@ def handle_hr_agent_message(
                 except Exception:
                     pass
                 update_conversation(conv, state=ConversationState.AWAITING_SELECTION)
-                return _build_feedback_message(final_text, context)
+                return _build_ai_response_message(final_text, context, conv)
 
             # Execute tools observed by the planner
             import json
@@ -505,18 +499,19 @@ def handle_hr_agent_message(
             title="HR Agent AI Max Steps Exceeded",
             message=f"HR Agent loop exceeded maximum steps ({MAX_STEPS}) for message: '{clean}'",
         )
-        return _build_feedback_message(
+        return _build_ai_response_message(
             "Your request requires more processing steps than I can complete in one attempt. "
             "Please try asking a shorter, more specific question, or choose an option from the menu.",
             context,
+            conv,
         )
     except Exception as exc:
         frappe.log_error(
             title="HR Agent Exception Fallback",
             message=f"Exception in handle_hr_agent_message for user message '{clean}': {exc}\n{frappe.get_traceback()}",
         )
-        return _build_feedback_message(
-            "I am experiencing technical difficulties.", context
+        return _build_ai_response_message(
+            "I am experiencing technical difficulties.", context, conv
         )
 
 
@@ -537,23 +532,67 @@ def _ai_disclaimer(context: dict) -> str:
         )
 
 
-def _build_feedback_message(text: str, context: dict) -> OutboundMessage:
-    # Identify automated replies so they are not mistaken for live HR messages.
+def _build_ai_response_message(text: str, context: dict, conv: Any = None) -> OutboundMessage:
+    """Return an AI answer or failure, then show the main menu without feedback buttons."""
     from ai_workplace.services.response_helpers import label_automated_response
+    from ai_workplace.conversation.menu import build_menu
 
-    text_with_disclaimer = label_automated_response(text) + _ai_disclaimer(context)
-    if "I could not find the relevant policy information" in text or "contact HR" in text.lower() or "not available" in text.lower():
-        buttons = [
-            {"id": "svc_contact_hr", "title": "Chat with HR"},
-            {"id": "svc_main_menu", "title": "Main Menu"},
-        ]
-    else:
-        buttons = [
-            {"id": "fb_helpful", "title": "👍 Helpful"},
-            {"id": "fb_not_helpful", "title": "👎 Not Helpful"},
-            {"id": "svc_main_menu", "title": "Main Menu"},
-        ]
-    return build_button_message(text_with_disclaimer, buttons)
+    failed = _is_ai_failure_response(text)
+    body = label_automated_response(text)
+    if not failed:
+        body += _ai_disclaimer(context)
+
+    outbound = OutboundMessage(body_text=body)
+    menu_out, _ = build_menu(context)
+    outbound.follow_up = [menu_out]
+    if conv is not None:
+        update_conversation(
+            conv,
+            state=ConversationState.AWAITING_SELECTION,
+            current_intent=None,
+            active_service=None,
+        )
+    return outbound
+
+
+def _is_ai_failure_response(text: str) -> bool:
+    """Identify uncertainty, missing evidence, unsupported requests, and system failures."""
+    lowered = (text or "").casefold().replace("’", "'").replace("‘", "'")
+    failure_phrases = (
+        "i'm not sure i understand",
+        "i am not sure i understand",
+        "i don't understand",
+        "i do not understand",
+        "could you please clarify",
+        "couldn't find relevant information",
+        "could not find relevant information",
+        "couldn't find the relevant policy information",
+        "could not find the relevant policy information",
+        "don't have a specific policy",
+        "do not have a specific policy",
+        "couldn't find a verified answer",
+        "could not find a verified answer",
+        "couldn't find an official answer",
+        "could not find an official answer",
+        "couldn't find an answer",
+        "could not find an answer",
+        "i couldn't find an answer",
+        "i could not find an answer",
+        "unable to retrieve",
+        "could not retrieve",
+        "couldn't retrieve",
+        "technical difficulties",
+        "technical issue",
+        "system issue",
+        "temporarily unable",
+        "currently unavailable",
+        "i can't help with that request",
+        "i cannot help with that request",
+        "can't help with that request",
+        "cannot help with that request",
+        "more processing steps than i can complete",
+    )
+    return any(phrase in lowered for phrase in failure_phrases)
 
 
 def _mask_sensitive(text: str) -> str:

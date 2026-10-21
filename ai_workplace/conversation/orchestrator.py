@@ -1094,8 +1094,8 @@ def _process_message_internal(
                     result=_p13_fmt,
                     status="Success",
                 )
-                from ai_workplace.services.hr_agent import _build_feedback_message
-                return _build_feedback_message(_p13_fmt, context)
+                from ai_workplace.services.hr_agent import _build_ai_response_message
+                return _build_ai_response_message(_p13_fmt, context, conv)
 
             if _p13_ok and _p13_mode == "workflow":
                 _p13_wf = _p13_meta.get("workflow_intent")
@@ -1394,8 +1394,8 @@ def _process_message_internal(
                     result=_formatted,
                     status="Success",
                 )
-                from ai_workplace.services.hr_agent import _build_feedback_message
-                return _build_feedback_message(_formatted, context)
+                from ai_workplace.services.hr_agent import _build_ai_response_message
+                return _build_ai_response_message(_formatted, context, conv)
 
             # ── HYBRID: lightweight synthesis — tool data → LLM narration ──────
             # Phase 4: uses hybrid_handler (1 LLM call, no tool-loop) instead
@@ -1586,38 +1586,6 @@ def _process_message_internal(
         menu_out.body_text = f"{unauth_msg}\n\n{menu_out.body_text}"
         return menu_out
 
-
-    # ── AI Feedback Button Handlers ──────────────────────────────────────────
-    if clean_text in ("fb_helpful", "👍 helpful"):
-        try:
-            doc = frappe.new_doc("AI Feedback Log")
-            doc.feedback_type = "HELPFUL"
-            doc.query = "Interactive Feedback"
-            doc.employee = context.get("employee")
-            doc.user = context.get("user")
-            doc.whatsapp_identity = conv.whatsapp_identity
-            doc.insert(ignore_permissions=True)
-        except Exception:
-            pass
-        return OutboundMessage(
-            body_text="Thank you for your feedback! 😊\n\nIs there anything else I can help you with today? Feel free to ask another question or type *menu*."
-        )
-
-    if clean_text in ("fb_not_helpful", "👎 not helpful"):
-        try:
-            doc = frappe.new_doc("AI Feedback Log")
-            doc.feedback_type = "NOT_HELPFUL"
-            doc.feedback_reason = "IRRELEVANT"
-            doc.query = "Interactive Negative Feedback"
-            doc.employee = context.get("employee")
-            doc.user = context.get("user")
-            doc.whatsapp_identity = conv.whatsapp_identity
-            doc.insert(ignore_permissions=True)
-        except Exception:
-            pass
-        return OutboundMessage(
-            body_text="Thank you for your feedback! An HR representative will review this topic to improve our responses.\n\nIs there anything else I can help you with today? Feel free to ask another question or type *menu*."
-        )
 
     # =========================================================================
     # FINAL FALLBACK: LLM for genuinely unknown / complex / reasoning queries
