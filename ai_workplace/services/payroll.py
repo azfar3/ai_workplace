@@ -50,14 +50,15 @@ def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
     prev_user = frappe.session.user
     try:
         frappe.set_user("Administrator")
-        pdf_bytes = frappe.get_print(
+        from frappe.utils.print_format import download_pdf
+
+        download_pdf(
             "Salary Slip",
             slip_name,
-            print_format=print_format,
-            doc=doc,
-            as_pdf=True,
+            format=print_format,
             letterhead="MM",
         )
+        pdf_bytes = frappe.local.response.filecontent
     finally:
         frappe.set_user(prev_user)
 
