@@ -40,7 +40,7 @@ def get_default_salary_slip_print_format() -> str:
 
 
 def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
-    """Generate PDF bytes using the site's default Salary Slip print format."""
+    """Generate a Salary Slip PDF using the site's default print format and MM letterhead."""
     print_format = get_default_salary_slip_print_format()
     doc = frappe.get_doc("Salary Slip", slip_name)
     safe_period = formatdate(doc.start_date, "MMM_YYYY")
@@ -56,6 +56,7 @@ def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
             print_format=print_format,
             doc=doc,
             as_pdf=True,
+            letterhead="MM",
         )
     finally:
         frappe.set_user(prev_user)
