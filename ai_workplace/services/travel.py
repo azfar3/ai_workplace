@@ -656,10 +656,14 @@ def start_travel_problem_report(conv: Any, context: dict[str, Any]) -> OutboundM
         active_service="travel_support",
         draft_payload=json.dumps(draft),
     )
-    return wrap_with_parent_menu(
-        _("🚨 *Travel Support*\n\nPlease enter a short subject for the travel issue. I’ll then ask for details and create an Issue for the support team."),
-        context,
-        "travel",
+    return OutboundMessage(
+        body_text=_(
+            "🚨 *Travel Support*\n\n"
+            "I’ll send your report to the travel support team as an Issue.\n\n"
+            "*Step 1 of 2:* Send a short title for the problem.\n"
+            "Example: _Travel reimbursement is delayed_\n\n"
+            "You can type *cancel* at any time to stop."
+        )
     )
 
 
@@ -679,15 +683,21 @@ def handle_travel_problem_message(
 
     if draft.get("step") == "awaiting_subject":
         if not text:
-            return wrap_with_parent_menu(_("Please enter a short subject for the travel issue."), context, "travel")
+            return OutboundMessage(body_text=_("Please send a short title for the travel problem. For example: _Travel reimbursement is delayed_."))
         draft.update(step="awaiting_description", subject=text[:140])
         update_conversation(conv, draft_payload=json.dumps(draft))
-        return wrap_with_parent_menu(_("Thanks. Please describe the issue and include any useful details."), context, "travel")
+        return OutboundMessage(
+            body_text=_(
+                "Thanks.\n\n"
+                "*Step 2 of 2:* Describe what happened. Include dates, places, or other details that may help the team.\n"
+                "Example: _I submitted the claim on 10 October for my Lahore trip, but it has not been processed._"
+            )
+        )
 
     if draft.get("step") != "awaiting_description":
         return wrap_with_parent_menu(_("This Travel Support request expired. Please select Travel Support again."), context, "travel")
     if not text:
-        return wrap_with_parent_menu(_("Please add a few details about the issue."), context, "travel")
+        return OutboundMessage(body_text=_("Please describe what happened. Add any helpful dates, places, or other details."))
 
     employee_id = draft.get("employee") or context.get("employee") or getattr(conv, "employee", None)
     try:
