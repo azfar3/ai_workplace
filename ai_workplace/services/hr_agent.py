@@ -525,8 +525,6 @@ def _build_ai_response_message(
 ) -> OutboundMessage:
     """Return an AI answer or failure, then show the main menu without feedback buttons."""
     from ai_workplace.services.response_helpers import label_automated_response
-    from ai_workplace.whatsapp.interactive import build_button_message
-
     failed = _is_ai_failure_response(text)
     clean_text = _remove_ai_disclaimer(text)
     if _is_unclear_request_response(clean_text):
@@ -542,11 +540,11 @@ def _build_ai_response_message(
             body += _ai_disclaimer(context)
 
     outbound = OutboundMessage(body_text=body)
-    next_step = build_button_message(
-        "Type another message if you need anything else, or tap *Main Menu* or type *menu* to return to the main menu.",
-        [{"id": "svc_main_menu", "title": "Main Menu"}],
-    )
-    outbound.follow_up = [next_step]
+    outbound.follow_up = [
+        OutboundMessage(
+            body_text="Type another message if you need anything else, or type menu to return to the main menu."
+        )
+    ]
     outbound.preserve_follow_up = True
     if conv is not None:
         update_conversation(
