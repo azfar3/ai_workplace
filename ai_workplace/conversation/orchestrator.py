@@ -427,6 +427,7 @@ def process_message(
         result = _process_message_internal(message_text, identity, message_id, trace_id, wa_id, skip_pin_check, shared, media_url=media_url)
         if shared.get("prepend_welcome_text") and isinstance(result, OutboundMessage):
             if result.body_text:
+                result.body_text = _strip_leading_greeting(result.body_text)
                 result.body_text = f"{shared['prepend_welcome_text']}\n\n{result.body_text}"
             elif getattr(result, "interactive", None) and isinstance(result.interactive, dict):
                 body_obj = result.interactive.get("body", {})
@@ -445,6 +446,31 @@ def process_message(
                 "Please try again or type *menu* to start a new request. If the issue continues, contact HR for assistance."
             )
         )
+
+
+def _strip_leading_greeting(text: str) -> str:
+    """Remove a standalone greeting from the answer when the app already sent one."""
+    import re
+
+    lines = (text or "").splitlines()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    if not lines:
+        return ""
+
+    first_line = lines[0].strip()
+    greeting_patterns = (
+        r"(?i)assalam(?:-o)?-?alaikum(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?",
+        r"(?i)assalamu alaikum(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?",
+        r"(?i)(?:salam|salaam)(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?",
+        r"السلام علیکم(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?",
+        r"(?i)hello(?:[, ]+(?:there|[A-Z][\w'-]*))?[.!]?",
+    )
+    if any(re.fullmatch(pattern, first_line) for pattern in greeting_patterns):
+        lines = lines[1:]
+        while lines and not lines[0].strip():
+            lines.pop(0)
+    return "\n".join(lines).strip()
 
 
 
