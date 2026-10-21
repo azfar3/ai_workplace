@@ -146,16 +146,13 @@ class TestTravelServices(unittest.TestCase):
         self.assertIn("Travel & DSA Policy", outbound.document_caption)
         self.assertEqual(outbound.follow_up, [mock_wrap.return_value])
 
-    @patch("ai_workplace.services.concern_report.start_concern_report")
-    def test_start_travel_problem_report(self, mock_start):
-        mock_start.return_value = MagicMock(
-            body_text="Step 1 — Select Incident Type:",
-            interactive={"body": {"text": "Step 1 — Select Incident Type:"}},
-        )
+    @patch("ai_workplace.services.travel.update_conversation")
+    def test_start_travel_problem_report(self, mock_update):
         conv = MagicMock()
         outbound = start_travel_problem_report(conv, self.context_en)
-        self.assertIn("Travel Problem Report", outbound.body_text)
-        self.assertIn("Step 1", outbound.body_text)
+        self.assertIn("Travel Support", outbound.body_text)
+        self.assertIn("create an Issue", outbound.body_text)
+        mock_update.assert_called_once()
 
     @patch("frappe.get_all")
     def test_find_travel_sop_policy_prefers_travel_subject(self, mock_get_all):
@@ -217,4 +214,3 @@ class TestTravelServices(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

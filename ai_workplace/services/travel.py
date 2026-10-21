@@ -7,7 +7,7 @@ Travel & Claims self-service for WhatsApp:
 - trv_claim_status: Employee expense claim status
 - trv_vehicle_info: Employee vehicle / commute details
 - trv_sop: Travel SOP / DSA policy PDF
-- trv_problem: Redirect to confidential concern report
+- trv_problem: Create an ERPNext Issue for travel support
 """
 
 from __future__ import annotations
@@ -646,41 +646,70 @@ def build_travel_sop_outbound(context: dict[str, Any]) -> OutboundMessage:
 
 
 def start_travel_problem_report(conv: Any, context: dict[str, Any]) -> OutboundMessage:
-    """Start confidential concern report flow for travel incidents."""
-    from ai_workplace.services.concern_report import start_concern_report
+    """Begin a short intake that creates an ERPNext Issue for travel support."""
+    employee_id = context.get("employee") or getattr(conv, "employee", None)
+    draft = {"step": "awaiting_subject", "employee": employee_id}
+    update_conversation(
+        conv,
+        state=ConversationState.PROCESSING,
+        current_intent="trv_problem",
+        active_service="travel_support",
+        draft_payload=json.dumps(draft),
+    )
+    return wrap_with_parent_menu(
+        _("🚨 *Travel Support*\n\nPlease enter a short subject for the travel issue. I’ll then ask for details and create an Issue for the support team."),
+        context,
+        "travel",
+    )
 
-    outbound = start_concern_report(conv, context)
-    lang = context.get("preferred_language", "English")
 
-    if lang == "Urdu":
-        prefix = (
-            "🚨 *سفری مسئلہ رپورٹ*\n\n"
-            "سفری واقعات، DSA یا ٹرانسپورٹ سے متعلق مسائل یہاں رپورٹ کریں۔\n"
-            "یہ رپورٹ خفیہ Concern workflow میں جائے گی۔\n"
-        )
-    elif lang == "Roman Urdu":
-        prefix = (
-            "🚨 *Travel Problem Report*\n\n"
-            "Travel incidents, DSA ya transport se mutaliq masail yahan report karein.\n"
-            "Yeh report confidential Concern workflow mein jayegi.\n"
-        )
-    else:
-        prefix = (
-            "🚨 *Travel Problem Report*\n\n"
-            "Report travel incidents, DSA issues, or transport problems here.\n"
-            "This will be handled through the confidential Concern workflow.\n"
-        )
+def handle_travel_problem_message(
+    conv: Any, message_text: str, context: dict[str, Any]
+) -> OutboundMessage:
+    """Collect an Issue subject and description, then submit it."""
+    try:
+        draft = json.loads(conv.draft_payload or "{}")
+    except (TypeError, ValueError):
+        draft = {}
+    text = (message_text or "").strip()
+    if text.casefold() in {"cancel", "menu", "stop", "exit", "back"}:
+        update_conversation(conv, state=ConversationState.AWAITING_SELECTION,
+                            current_intent=None, active_service="travel_support", draft_payload=None)
+        return wrap_with_parent_menu(_("Travel Support request cancelled."), context, "travel")
 
-    outbound.body_text = f"{prefix}\n{outbound.body_text}"
-    if outbound.interactive:
-        interactive = dict(outbound.interactive)
-        body = interactive.get("body") or {}
-        if isinstance(body, dict) and body.get("text"):
-            body = dict(body)
-            body["text"] = f"{prefix}\n{body['text']}"
-            interactive["body"] = body
-            outbound.interactive = interactive
-    return outbound
+    if draft.get("step") == "awaiting_subject":
+        if not text:
+            return wrap_with_parent_menu(_("Please enter a short subject for the travel issue."), context, "travel")
+        draft.update(step="awaiting_description", subject=text[:140])
+        update_conversation(conv, draft_payload=json.dumps(draft))
+        return wrap_with_parent_menu(_("Thanks. Please describe the issue and include any useful details."), context, "travel")
+
+    if draft.get("step") != "awaiting_description":
+        return wrap_with_parent_menu(_("This Travel Support request expired. Please select Travel Support again."), context, "travel")
+    if not text:
+        return wrap_with_parent_menu(_("Please add a few details about the issue."), context, "travel")
+
+    employee_id = draft.get("employee") or context.get("employee") or getattr(conv, "employee", None)
+    try:
+        issue = frappe.new_doc("Issue")
+        issue.subject = f"Travel Support: {draft['subject']}"
+        issue.description = text
+        if employee_id:
+            issue.raised_by = frappe.db.get_value("Employee", employee_id, "company_email") or ""
+        issue.insert(ignore_permissions=True)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Travel Support Issue Creation Failed")
+        update_conversation(conv, state=ConversationState.AWAITING_SELECTION,
+                            current_intent=None, active_service="travel_support", draft_payload=None)
+        return wrap_with_parent_menu(_("I couldn’t submit your Travel Support issue right now. Please try again later or contact HR."), context, "travel")
+
+    update_conversation(conv, state=ConversationState.AWAITING_SELECTION,
+                        current_intent=None, active_service="travel_support", draft_payload=None)
+    return wrap_with_parent_menu(
+        _("Your Travel Support issue has been submitted. Issue reference: {0}").format(issue.name),
+        context,
+        "travel",
+    )
 
 
 def _employee_exists(employee_id: str) -> bool:

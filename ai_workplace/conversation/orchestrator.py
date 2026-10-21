@@ -1107,6 +1107,11 @@ def _process_message_internal(
 
         return handle_travel_authorization_message(conv, clean_text, context)
 
+    if current_state == ConversationState.PROCESSING and conv.current_intent == "trv_problem":
+        from ai_workplace.services.travel import handle_travel_problem_message
+
+        return handle_travel_problem_message(conv, clean_text, context)
+
     if current_state == ConversationState.PROCESSING and conv.current_intent == "onboarding_agent":
         from ai_workplace.services.onboarding import handle_onboarding_message
 
