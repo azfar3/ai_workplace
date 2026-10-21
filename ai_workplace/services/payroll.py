@@ -49,8 +49,12 @@ def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
     filename = f"Salary_Slip_{safe_employee}_{safe_period}.pdf"
 
     prev_user = frappe.session.user
+    prev_form_dict = frappe.local.form_dict
     try:
         frappe.set_user("Administrator")
+        # Generate the print in an isolated Frappe request context so webhook
+        # parameters cannot override the PDF renderer or print-view settings.
+        frappe.local.form_dict = frappe._dict(pdf_generator="wkhtmltopdf")
         from hrms.api.employee import download_employee_letter
 
         pdf_data_uri = download_employee_letter("Salary Slip", slip_name)
@@ -59,6 +63,7 @@ def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
             frappe.throw("Salary Slip PDF download returned invalid data.")
         pdf_bytes = base64.b64decode(encoded_pdf)
     finally:
+        frappe.local.form_dict = prev_form_dict
         frappe.set_user(prev_user)
 
     return pdf_bytes, filename
