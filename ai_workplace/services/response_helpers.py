@@ -22,7 +22,14 @@ AUTOMATED_RESPONSE_LABEL = "🤖 *MicroMerger HR Assistant | Automated Response*
 
 def label_automated_response(body_text: str) -> str:
     """Identify bot-generated notices so users do not mistake them for HR replies."""
-    return f"{AUTOMATED_RESPONSE_LABEL}\n\n{body_text}"
+    body = (body_text or "").strip()
+    lines = body.splitlines()
+    if lines and "micromerger hr assistant" in lines[0].casefold():
+        lines = lines[1:]
+        while lines and not lines[0].strip():
+            lines.pop(0)
+        body = "\n".join(lines)
+    return f"{AUTOMATED_RESPONSE_LABEL}\n\n{body}"
 
 
 def wrap_with_menu_again(body_text: str, context: dict[str, Any]) -> OutboundMessage:

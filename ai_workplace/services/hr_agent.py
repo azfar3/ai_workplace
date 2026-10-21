@@ -535,7 +535,7 @@ def _ai_disclaimer(context: dict) -> str:
 def _build_ai_response_message(text: str, context: dict, conv: Any = None) -> OutboundMessage:
     """Return an AI answer or failure, then show the main menu without feedback buttons."""
     from ai_workplace.services.response_helpers import label_automated_response
-    from ai_workplace.conversation.menu import build_menu
+    from ai_workplace.conversation.menu import build_menu_text_fallback
 
     failed = _is_ai_failure_response(text)
     body = label_automated_response(text)
@@ -543,8 +543,8 @@ def _build_ai_response_message(text: str, context: dict, conv: Any = None) -> Ou
         body += _ai_disclaimer(context)
 
     outbound = OutboundMessage(body_text=body)
-    menu_out, _ = build_menu(context)
-    outbound.follow_up = [menu_out]
+    menu_text, _ = build_menu_text_fallback(context)
+    outbound.follow_up = [OutboundMessage(body_text=menu_text)]
     if conv is not None:
         update_conversation(
             conv,
@@ -563,6 +563,8 @@ def _is_ai_failure_response(text: str) -> bool:
         "i am not sure i understand",
         "i don't understand",
         "i do not understand",
+        "i didn't catch that",
+        "i did not catch that",
         "could you please clarify",
         "couldn't find relevant information",
         "could not find relevant information",
