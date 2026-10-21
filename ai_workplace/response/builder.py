@@ -270,8 +270,10 @@ def build_invalid_selection_response(
     else:
         error_msg = "I didn't recognize that option.\n\nPlease choose one of the available options."
 
+    from ai_workplace.services.response_helpers import label_automated_response
+
     menu_str = build_welcome_menu_response(context, service_items)
-    return f"{error_msg}\n\n{menu_str}"
+    return label_automated_response(f"{error_msg}\n\n{menu_str}")
 
 
 def build_cancellation_response(context: dict[str, Any]) -> str:

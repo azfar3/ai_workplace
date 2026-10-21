@@ -114,7 +114,12 @@ def handle_concern_report_message(
     if handler:
         return handler(conv, context, draft, text)
 
-    return wrap_with_menu_again(_("Something went wrong. Type 'menu' to start again."), context)
+    from ai_workplace.services.response_helpers import label_automated_response
+
+    return wrap_with_menu_again(
+        label_automated_response(_("I couldn’t continue this report because of an unexpected system issue. Type *menu* to start again.")),
+        context,
+    )
 
 
 def _load_draft(conv: Any) -> dict[str, Any]:
@@ -667,8 +672,10 @@ def _handle_confirm(conv: Any, context: dict[str, Any], draft: dict, text: str) 
             draft_payload=None,
         )
         err_text = str(exc).replace("<br>", "\n").replace("<br/>", "\n")
+        from ai_workplace.services.response_helpers import label_automated_response
+
         return wrap_with_menu_again(
-            _("Could not submit concern report:\n\n{0}").format(err_text),
+            label_automated_response(_("I couldn’t submit your report due to a system issue. Please try again later or contact HR for assistance.")),
             context,
         )
 

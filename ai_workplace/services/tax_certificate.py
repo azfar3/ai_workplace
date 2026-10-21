@@ -107,20 +107,23 @@ def build_tax_certificate_caption(context: dict[str, Any], fiscal_year: str) -> 
 
 
 def build_tax_certificate_error(context: dict[str, Any]) -> str:
+    from ai_workplace.services.response_helpers import label_automated_response
+
     lang = context.get("preferred_language", "English")
     if lang == "Urdu":
-        return (
-            "معذرت، ٹیکس سرٹیفکیٹ PDF نہیں بن سکی۔ "
-            "ممکن ہے اس مالی سال کے لیے ڈیٹا موجود نہ ہو — HR سے رابطہ کریں۔"
+        return label_automated_response(
+            "ٹیکس سرٹیفکیٹ تیار نہیں ہو سکا۔ ممکن ہے سسٹم میں عارضی مسئلہ ہو یا اس مالی سال کے لیے اہل ریکارڈ موجود نہ ہو۔\n\n"
+            "براہ کرم بعد میں دوبارہ کوشش کریں یا دستیابی کی تصدیق کے لیے HR سے رابطہ کریں۔"
         )
     if lang == "Roman Urdu":
-        return (
-            "Maazrat, Tax Certificate PDF generate nahi ho saki. "
-            "Shayad is fiscal year ke liye data mojood nahi — HR se rabta karein."
+        return label_automated_response(
+            "Tax certificate tayar nahi ho saka. Mumkin hai system ka aarzi masla ho ya is fiscal year ke liye eligible record mojood na ho.\n\n"
+            "Baad mein dobara koshish karein ya availability ki tasdeeq ke liye HR se rabta karein."
         )
-    return (
-        "Sorry, we couldn't generate your Tax Certificate PDF. "
-        "There may be no data for the current fiscal year — please contact HR."
+    return label_automated_response(
+        "I couldn’t generate your tax certificate at this time. This may be due to a temporary system issue "
+        "or the absence of eligible records for the current fiscal year.\n\n"
+        "Please try again later or contact HR to verify your certificate availability."
     )
 
 

@@ -306,7 +306,11 @@ def handle_deliverable_add_message(
     if step == "awaiting_confirm":
         return _handle_add_confirm(conv, context, draft, text)
 
-    return wrap_with_menu_again(_("Something went wrong. Type 'menu' to start again."), context)
+    from ai_workplace.services.response_helpers import label_automated_response
+
+    return wrap_with_menu_again(label_automated_response(
+        _("I couldn’t continue this request because of an unexpected system issue. Type *menu* to start again.")
+    ), context)
 
 
 def handle_deliverable_add_attachment(
@@ -402,7 +406,11 @@ def handle_deliverable_submit_message(
     if step == "awaiting_submit_confirm":
         return _handle_submit_confirm(conv, context, draft, text)
 
-    return wrap_with_menu_again(_("Something went wrong. Type 'menu' to start again."), context)
+    from ai_workplace.services.response_helpers import label_automated_response
+
+    return wrap_with_menu_again(label_automated_response(
+        _("I couldn’t continue this request because of an unexpected system issue. Type *menu* to start again.")
+    ), context)
 
 
 def _load_draft(conv: Any) -> dict[str, Any]:

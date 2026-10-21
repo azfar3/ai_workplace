@@ -75,8 +75,13 @@ def handle_hr_agent_message(
         return handle_onboarding_message(conv, clean, context)
 
     if not is_ai_chat_enabled():
+        from ai_workplace.services.response_helpers import label_automated_response
+
         return build_button_message(
-            "AI Chat is currently offline. Please select an option from the menu or contact HR.",
+            label_automated_response(
+                "AI chat is currently unavailable due to a system issue. You can still use the HR services menu "
+                "or connect with HR for assistance."
+            ),
             [
                 {"id": "svc_contact_hr", "title": "Contact HR"},
                 {"id": "svc_main_menu", "title": "Main Menu"},
@@ -501,7 +506,8 @@ def handle_hr_agent_message(
             message=f"HR Agent loop exceeded maximum steps ({MAX_STEPS}) for message: '{clean}'",
         )
         return _build_feedback_message(
-            "I had to stop because the task took too many steps. Please try asking more specifically.",
+            "Your request requires more processing steps than I can complete in one attempt. "
+            "Please try asking a shorter, more specific question, or choose an option from the menu.",
             context,
         )
     except Exception as exc:
@@ -532,8 +538,10 @@ def _ai_disclaimer(context: dict) -> str:
 
 
 def _build_feedback_message(text: str, context: dict) -> OutboundMessage:
-    # Append AI disclaimer to every bot reply
-    text_with_disclaimer = text + _ai_disclaimer(context)
+    # Identify automated replies so they are not mistaken for live HR messages.
+    from ai_workplace.services.response_helpers import label_automated_response
+
+    text_with_disclaimer = label_automated_response(text) + _ai_disclaimer(context)
     if "I could not find the relevant policy information" in text or "contact HR" in text.lower() or "not available" in text.lower():
         buttons = [
             {"id": "svc_contact_hr", "title": "Chat with HR"},

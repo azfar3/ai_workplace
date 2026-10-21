@@ -561,8 +561,14 @@ def process_inbound_location(
         return OutboundMessage(body_text=str(exc))
     except Exception:
         frappe.log_error(title="WhatsApp attendance checkin failed", message=frappe.get_traceback())
+        from ai_workplace.services.response_helpers import label_automated_response
+
         return build_button_message(
-            "We couldn't complete your attendance due to a temporary system issue.\n\nYour attendance has not been recorded.",
+            label_automated_response(
+                "I couldn’t complete your attendance check-in/check-out due to a temporary system issue.\n\n"
+                "Your attendance action was not confirmed as successful. Please verify your attendance status "
+                "before trying again. If it remains unresolved, contact HR for assistance."
+            ),
             [
                 {"id": "svc_att_checkin" if log_type == "IN" else "svc_att_checkout", "title": "Try Again"},
                 {"id": "svc_contact_hr", "title": "Contact HR"},
@@ -702,7 +708,12 @@ def _submit_exception_request(conv: Any, context: dict[str, Any], draft: dict) -
         req_name = doc.name
     except Exception:
         frappe.log_error(title="WhatsApp attendance exception failed", message=frappe.get_traceback())
-        return OutboundMessage(body_text="Could not submit exception request. Please contact HR.")
+        from ai_workplace.services.response_helpers import label_automated_response
+
+        return OutboundMessage(body_text=label_automated_response(
+            "I couldn’t submit your attendance exception request due to a temporary system issue. "
+            "Please try again later or contact HR for assistance."
+        ))
     finally:
         frappe.set_user(prev_user)
 

@@ -122,7 +122,13 @@ def handle_leave_apply_message(
         return _handle_confirm(conv, context, draft, text)
 
     lang = context.get("preferred_language", "English")
-    err = "کچھ غلط ہو گیا۔ دوبارہ شروع کرنے کے لیے 'menu' ٹائپ کریں۔" if lang == "Urdu" else "Something went wrong. Type 'menu' to start again."
+    from ai_workplace.services.response_helpers import label_automated_response
+
+    err = label_automated_response(
+        "درخواست کا عمل کسی غیر متوقع سسٹم مسئلے کے باعث جاری نہیں رہ سکا۔ دوبارہ شروع کرنے کے لیے 'menu' ٹائپ کریں۔"
+        if lang == "Urdu"
+        else "I couldn’t continue this request because of an unexpected system issue. Type *menu* to start again."
+    )
     return wrap_with_parent_menu(err, context, "attendance_leave")
 
 
@@ -533,7 +539,13 @@ def _handle_confirm(conv: Any, context: dict[str, Any], draft: dict, text: str) 
             active_service="attendance_leave",
             draft_payload=None,
         )
-        err = f"معذرت، چھٹی کی درخواست جمع نہیں ہو سکی:\n\n{str(exc)}" if lang == "Urdu" else f"Could not submit leave application:\n\n{str(exc)}"
+        from ai_workplace.services.response_helpers import label_automated_response
+
+        err = label_automated_response(
+            "سسٹم کی عارضی خرابی کے باعث چھٹی کی درخواست جمع نہیں ہو سکی۔ براہ کرم دوبارہ کوشش کریں یا HR سے رابطہ کریں۔"
+            if lang == "Urdu"
+            else "I couldn’t submit your leave application due to a temporary system issue. Please try again or contact HR for assistance."
+        )
         return wrap_with_parent_menu(err, context, "attendance_leave")
 
     update_conversation(
@@ -631,5 +643,4 @@ def _create_leave_application(draft: dict[str, Any], context: dict[str, Any]) ->
         raise exc
     finally:
         frappe.set_user(previous_user)
-
 

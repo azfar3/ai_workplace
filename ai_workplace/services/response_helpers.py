@@ -17,6 +17,14 @@ from ai_workplace.whatsapp.interactive import (
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
 
+AUTOMATED_RESPONSE_LABEL = "🤖 *MicroMerger HR Assistant | Automated Response*"
+
+
+def label_automated_response(body_text: str) -> str:
+    """Identify bot-generated notices so users do not mistake them for HR replies."""
+    return f"{AUTOMATED_RESPONSE_LABEL}\n\n{body_text}"
+
+
 def wrap_with_menu_again(body_text: str, context: dict[str, Any]) -> OutboundMessage:
     """Attach a 'Show Menu' button message after a plain-text service response."""
     msg = OutboundMessage(body_text=body_text)

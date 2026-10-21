@@ -349,13 +349,18 @@ def resolve_bank_name(context: dict[str, Any]) -> Optional[str]:
 
 
 def build_letter_download_error(context: dict[str, Any], letter_type: str) -> str:
+    from ai_workplace.services.response_helpers import label_automated_response
+
     lang = context.get("preferred_language", "English")
     if lang == "Urdu":
         type_str = "تجربہ سرٹیفکیٹ" if "Experience" in letter_type else ("بینک لیٹر" if "Bank" in letter_type else letter_type)
-        return f"معذرت، {type_str} PDF بن نہیں سکی۔ براہ کرم HR سے رابطہ کریں۔"
+        return label_automated_response(f"سسٹم کی عارضی خرابی کے باعث آپ کا {type_str} تیار نہیں ہو سکا۔ براہ کرم کچھ دیر بعد دوبارہ کوشش کریں یا فوری ضرورت کے لیے HR سے رابطہ کریں۔")
     if lang == "Roman Urdu":
-        return f"Maazrat, {letter_type} PDF generate nahi ho saki. HR se rabta karein."
-    return f"Sorry, we couldn't generate your {letter_type} PDF. Please contact HR."
+        return label_automated_response(f"System ki aarzi kharabi ki wajah se aap ka {letter_type} tayar nahi ho saka. Kuch dair baad dobara koshish karein ya zaroorat par HR se rabta karein.")
+    return label_automated_response(
+        f"I couldn’t generate your requested *{letter_type}* due to a temporary system issue. "
+        "Please try again later. If you need the document urgently, contact HR for assistance."
+    )
 
 
 def build_letter_download_outbound(

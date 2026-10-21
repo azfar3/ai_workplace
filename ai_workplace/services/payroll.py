@@ -108,30 +108,37 @@ def build_former_payslip_intro(context: dict[str, Any]) -> str:
 
 
 def build_salary_slip_not_found(context: dict[str, Any], months: int) -> str:
+    from ai_workplace.services.response_helpers import label_automated_response
+
     lang = context.get("preferred_language", "English")
     if lang == "Urdu":
-        return (
+        return label_automated_response(
             f"📭 *{months} ماہ* کی کوئی جمع (Submitted) سیلری سلپ نہیں ملی۔\n"
             "براہ کرم دوسرا دورانیہ آزمائیں یا HR سے رابطہ کریں۔"
         )
     if lang == "Roman Urdu":
-        return (
+        return label_automated_response(
             f"📭 Pichle *{months} mahine* ki koi submitted salary slip nahi mili.\n"
             "Dusra duration try karein ya HR se rabta karein."
         )
-    return (
-        f"📭 No submitted salary slips found for the last *{months} month(s)*.\n"
-        "Try another period or contact HR."
+    return label_automated_response(
+        f"📭 I couldn’t find any submitted salary slips for the last *{months} month(s)*.\n\n"
+        "Please try a different period or contact HR if you believe your salary slips should be available."
     )
 
 
 def build_salary_slip_download_error(context: dict[str, Any]) -> str:
+    from ai_workplace.services.response_helpers import label_automated_response
+
     lang = context.get("preferred_language", "English")
     if lang == "Urdu":
-        return "معذرت، سیلری سلپ PDF بن نہیں سکی۔ براہ کرم دوبارہ کوشش کریں یا HR سے رابطہ کریں۔"
+        return label_automated_response("معذرت، سسٹم کی عارضی خرابی کے باعث سیلری سلپ PDF نہیں بن سکی۔ براہ کرم کچھ دیر بعد دوبارہ کوشش کریں یا HR سے رابطہ کریں۔")
     if lang == "Roman Urdu":
-        return "Maazrat, salary slip PDF generate nahi ho saki. Dobara koshish karein ya HR se rabta karein."
-    return "Sorry, we couldn't generate your salary slip PDF. Please try again or contact HR."
+        return label_automated_response("Maazrat, system ki aarzi kharabi ki wajah se salary slip PDF generate nahi ho saki. Kuch dair baad dobara koshish karein ya HR se rabta karein.")
+    return label_automated_response(
+        "I couldn’t generate your salary slip PDF due to a temporary system issue. "
+        "Please try again shortly. If the problem continues, contact HR for assistance."
+    )
 
 
 def build_slip_document_caption(

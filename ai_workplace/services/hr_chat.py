@@ -680,9 +680,14 @@ def handle_contact_hr_request(
     from ai_workplace.services.hr_contact_prompt import handle_contact_hr_intro
 
     if not is_hr_live_chat_enabled():
+        from ai_workplace.services.response_helpers import label_automated_response
+
         return OutboundMessage(
             body_text=_(
-                "HR live chat is currently unavailable. Please try again later."
+                label_automated_response(
+                    "Our HR live chat service is currently unavailable due to a system issue. "
+                    "Please try again later or use the available HR menu options."
+                )
             )
         )
 
@@ -697,9 +702,14 @@ def handle_contact_hr_connect(
 ) -> OutboundMessage:
     """Start HR live chat after user chooses to wait for HR."""
     if not is_hr_live_chat_enabled():
+        from ai_workplace.services.response_helpers import label_automated_response
+
         return OutboundMessage(
             body_text=_(
-                "HR live chat is currently unavailable. Please try again later."
+                label_automated_response(
+                    "Our HR live chat service is currently unavailable due to a system issue. "
+                    "Please try again later or use the available HR menu options."
+                )
             )
         )
 

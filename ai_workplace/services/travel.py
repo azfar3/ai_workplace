@@ -711,7 +711,14 @@ def handle_travel_problem_message(
         frappe.log_error(frappe.get_traceback(), "Travel Support Issue Creation Failed")
         update_conversation(conv, state=ConversationState.AWAITING_SELECTION,
                             current_intent=None, active_service="travel_support", draft_payload=None)
-        return wrap_with_parent_menu(_("I couldn’t submit your Travel Support issue right now. Please try again later or contact HR."), context, "travel")
+        from ai_workplace.services.response_helpers import label_automated_response
+
+        failure_text = label_automated_response(
+            _("I couldn’t submit your Travel Support issue at this time due to a temporary system issue.\n\n"
+              "Please try again shortly. If the problem persists, contact HR for assistance. "
+              "If you received a submission reference, check its status before submitting again.")
+        )
+        return wrap_with_parent_menu(failure_text, context, "travel")
 
     update_conversation(conv, state=ConversationState.AWAITING_SELECTION,
                         current_intent=None, active_service="travel_support", draft_payload=None)
@@ -879,19 +886,29 @@ def _build_vehicle_info_ur(info: dict[str, Any]) -> str:
 
 
 def _travel_sop_not_found(lang: str) -> str:
+    from ai_workplace.services.response_helpers import label_automated_response
+
     if lang == "Urdu":
-        return "📖 *Travel SOP*\n\nفی الحال کوئی Travel / DSA policy دستیاب نہیں۔ HR سے رابطہ کریں۔"
+        return label_automated_response("📖 *Travel SOP*\n\nسسٹم میں Travel / DSA پالیسی دستاویز دستیاب نہیں ملی۔ تازہ ترین پالیسی اور رہنمائی کے لیے HR سے رابطہ کریں۔")
     if lang == "Roman Urdu":
-        return "📖 *Travel SOP*\n\nFilhaal koi Travel / DSA policy available nahi. HR se rabta karein."
-    return "📖 *Travel SOP*\n\nNo Travel / DSA policy document is currently available. Please contact HR."
+        return label_automated_response("📖 *Travel SOP*\n\nSystem mein Travel / DSA policy document nahi mila. Taza tareen policy aur rehnumai ke liye HR se rabta karein.")
+    return label_automated_response(
+        "📖 *Travel SOP*\n\nI couldn’t find an available Travel / DSA policy document in the current system.\n\n"
+        "Please contact HR to obtain the latest applicable policy and guidance."
+    )
 
 
 def _travel_sop_error(lang: str) -> str:
+    from ai_workplace.services.response_helpers import label_automated_response
+
     if lang == "Urdu":
-        return "معذرت، Travel SOP PDF نہیں بھیجی جا سکی۔ دوبارہ کوشش کریں یا HR سے رابطہ کریں۔"
+        return label_automated_response("سسٹم کی عارضی خرابی کے باعث Travel SOP دستاویز نہیں بھیجی جا سکی۔ کچھ دیر بعد دوبارہ کوشش کریں یا دستاویز کے لیے HR سے رابطہ کریں۔")
     if lang == "Roman Urdu":
-        return "Maazrat, Travel SOP PDF send nahi ho saki. Dobara koshish karein ya HR se rabta karein."
-    return "Sorry, we couldn't send the Travel SOP PDF. Please try again or contact HR."
+        return label_automated_response("System ki aarzi kharabi ki wajah se Travel SOP document send nahi ho saka. Kuch dair baad dobara koshish karein ya document ke liye HR se rabta karein.")
+    return label_automated_response(
+        "I couldn’t send you the Travel SOP document right now due to a temporary system issue.\n\n"
+        "Please try again shortly. If the issue continues, contact HR to obtain the document."
+    )
 
 
 def _travel_sop_caption(lang: str, subject: str, version_part: str) -> str:
@@ -984,7 +1001,13 @@ def handle_travel_authorization_message(
     if step == "awaiting_confirm":
         return _handle_travel_confirm(conv, context, draft, text)
 
-    return wrap_with_parent_menu(_("Something went wrong. Type 'menu' to start again."), context, "travel")
+    from ai_workplace.services.response_helpers import label_automated_response
+
+    return wrap_with_parent_menu(
+        label_automated_response(_("I couldn’t continue this travel request because of an unexpected system issue. Type *menu* to start again.")),
+        context,
+        "travel",
+    )
 
 
 def _load_draft(conv: Any) -> dict[str, Any]:

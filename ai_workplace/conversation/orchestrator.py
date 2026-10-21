@@ -439,7 +439,11 @@ def process_message(
             message=f"Failed to process message '{message_text}' for identity '{identity}': {exc}\n\nTraceback:\n{frappe.get_traceback()}"
         )
         return OutboundMessage(
-            body_text=_("Sorry, something went wrong while processing your request. Please try again or type *menu*.")
+            body_text=_(
+                "🤖 *MicroMerger HR Assistant | Automated Response*\n\n"
+                "Something unexpected happened while I was processing your request, so I couldn’t complete it.\n\n"
+                "Please try again or type *menu* to start a new request. If the issue continues, contact HR for assistance."
+            )
         )
 
 

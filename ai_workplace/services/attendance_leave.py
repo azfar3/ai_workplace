@@ -1039,12 +1039,17 @@ def build_monthly_download_caption(context: dict[str, Any]) -> str:
 
 
 def build_monthly_download_error(context: dict[str, Any]) -> str:
+    from ai_workplace.services.response_helpers import label_automated_response
+
     lang = context.get("preferred_language", "English")
     if lang == "Urdu":
-        return "معذرت، Excel فائل بن نہیں سکی۔ براہ کرم دوبارہ کوشش کریں یا HR سے رابطہ کریں۔"
+        return label_automated_response("سسٹم کی عارضی خرابی کے باعث حاضری کی Excel رپورٹ تیار نہیں ہو سکی۔ کچھ دیر بعد دوبارہ کوشش کریں یا HR سے رابطہ کریں۔")
     if lang == "Roman Urdu":
-        return "Maazrat, Excel file generate nahi ho saki. Dobara koshish karein ya HR se rabta karein."
-    return "Sorry, we couldn't generate your Excel file. Please try again or contact HR."
+        return label_automated_response("System ki aarzi kharabi ki wajah se attendance Excel report tayar nahi ho saki. Kuch dair baad dobara koshish karein ya HR se rabta karein.")
+    return label_automated_response(
+        "I couldn’t prepare your attendance report for download due to a temporary system issue. "
+        "Please try again shortly. If the issue persists, contact HR for assistance."
+    )
 
 
 def build_missing_attendance_response(context: dict[str, Any]) -> str:
