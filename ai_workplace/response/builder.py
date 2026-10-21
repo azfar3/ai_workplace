@@ -14,9 +14,6 @@ from typing import Any, Sequence
 import frappe
 
 
-NUMBER_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-
-
 def _clean_urdu_string(text: str) -> str:
     if not text:
         return ""
@@ -84,9 +81,8 @@ def build_welcome_menu_response(
 
     menu_lines = []
     for idx, item in enumerate(service_items):
-        emoji = NUMBER_EMOJIS[idx] if idx < len(NUMBER_EMOJIS) else f"{idx + 1}."
         title = _translate_service_title(item["key"], item["title"], lang)
-        menu_lines.append(f"{emoji} {title}")
+        menu_lines.append(f"{idx + 1}. {title}")
 
     menu_text = "\n".join(menu_lines)
 
