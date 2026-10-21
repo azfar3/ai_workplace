@@ -374,7 +374,7 @@ def send_message(
             pass
     is_custom = cfg.get("custom_whatsapp_api_enabled") if cfg else False
 
-    if is_custom and outbound.follow_up:
+    if is_custom and outbound.follow_up and not outbound.preserve_follow_up:
         _consolidate_custom_api_interactive(outbound)
 
     result = _send_single_message(
@@ -1129,4 +1129,3 @@ def _transform_to_baileys(
         out["mime_type"] = payload.get("mime_type")
         
     return out
-

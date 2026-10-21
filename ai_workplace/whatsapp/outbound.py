@@ -23,6 +23,7 @@ class OutboundMessage:
     document_filename: str = ""
     document_mimetype: str = ""
     document_caption: str = ""
+    preserve_follow_up: bool = False
     session_name: str = ""
     receiver: str = ""
     receiver_name: str = ""
