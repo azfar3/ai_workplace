@@ -56,7 +56,7 @@ def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
             "Salary Slip",
             slip_name,
             format=print_format,
-            letterhead="MM",
+            # letterhead="MM",
         )
         pdf_bytes = frappe.local.response.filecontent
     finally:
