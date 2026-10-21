@@ -460,11 +460,11 @@ def _strip_leading_greeting(text: str) -> str:
 
     first_line = lines[0].strip()
     greeting_patterns = (
-        r"(?i)assalam(?:-o)?-?alaikum(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?",
-        r"(?i)assalamu alaikum(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?",
-        r"(?i)(?:salam|salaam)(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?",
-        r"السلام علیکم(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?",
-        r"(?i)hello(?:[, ]+(?:there|[A-Z][\w'-]*))?[.!]?",
+        r"(?i)assalam(?:-o)?-?alaikum(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?\s*(?:👋)?",
+        r"(?i)assalamu alaikum(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?\s*(?:👋)?",
+        r"(?i)(?:salam|salaam)(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?\s*(?:👋)?",
+        r"السلام علیکم(?:[,، ]+[^.!?؟\n]+)?[.!?؟]?\s*(?:👋)?",
+        r"(?i)hello(?:[, ]+(?:there|[A-Z][\w'-]*))?[.!]?\s*(?:👋)?",
     )
     if any(re.fullmatch(pattern, first_line) for pattern in greeting_patterns):
         lines = lines[1:]
