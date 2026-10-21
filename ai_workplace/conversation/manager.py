@@ -271,7 +271,7 @@ def process_expired_conversation(
 ) -> bool:
     """
     Process an expired WhatsApp conversation, close linked HR sessions,
-    and send the automated Goodbye + Rating message to the user.
+    and send the automated Goodbye message to the user.
     Returns True if conversation was expired and closed, False if skipped.
     """
     # If active HR Live Chat session exists and is still open, defer to 12h HR chat window
@@ -291,8 +291,6 @@ def process_expired_conversation(
 
     now = frappe.utils.now_datetime()
     expire_conversation(conv, trace_id=trace_id)
-    conv.current_state = ConversationState.AWAITING_FEEDBACK
-    conv.save(ignore_permissions=True)
 
     # Get recipient phone number (Only for WhatsApp sessions, not Web Chat)
     phone_number = None
@@ -307,44 +305,11 @@ def process_expired_conversation(
     if phone_number:
         lang = conv.preferred_language or "English"
         if lang == "Urdu":
-            bye_text = (
-                "آپ کا سیشن ختم ہو گیا ہے۔ خدا حافظ! 👋\n\n"
-                "آپ کا دن اچھا گزرے۔\n\n"
-                "⭐ *آج آپ کا تجربہ کیسا رہا؟*\n"
-                "براہ کرم 1 سے 5 تک کی درجہ بندی کریں:\n"
-                "1️⃣ ⭐️ خراب\n"
-                "2️⃣ ⭐️⭐️ مناسب\n"
-                "3️⃣ ⭐️⭐️⭐️ اچھا\n"
-                "4️⃣ ⭐️⭐️⭐️⭐️ بہت اچھا\n"
-                "5️⃣ ⭐️⭐️⭐️⭐️⭐️ بہترین\n\n"
-                "(یا اپنے تاثرات لکھیے!)"
-            )
+            bye_text = "آپ کا سیشن ختم ہو گیا ہے۔ خدا حافظ! 👋\n\nآپ کا دن اچھا گزرے۔"
         elif lang == "Roman Urdu":
-            bye_text = (
-                "Aap ka session khatam ho gaya hai. Khuda Hafiz! 👋\n\n"
-                "Aap ka din accha guzre.\n\n"
-                "⭐ *Aaj aap ka experience kaisa raha?*\n"
-                "Barah-e-karam 1 se 5 rating dein:\n"
-                "1️⃣ ⭐️ Poor\n"
-                "2️⃣ ⭐️⭐️ Fair\n"
-                "3️⃣ ⭐️⭐️⭐️ Good\n"
-                "4️⃣ ⭐️⭐️⭐️⭐ Very Good\n"
-                "5️⃣ ⭐️⭐️⭐️⭐️⭐️ Excellent\n\n"
-                "(Ya apna feedback likhein!)"
-            )
+            bye_text = "Aap ka session khatam ho gaya hai. Khuda Hafiz! 👋\n\nAap ka din accha guzre."
         else:
-            bye_text = (
-                "Your session has ended. Goodbye! 👋\n\n"
-                "Have a great day!\n\n"
-                "⭐ *How was your experience today?*\n"
-                "Please rate your session from 1 to 5:\n"
-                "1️⃣ ⭐ Poor\n"
-                "2️⃣ ⭐⭐ Fair\n"
-                "3️⃣ ⭐⭐⭐ Good\n"
-                "4️⃣ ⭐⭐⭐⭐ Very Good\n"
-                "5️⃣ ⭐⭐⭐⭐⭐ Excellent\n\n"
-                "(Or reply with any feedback comments!)"
-            )
+            bye_text = "Your session has ended. Goodbye! 👋\n\nHave a great day!"
 
         try:
             from ai_workplace.whatsapp.sender import send_message
