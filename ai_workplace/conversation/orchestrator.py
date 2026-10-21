@@ -663,18 +663,29 @@ def _process_message_internal(
         lang = context.get("preferred_language", "English")
         if lang == "Urdu":
             bye_text = (
-                "خدا حافظ! 👋\n\n"
-                "آپ کا سیشن ختم کر دیا گیا ہے۔ آپ کا دن اچھا گزرے۔"
-            )
+                  "آپ سے بات کر کے خوشی ہوئی! 👋\n\n"
+                  "آپ کا سیشن کامیابی سے ختم ہو گیا ہے۔ "
+                  "اگر آپ کو HR پالیسیز یا ملازمین کی خدمات کے سلسلے میں مزید مدد چاہیے، "
+                  "تو کسی بھی وقت دوبارہ مینو کھول کر بات شروع کر سکتے ہیں۔\n\n"
+                  "آپ کا دن خوشگوار گزرے! 😊"
+             )
         elif lang == "Roman Urdu":
             bye_text = (
-                "Khuda Hafiz! 👋\n\n"
-                "Aap ka session close kar diya gaya hai. Aap ka din accha guzre."
+                "🤖 MicroMerger HR Assistant | Automated Response\n\n"
+                "Aap se baat kar ke khushi hui! 👋\n\n"
+                "Aap ka session kamyabi se khatam ho gaya hai. "
+                "Agar aap ko HR policies ya employee services ke hawale se mazeed madad chahiye, "
+                "to kisi bhi waqt *menu* likh kar dobara shuru kar sakte hain.\n\n"
+                "Aap ka din khushgawar guzre! 😊"
             )
         else:
             bye_text = (
-                "Goodbye! 👋\n\n"
-                "Your session has been closed. Have a great day!"
+                "🤖 MicroMerger HR Assistant | Automated Response\n\n"
+                "It was a pleasure assisting you! 👋\n\n"
+                "Your session has ended successfully. "
+                "Whenever you need help with HR policies or employee services, "
+                "simply type *menu* to start a new session.\n\n"
+                "Have a wonderful day! 😊"
             )
 
         log_ai_action(
