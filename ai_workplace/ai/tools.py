@@ -369,7 +369,14 @@ def search_knowledge(query: str, limit: int = 5, context: Optional[dict[str, Any
     from ai_workplace.ai.indexer import search_knowledge as _search
 
     emp_type = (context or {}).get("employment_type", "") if context else ""
-    return _search(query, limit=limit, employment_type=emp_type, context=context)
+    matches = _search(query, limit=limit, employment_type=emp_type, context=context)
+    if matches:
+        return matches
+
+    # Fill gaps for public company-profile questions from MicroMerger's official site.
+    from ai_workplace.ai.company_website import search_official_company_website
+
+    return search_official_company_website(query)
 
 
 def get_leave_history(employee: str) -> list[dict[str, Any]]:
