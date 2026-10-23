@@ -1247,8 +1247,20 @@ def _process_message_internal(
     # ── Step 2: Service selection from clickable menu or active submenu ───────
     active_parent = conv.active_service
     selected_service = None
+    # Flow-group choices are presented as interactive buttons/lists, but some
+    # WhatsApp adapters send the user's numbered reply as plain text. Resolve
+    # tax-period numbers against that picker before interpreting them against
+    # the parent Salary & Payroll menu (where "1" means Salary Slip).
+    if active_parent == "pay_tax_deduction" and clean_text.strip().rstrip(".۔") in ("1", "2", "3"):
+        tax_period_keys = {
+            "1": "tax_cert_current",
+            "2": "tax_cert_previous",
+            "3": "tax_cert_latest",
+        }
+        selected_service = {"key": tax_period_keys[clean_text.strip().rstrip(".۔")], "title": "Tax Certificate period"}
+
     if active_parent:
-        selected_service = parse_menu_selection(clean_text, context, parent_key=active_parent)
+        selected_service = selected_service or parse_menu_selection(clean_text, context, parent_key=active_parent)
 
     if not selected_service:
         selected_service = parse_menu_selection(clean_text, context)

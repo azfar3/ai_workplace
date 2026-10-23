@@ -6,7 +6,6 @@ Salary slip download for WhatsApp self-service.
 
 from __future__ import annotations
 
-import base64
 from typing import Any
 
 import frappe
@@ -55,13 +54,15 @@ def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
         # Generate the print in an isolated Frappe request context so webhook
         # parameters cannot override the PDF renderer or print-view settings.
         frappe.local.form_dict = frappe._dict(pdf_generator="wkhtmltopdf")
-        from hrms.api.employee import download_employee_letter
-
-        pdf_data_uri = download_employee_letter("Salary Slip", slip_name)
-        _media_type, separator, encoded_pdf = pdf_data_uri.partition(",")
-        if not separator or not encoded_pdf:
-            frappe.throw("Salary Slip PDF download returned invalid data.")
-        pdf_bytes = base64.b64decode(encoded_pdf)
+        pdf_bytes = frappe.get_print(
+            "Salary Slip",
+            slip_name,
+            print_format=print_format,
+            as_pdf=True,
+            letterhead="MM",
+        )
+        if not pdf_bytes or not bytes(pdf_bytes).startswith(b"%PDF"):
+            frappe.throw("Salary Slip PDF generation returned invalid data.")
     finally:
         frappe.local.form_dict = prev_form_dict
         frappe.set_user(prev_user)

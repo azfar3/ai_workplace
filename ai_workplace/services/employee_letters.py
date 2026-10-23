@@ -172,8 +172,12 @@ def _create_employee_letter(
 def _letter_pdf_bytes(letter_name: str) -> bytes:
     print_format = frappe.get_meta("Employee Letter").default_print_format or "Employee Letter"
     prev_user = frappe.session.user
+    prev_form_dict = frappe.local.form_dict
     try:
         frappe.set_user("Administrator")
+        # Webhook query parameters can otherwise leak into get_print and make
+        # PDF rendering hang or choose a different renderer/print view.
+        frappe.local.form_dict = frappe._dict(pdf_generator="wkhtmltopdf")
         return frappe.get_print(
             "Employee Letter",
             letter_name,
@@ -182,6 +186,7 @@ def _letter_pdf_bytes(letter_name: str) -> bytes:
             letterhead="MM",
         )
     finally:
+        frappe.local.form_dict = prev_form_dict
         frappe.set_user(prev_user)
 
 

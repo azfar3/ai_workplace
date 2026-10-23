@@ -89,9 +89,16 @@ def generate_tax_certificate_pdf(employee_id: str, fiscal_year: str | None = Non
         data,
         {"name": employee_id, "company": company},
         fy,
-        letter_head=0,
+        # Match the Portal certificate renderer, which includes the configured
+        # company letterhead in the generated document.
+        letter_head=1,
     )
-    pdf_bytes = get_pdf(html, {"orientation": "Landscape"})
+    prev_form_dict = frappe.local.form_dict
+    try:
+        frappe.local.form_dict = frappe._dict(pdf_generator="wkhtmltopdf")
+        pdf_bytes = get_pdf(html, {"orientation": "Landscape"})
+    finally:
+        frappe.local.form_dict = prev_form_dict
     safe_name = (emp.employee_name or employee_id).replace("/", "-").replace(" ", "_")
     filename = f"Tax_Certificate_{safe_name}_{fy}.pdf"
     return pdf_bytes, filename
