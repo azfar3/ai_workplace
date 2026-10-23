@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any, Optional
 import frappe
 from frappe import _
+from frappe.utils import formatdate
 
 
 def mask_cnic(cnic: Optional[str]) -> str:
@@ -66,9 +67,7 @@ def get_employee_profile_data(employee_id: Optional[str]) -> Optional[dict[str, 
 
         emp = frappe.get_doc("Employee", employee_id)
 
-        reports_to_name = None
-        if emp.reports_to and frappe.db.exists("Employee", emp.reports_to):
-            reports_to_name = frappe.db.get_value("Employee", emp.reports_to, "employee_name")
+        reports_to_name = _get_leave_approver_name(emp)
 
         return {
             "employee_id": emp.name,
@@ -78,7 +77,7 @@ def get_employee_profile_data(employee_id: Optional[str]) -> Optional[dict[str, 
             "branch": getattr(emp, "branch", None) or "N/A",
             "employment_type": emp.employment_type or "Full-Time",
             "status": emp.status or "Active",
-            "date_of_joining": str(emp.date_of_joining) if getattr(emp, "date_of_joining", None) else "N/A",
+            "date_of_joining": formatdate(emp.date_of_joining, "dd MMMM yyyy") if getattr(emp, "date_of_joining", None) else "N/A",
             "reports_to_id": emp.reports_to or None,
             "reports_to_name": reports_to_name or "N/A",
             "company_email": getattr(emp, "company_email", None) or getattr(emp, "prefered_email", None) or getattr(emp, "personal_email", None) or "N/A",
@@ -92,6 +91,33 @@ def get_employee_profile_data(employee_id: Optional[str]) -> Optional[dict[str, 
         }
     except Exception:
         return None
+
+
+def _get_leave_approver_name(employee: Any) -> str:
+    """Resolve Employee.leave_approver (a User/email) to a display name."""
+    approver = str(getattr(employee, "leave_approver", None) or "").strip()
+    if not approver:
+        return "N/A"
+
+    for field in ("user_id", "company_email", "prefered_email", "personal_email"):
+        try:
+            employee_id = frappe.db.get_value("Employee", {field: approver}, "name")
+            if employee_id:
+                record = frappe.get_doc("Employee", employee_id)
+                name = record.employee_name or f"{record.first_name or ''} {record.last_name or ''}".strip()
+                if name:
+                    return name
+        except Exception:
+            continue
+
+    try:
+        user_name = frappe.db.get_value("User", approver, "full_name")
+        if user_name:
+            return user_name
+    except Exception:
+        pass
+
+    return approver
 
 
 def get_supervisor_reporting_data(employee_id: Optional[str]) -> dict[str, Any]:
@@ -188,7 +214,6 @@ def build_my_profile_response(context: dict[str, Any]) -> str:
             f"• *ایمپلائی آئی ڈی:* {data['employee_id']}\n"
             f"• *نام:* {data['employee_name']}\n"
             f"• *عہدہ:* {data['designation']}\n"
-            f"• *شعبہ:* {data['department']}\n"
             f"• *شمولیت کی تاریخ:* {data['date_of_joining']}\n"
             f"• *رپورٹنگ مینیجر:* {data['reports_to_name']}\n\n"
             f"🔹 *رابطے کی تفصیلات*\n"
@@ -201,7 +226,6 @@ def build_my_profile_response(context: dict[str, Any]) -> str:
             f"• *بینک:* {data['bank_name']}\n"
             f"• *اکاؤنٹ نمبر:* {bank_acc_masked}\n\n"
             f"💡 *پروفائل اپ ڈیٹ کے لیے مینو سے 'Contact HR' منتخب کریں۔*\n\n"
-            f"مین مینو پر واپس جانے کے لیے 'menu' لکھیے۔"
         )
     elif lang == "Roman Urdu":
         return (
@@ -210,7 +234,6 @@ def build_my_profile_response(context: dict[str, Any]) -> str:
             f"• *Employee ID:* {data['employee_id']}\n"
             f"• *Naam:* {data['employee_name']}\n"
             f"• *Ohda (Designation):* {data['designation']}\n"
-            f"• *Shoba (Department):* {data['department']}\n"
             f"• *Joining Date:* {data['date_of_joining']}\n"
             f"• *Reports To:* {data['reports_to_name']}\n\n"
             f"🔹 *Rabta Ki Tafseelat*\n"
@@ -223,7 +246,6 @@ def build_my_profile_response(context: dict[str, Any]) -> str:
             f"• *Bank:* {data['bank_name']}\n"
             f"• *Account No:* {bank_acc_masked}\n\n"
             f"💡 *Profile update karwane ke liye menu se 'Contact HR' select karein.*\n\n"
-            f"Main menu par wapas jaane ke liye 'menu' likhein."
         )
 
     return (
@@ -232,7 +254,6 @@ def build_my_profile_response(context: dict[str, Any]) -> str:
         f"• *ID:* {data['employee_id']}\n"
         f"• *Name:* {data['employee_name']}\n"
         f"• *Designation:* {data['designation']}\n"
-        f"• *Department:* {data['department']}\n"
         f"• *Joining Date:* {data['date_of_joining']}\n"
         f"• *Reports To:* {data['reports_to_name']}\n\n"
         f"🔹 *Contact Details*\n"
@@ -244,8 +265,7 @@ def build_my_profile_response(context: dict[str, Any]) -> str:
         f"• *CNIC:* {cnic_masked}\n"
         f"• *Bank:* {data['bank_name']}\n"
         f"• *Account No:* {bank_acc_masked}\n\n"
-        f"💡 *To request changes to your profile, please select 'Contact HR' from the menu.*\n\n"
-        f"Type 'menu' to return to the main menu."
+        f"💡 *To request changes to your profile, please select 'Contact HR' from the menu.*"
     )
 
 
