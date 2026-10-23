@@ -4,6 +4,7 @@ Documents & Contract hub and contract status for employees.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import frappe
@@ -97,7 +98,7 @@ def build_contract_status(context: dict[str, Any]) -> OutboundMessage:
                 if has_contract_records
                 else "📃 *Employment Contract*\n\nYour contract is being prepared by HR. You will be notified via the HRMIS Portal when it is ready for you."
             )
-        return build_button_message(body, [{"id": "svc_open_hrmis", "title": "Open Portal"}, {"id": "svc_main_menu", "title": "Main Menu"}])
+        return OutboundMessage(body_text=f"{body}\n\nHRMIS Portal: {PORTAL_URL}")
 
     if not contract.get("signature"):
         return build_portal_gap_guide(context, "contract_signature")
@@ -108,12 +109,98 @@ def build_contract_status(context: dict[str, Any]) -> OutboundMessage:
         f"📃 *Employment Contract*\n\n"
         f"Status: *Signed*\n"
         f"Period: {start} to {end}\n\n"
-        f"View full details on the HRMIS Portal."
+        f"Your signed contract PDF is attached."
     )
-    return build_button_message(
-        body,
-        [{"id": "svc_open_hrmis", "title": "Open Portal"}, {"id": "svc_main_menu", "title": "Main Menu"}],
+    try:
+        pdf_bytes, filename = _get_employee_contract_pdf(contract)
+        return OutboundMessage(
+            body_text=body,
+            document_bytes=pdf_bytes,
+            document_filename=filename,
+            document_mimetype="application/pdf",
+            document_caption=body,
+        )
+    except Exception:
+        frappe.log_error(
+            title="Employee Contract PDF Retrieval Failed",
+            message=frappe.get_traceback(),
+        )
+        return OutboundMessage(
+            body_text=(
+                f"{body}\n\n"
+                f"I couldn't prepare the PDF right now. You can view the contract on the HRMIS Portal: {PORTAL_URL}"
+            )
+        )
+
+
+def _get_employee_contract_pdf(contract: dict[str, Any]) -> tuple[bytes, str]:
+    """Read the signed PDF attachment or render the employee contract as PDF."""
+    contract_name = contract.get("name") or ""
+    contract_doc = frappe.get_doc("Employee Contract", contract_name)
+    meta = frappe.get_meta("Employee Contract")
+
+    file_candidates: list[Any] = []
+    for field in meta.fields:
+        if field.fieldtype not in ("Attach", "Attach Image"):
+            continue
+        field_value = contract_doc.get(field.fieldname)
+        if field_value:
+            file_candidates.append(field_value)
+
+    attached_files = frappe.get_all(
+        "File",
+        filters={
+            "attached_to_doctype": "Employee Contract",
+            "attached_to_name": contract_name,
+        },
+        fields=["name", "file_name", "file_url", "is_private"],
+        order_by="creation desc",
+        limit_page_length=100,
     )
+    file_candidates.extend(attached_files)
+
+    from ai_workplace.whatsapp.media import read_frappe_file_bytes
+
+    seen: set[str] = set()
+    for candidate in file_candidates:
+        if isinstance(candidate, str):
+            file_name = frappe.db.get_value("File", {"file_url": candidate}, "name")
+            if not file_name and frappe.db.exists("File", candidate):
+                file_name = candidate
+        else:
+            file_name = candidate.get("name") if isinstance(candidate, dict) else None
+        if not file_name or file_name in seen:
+            continue
+        seen.add(file_name)
+
+        try:
+            file_doc = frappe.get_doc("File", file_name)
+            filename = file_doc.file_name or os.path.basename(file_doc.file_url or "")
+            if not filename.lower().endswith(".pdf"):
+                continue
+            content, filename, mime_type = read_frappe_file_bytes(file_doc)
+            if content and (mime_type == "application/pdf" or filename.lower().endswith(".pdf")):
+                return content, filename
+        except Exception:
+            continue
+
+    previous_user = frappe.session.user
+    previous_form_dict = frappe.local.form_dict
+    try:
+        frappe.set_user("Administrator")
+        frappe.local.form_dict = frappe._dict()
+        pdf_bytes = frappe.get_print(
+            "Employee Contract",
+            contract_name,
+            as_pdf=True,
+        )
+    finally:
+        frappe.local.form_dict = previous_form_dict
+        frappe.set_user(previous_user)
+
+    if not pdf_bytes:
+        frappe.throw(_("No contract PDF is available."))
+    return pdf_bytes, f"{contract_name}.pdf"
 
 
 def _contract_portal_fallback() -> OutboundMessage:

@@ -1604,7 +1604,11 @@ def _process_message_internal(
             outbound = ServiceRegistry.dispatch(conv, svc_key, clean_text, context, trace_id)
             if outbound:
                 parent_target = None
-                if parent_menu_key and conv.current_state == ConversationState.AWAITING_SELECTION:
+                if (
+                    parent_menu_key
+                    and svc_key not in ("doc_contract", "contract")
+                    and conv.current_state == ConversationState.AWAITING_SELECTION
+                ):
                     parent_target = _ensure_parent_menu_navigation(
                         outbound,
                         parent_menu_key,
