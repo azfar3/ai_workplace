@@ -203,7 +203,14 @@ def _resolve_leave_type(draft: dict[str, Any], text: str) -> Optional[str]:
     clean = text.strip().lower()
 
     resolved_reason = None
-    if clean.startswith("lt_") and clean[3:].isdigit():
+    numbered_choice = clean.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")).rstrip(".۔").strip()
+    if numbered_choice.isdigit():
+        choice = int(numbered_choice)
+        page_offset = 9 if int(draft.get("page") or 1) == 2 else 0
+        idx = page_offset + choice - 1
+        if 1 <= choice <= 9 and 0 <= idx < len(reasons):
+            resolved_reason = reasons[idx]
+    elif clean.startswith("lt_") and clean[3:].isdigit():
         idx = int(clean[3:])
         if 0 <= idx < len(reasons):
             resolved_reason = reasons[idx]
@@ -232,6 +239,9 @@ def _resolve_leave_type(draft: dict[str, Any], text: str) -> Optional[str]:
 
 def _handle_leave_type(conv: Any, context: dict[str, Any], draft: dict, text: str) -> OutboundMessage:
     clean = text.strip().lower()
+    numbered_choice = clean.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")).rstrip(".۔").strip()
+    if numbered_choice == "10":
+        clean = "leave_page_2" if int(draft.get("page") or 1) == 1 else "leave_page_1"
     
     if clean in ("leave_page_2", "more options...", "➡️ more options...", "more options"):
         draft["page"] = 2
@@ -643,4 +653,3 @@ def _create_leave_application(draft: dict[str, Any], context: dict[str, Any]) ->
         raise exc
     finally:
         frappe.set_user(previous_user)
-
