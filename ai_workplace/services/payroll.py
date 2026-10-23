@@ -51,9 +51,11 @@ def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
     prev_form_dict = frappe.local.form_dict
     try:
         frappe.set_user("Administrator")
-        # Generate the print in an isolated Frappe request context so webhook
-        # parameters cannot override the PDF renderer or print-view settings.
-        frappe.local.form_dict = frappe._dict(pdf_generator="wkhtmltopdf")
+        # Keep webhook parameters out of the print request, but let Frappe
+        # resolve the PDF renderer from the Print Format/site settings just as
+        # it does for a direct ERP download. Forcing wkhtmltopdf here bypassed
+        # that selection and caused the letterhead footer to flow with content.
+        frappe.local.form_dict = frappe._dict()
         pdf_bytes = frappe.get_print(
             "Salary Slip",
             slip_name,

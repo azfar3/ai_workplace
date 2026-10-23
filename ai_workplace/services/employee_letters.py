@@ -175,9 +175,9 @@ def _letter_pdf_bytes(letter_name: str) -> bytes:
     prev_form_dict = frappe.local.form_dict
     try:
         frappe.set_user("Administrator")
-        # Webhook query parameters can otherwise leak into get_print and make
-        # PDF rendering hang or choose a different renderer/print view.
-        frappe.local.form_dict = frappe._dict(pdf_generator="wkhtmltopdf")
+        # Isolate the print request from webhook parameters while allowing
+        # Frappe to choose the configured PDF renderer for this print format.
+        frappe.local.form_dict = frappe._dict()
         return frappe.get_print(
             "Employee Letter",
             letter_name,
