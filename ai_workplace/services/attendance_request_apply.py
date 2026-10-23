@@ -113,6 +113,7 @@ def handle_attendance_request_message(conv: Any, text: str, context: dict[str, A
 
 def _handle_reason(conv: Any, context: dict[str, Any], draft: dict, text: str) -> OutboundMessage:
     clean = text.strip()
+    numeric_choice = clean.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")).rstrip(".۔").strip()
     reasons = draft.get("reasons") or ATTENDANCE_REQUEST_REASONS
     selected_reason = None
 
@@ -124,9 +125,9 @@ def _handle_reason(conv: Any, context: dict[str, Any], draft: dict, text: str) -
         except ValueError:
             pass
 
-    if not selected_reason and clean.isdigit():
+    if not selected_reason and numeric_choice.isdigit():
         try:
-            idx = int(clean) - 1
+            idx = int(numeric_choice) - 1
             if 0 <= idx < len(reasons):
                 selected_reason = reasons[idx]
         except ValueError:

@@ -74,6 +74,12 @@ def _is_natural_main_menu_navigation(text: str) -> bool:
     ))
 
 
+def _numeric_reply_index(text: str) -> int | None:
+    normalized = (text or "").strip().translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789"))
+    normalized = normalized.rstrip(".۔").strip()
+    return int(normalized) if normalized.isdigit() else None
+
+
 def _resolve_service_key(service_key: str) -> str:
     key = (service_key or "").strip().lower()
     return SERVICE_ALIASES.get(key, key)
@@ -91,6 +97,44 @@ def _parent_menu_target(outbound: OutboundMessage) -> str | None:
         if len(button_ids) == 2 and button_ids[0].startswith("svc_") and button_ids[1] == "svc_main_menu":
             return button_ids[0][4:]
     return None
+
+
+def _ensure_parent_menu_navigation(
+    outbound: OutboundMessage,
+    parent_key: str | None,
+    context: dict[str, Any],
+) -> str | None:
+    """Ensure a completed child response can return to its parent or main menu."""
+    if not parent_key:
+        return _parent_menu_target(outbound)
+
+    from ai_workplace.services.registry import get_available_services_for_context
+
+    if not get_available_services_for_context(context, parent_key=parent_key):
+        return _parent_menu_target(outbound)
+
+    existing_target = _parent_menu_target(outbound)
+    if existing_target:
+        return existing_target
+
+    from ai_workplace.whatsapp.interactive import build_return_to_parent_button
+
+    parent_navigation = build_return_to_parent_button(context, parent_key)
+    # Replace a main-menu-only follow-up with the two navigation choices.
+    for follow_up in outbound.follow_up:
+        interactive = follow_up.interactive or {}
+        buttons = interactive.get("action", {}).get("buttons", [])
+        button_ids = [
+            (button.get("reply") or {}).get("id", "")
+            for button in buttons
+        ]
+        if button_ids == ["svc_main_menu"]:
+            follow_up.interactive = parent_navigation.interactive
+            follow_up.body_text = parent_navigation.body_text
+            return parent_key
+
+    outbound.follow_up.append(parent_navigation)
+    return parent_key
 
 
 def is_greeting_message(text: str) -> bool:
@@ -865,6 +909,31 @@ def _process_message_internal(
         menu_out, _unused = build_menu(context)
         return menu_out
 
+    # Numbered replies to the PIN setup buttons need to stay within that prompt;
+    # falling through to the root menu makes "1" open its first service instead.
+    if current_state == ConversationState.AWAITING_SELECTION:
+        from ai_workplace.security.authorization import get_pending_service
+
+        pending_service = get_pending_service(conv.draft_payload or "")
+        pin_choice = _numeric_reply_index(clean_text)
+        if pending_service and pin_choice in (1, 2, 3):
+            if pin_choice == 3:
+                update_conversation(
+                    conv,
+                    state=ConversationState.AWAITING_SELECTION,
+                    current_intent=None,
+                    active_service=None,
+                    draft_payload=None,
+                )
+                menu_out, _unused = build_menu(context)
+                return menu_out
+            from ai_workplace.security.pin_flow import handle_pin_setup_action
+
+            pin_action = "svc_open_hrmis" if pin_choice == 1 else "svc_pin_set_done"
+            pin_out = handle_pin_setup_action(conv, pin_action, context)
+            if pin_out is not None:
+                return pin_out
+
     # ── PIN setup buttons (Open HRMIS Portal / I Have Set My PIN) ────────────
     from ai_workplace.security.pin_flow import handle_pin_setup_action
 
@@ -1266,18 +1335,35 @@ def _process_message_internal(
 
     # ── Step 2: Service selection from clickable menu or active submenu ───────
     active_parent = conv.active_service
+    parent_menu_key = (
+        active_parent
+        if current_state == ConversationState.AWAITING_SELECTION
+        and conv.current_intent in (None, "parent_menu_navigation")
+        else None
+    )
     selected_service = None
+    if (conv.current_intent or "").replace("svc_", "") == "my_day":
+        my_day_choice = _numeric_reply_index(clean_text)
+        my_day_services = {
+            1: "att_today",
+            2: "leave_requests",
+            3: "main_menu",
+        }
+        if my_day_choice in my_day_services:
+            key = my_day_services[my_day_choice]
+            selected_service = {"key": key, "title": key}
     # Flow-group choices are presented as interactive buttons/lists, but some
     # WhatsApp adapters send the user's numbered reply as plain text. Resolve
     # tax-period numbers against that picker before interpreting them against
     # the parent Salary & Payroll menu (where "1" means Salary Slip).
-    if active_parent == "pay_tax_deduction" and clean_text.strip().rstrip(".۔") in ("1", "2", "3"):
+    tax_period_choice = _numeric_reply_index(clean_text)
+    if active_parent == "pay_tax_deduction" and tax_period_choice in (1, 2, 3):
         tax_period_keys = {
-            "1": "tax_cert_current",
-            "2": "tax_cert_previous",
-            "3": "tax_cert_latest",
+            1: "tax_cert_current",
+            2: "tax_cert_previous",
+            3: "tax_cert_latest",
         }
-        selected_service = {"key": tax_period_keys[clean_text.strip().rstrip(".۔")], "title": "Tax Certificate period"}
+        selected_service = {"key": tax_period_keys[tax_period_choice], "title": "Tax Certificate period"}
 
     if active_parent:
         selected_service = selected_service or parse_menu_selection(clean_text, context, parent_key=active_parent)
@@ -1517,7 +1603,15 @@ def _process_message_internal(
                 
             outbound = ServiceRegistry.dispatch(conv, svc_key, clean_text, context, trace_id)
             if outbound:
-                parent_target = _parent_menu_target(outbound)
+                parent_target = None
+                if parent_menu_key and conv.current_state == ConversationState.AWAITING_SELECTION:
+                    parent_target = _ensure_parent_menu_navigation(
+                        outbound,
+                        parent_menu_key,
+                        context,
+                    )
+                if not parent_target:
+                    parent_target = _parent_menu_target(outbound)
                 if parent_target:
                     update_conversation(
                         conv,

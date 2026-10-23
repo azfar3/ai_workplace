@@ -57,7 +57,7 @@ def _should_resolve_from_menu_cache(value: str, cached_obj: dict[str, Any]) -> b
     # Custom WhatsApp sends numbered text versions of interactive menus. The
     # active service can expose a subset of a submenu, so resolving against the
     # complete submenu would select a different item than the number shown.
-    return cached_obj.get("version") == 3
+    return cached_obj.get("version") == 4
 
 
 def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
@@ -155,7 +155,7 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 3 and _should_resolve_from_menu_cache(message_text, cached_obj):
+        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 4 and _should_resolve_from_menu_cache(message_text, cached_obj):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = message_text.strip()
             
@@ -313,7 +313,7 @@ def _parse_message(msg: dict[str, Any], value: dict[str, Any]) -> dict[str, Any]
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 3 and _should_resolve_from_menu_cache(text, cached_obj):
+        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 4 and _should_resolve_from_menu_cache(text, cached_obj):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = text.strip()
             matched_id = (

@@ -106,7 +106,7 @@ def handle_leave_apply_message(
     clean = text.lower()
 
     if clean in _CANCEL_WORDS:
-        return _cancel_flow(conv, context)
+        return _cancel_flow(conv, context, return_to_main_menu=clean == "menu")
 
     if step == "awaiting_leave_type":
         return _handle_leave_type(conv, context, draft, text)
@@ -145,16 +145,28 @@ def _save_draft(conv: Any, draft: dict[str, Any]) -> None:
     update_conversation(conv, draft_payload=json.dumps(draft))
 
 
-def _cancel_flow(conv: Any, context: dict[str, Any]) -> OutboundMessage:
+def _cancel_flow(
+    conv: Any,
+    context: dict[str, Any],
+    *,
+    return_to_main_menu: bool = False,
+) -> OutboundMessage:
     update_conversation(
         conv,
         state=ConversationState.AWAITING_SELECTION,
         current_intent=None,
-        active_service="attendance_leave",
+        active_service=None if return_to_main_menu else "attendance_leave",
         draft_payload=None,
     )
     lang = context.get("preferred_language", "English")
     msg = "چھٹی کی درخواست منسوخ کر دی گئی ہے۔" if lang == "Urdu" else "Leave application cancelled."
+    if return_to_main_menu:
+        from ai_workplace.conversation.menu import build_menu
+
+        menu_out, _unused = build_menu(context)
+        response = OutboundMessage(body_text=msg)
+        response.follow_up = [menu_out]
+        return response
     return wrap_with_parent_menu(msg, context, "attendance_leave")
 
 
@@ -240,8 +252,13 @@ def _resolve_leave_type(draft: dict[str, Any], text: str) -> Optional[str]:
 def _handle_leave_type(conv: Any, context: dict[str, Any], draft: dict, text: str) -> OutboundMessage:
     clean = text.strip().lower()
     numbered_choice = clean.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")).rstrip(".۔").strip()
-    if numbered_choice == "10":
-        clean = "leave_page_2" if int(draft.get("page") or 1) == 1 else "leave_page_1"
+    page = int(draft.get("page") or 1)
+    reasons = draft.get("custom_leave_reasons") or CUSTOM_LEAVE_REASONS
+    page_two_reason_count = len(reasons[9:18])
+    if page == 1 and numbered_choice == "10":
+        clean = "leave_page_2"
+    elif page == 2 and numbered_choice == str(page_two_reason_count + 1):
+        clean = "leave_page_1"
     
     if clean in ("leave_page_2", "more options...", "➡️ more options...", "more options"):
         draft["page"] = 2

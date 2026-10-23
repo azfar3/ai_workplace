@@ -1017,7 +1017,7 @@ def _transform_to_baileys(
             message = menu_text.strip()
             if option_map:
                 new_cache_obj = {
-                    "version": 3,
+                    "version": 4,
                     "timestamp": now,
                     "menu_type": "button",
                     "map": option_map
@@ -1076,17 +1076,22 @@ def _transform_to_baileys(
                         if clean_row:
                             option_map[clean_row] = opt_id
 
-                    if opt_id in ("svc_main_menu", "svc_back") or "main menu" in row_title.lower() or "back" in row_title.lower():
+                    is_main_menu = opt_id in ("svc_main_menu", "main_menu", "back_to_main") or "main menu" in row_title.lower()
+                    is_back_option = opt_id == "svc_back" or "back" in row_title.lower()
+                    if is_main_menu:
                         option_map["0"] = opt_id
                         option_map["back"] = opt_id
                         option_map["Back"] = opt_id
                         option_map["menu"] = opt_id
                         option_map["wapas"] = opt_id
+                    elif is_back_option:
+                        option_map["back"] = opt_id
+                        option_map["Back"] = opt_id
                     opt_idx += 1
             message = menu_text.strip()
             if option_map:
                 new_cache_obj = {
-                    "version": 3,
+                    "version": 4,
                     "timestamp": now,
                     "menu_type": "list",
                     "map": option_map

@@ -56,7 +56,11 @@ class GeneralHandler:
             from ai_workplace.services.hr_profile import build_supervisor_reporting_response
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)
             resp_text = build_supervisor_reporting_response(context)
-            outbound = wrap_with_menu_again(resp_text, context)
+            outbound = wrap_with_menu_again(
+                resp_text,
+                context,
+                menu_prompt="Need something else? Select Option from the below menu:",
+            )
             action = "view_supervisor_reporting"
             
         elif clean_intent == "guest_number_changed":

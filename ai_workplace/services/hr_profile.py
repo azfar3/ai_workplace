@@ -99,8 +99,6 @@ def get_supervisor_reporting_data(employee_id: Optional[str]) -> dict[str, Any]:
     res: dict[str, Any] = {
         "has_supervisor": False,
         "supervisor": None,
-        "leave_approver": "N/A",
-        "expense_approver": "N/A",
         "is_manager": False,
         "direct_reports": [],
     }
@@ -138,25 +136,22 @@ def get_supervisor_reporting_data(employee_id: Optional[str]) -> dict[str, Any]:
                 "cell_number": (getattr(sup, "cell_number", None) or getattr(sup, "mobile_number", None) or "N/A") if sup else "N/A",
             }
 
-        # 2. Approvers
-        if getattr(emp, "leave_approver", None):
-            res["leave_approver"] = emp.leave_approver
-        elif res["has_supervisor"]:
-            res["leave_approver"] = res["supervisor"]["employee_name"]
-
-        if getattr(emp, "expense_approver", None):
-            res["expense_approver"] = emp.expense_approver
-        elif res["has_supervisor"]:
-            res["expense_approver"] = res["supervisor"]["employee_name"]
-
-        # 3. Direct Reports (if user is a manager)
-        reports = frappe.db.get_all(
-            "Employee",
-            filters={"reports_to": employee_id, "status": "Active"},
-            fields=["name", "employee_name", "designation"],
-            order_by="employee_name asc",
-            limit_page_length=0,
-        )
+        # Reporting staff are assigned through Employee.leave_approver in this
+        # installation; reports_to is not the authoritative relationship here.
+        approver_keys = {
+            str(getattr(emp, field, None) or "").strip()
+            for field in ("name", "user_id", "company_email", "prefered_email", "personal_email")
+        }
+        approver_keys.discard("")
+        reports = []
+        if approver_keys:
+            reports = frappe.db.get_all(
+                "Employee",
+                filters={"leave_approver": ["in", sorted(approver_keys)], "status": "Active"},
+                fields=["name", "employee_name", "designation"],
+                order_by="employee_name asc",
+                limit_page_length=0,
+            )
         if reports:
             res["is_manager"] = True
             res["direct_reports"] = reports
@@ -269,28 +264,19 @@ def build_supervisor_reporting_response(context: dict[str, Any]) -> str:
                 f"🔹 *ڈائریکٹ مینیجر*\n"
                 f"• *نام:* {sup['employee_name']}\n"
                 f"• *عہدہ:* {sup['designation']}\n"
-                f"• *شعبہ:* {sup['department']}\n"
-                f"• *مقام:* {sup['branch']}\n"
                 f"• *ای میل:* {sup['company_email']}\n"
                 f"• *موبائل:* {sup['cell_number']}\n"
             )
         else:
             lines.append("🔹 *ڈائریکٹ مینیجر*\n• سسٹم میں کوئی ڈائریکٹ مینیجر درج نہیں ہے۔\n")
 
-        lines.append(
-            f"🔹 *منظوری دینے والے (Approvers)*\n"
-            f"• *چھٹی (Leave):* {rep_data['leave_approver']}\n"
-            f"• *اخراجات (Expense):* {rep_data['expense_approver']}\n"
-        )
-
         if rep_data["is_manager"]:
             team_list = rep_data["direct_reports"]
-            lines.append(f"👥 *آپ کی ٹیم (Direct Reports: {len(team_list)})*")
+            lines.append(f"👥 *رپورٹنگ اسٹاف ({len(team_list)})*")
             for idx, member in enumerate(team_list, start=1):
                 lines.append(f"{idx}. *{member['employee_name']}* — {member['designation']} (`{member['name']}`)")
             lines.append("")
 
-        lines.append("مین مینو پر واپس جانے کے لیے 'menu' لکھیے۔")
         lines.extend(_hr_contact_footer(lang))
         return "\n".join(lines)
 
@@ -302,28 +288,19 @@ def build_supervisor_reporting_response(context: dict[str, Any]) -> str:
                 f"🔹 *Direct Manager*\n"
                 f"• *Naam:* {sup['employee_name']}\n"
                 f"• *Ohda (Designation):* {sup['designation']}\n"
-                f"• *Shoba (Department):* {sup['department']}\n"
-                f"• *Location:* {sup['branch']}\n"
                 f"• *Email:* {sup['company_email']}\n"
                 f"• *Mobile:* {sup['cell_number']}\n"
             )
         else:
             lines.append("🔹 *Direct Manager*\n• System mein koi direct manager assigned nahi hai.\n")
 
-        lines.append(
-            f"🔹 *Approvers*\n"
-            f"• *Leave Approver:* {rep_data['leave_approver']}\n"
-            f"• *Expense Approver:* {rep_data['expense_approver']}\n"
-        )
-
         if rep_data["is_manager"]:
             team_list = rep_data["direct_reports"]
-            lines.append(f"👥 *Aap Ki Team (Direct Reports: {len(team_list)})*")
+            lines.append(f"👥 *Reporting Staff ({len(team_list)})*")
             for idx, member in enumerate(team_list, start=1):
                 lines.append(f"{idx}. *{member['employee_name']}* — {member['designation']} (`{member['name']}`)")
             lines.append("")
 
-        lines.append("Main menu par wapas jaane ke liye 'menu' likhein.")
         lines.extend(_hr_contact_footer(lang))
         return "\n".join(lines)
 
@@ -334,28 +311,19 @@ def build_supervisor_reporting_response(context: dict[str, Any]) -> str:
             f"🔹 *Direct Manager*\n"
             f"• *Name:* {sup['employee_name']}\n"
             f"• *Designation:* {sup['designation']}\n"
-            f"• *Department:* {sup['department']}\n"
-            f"• *Location:* {sup['branch']}\n"
             f"• *Email:* {sup['company_email']}\n"
             f"• *Mobile:* {sup['cell_number']}\n"
         )
     else:
         lines.append("🔹 *Direct Manager*\n• No direct supervisor is currently assigned in the system.\n")
 
-    lines.append(
-        f"🔹 *Approvers*\n"
-        f"• *Leave Approver:* {rep_data['leave_approver']}\n"
-        f"• *Expense Approver:* {rep_data['expense_approver']}\n"
-    )
-
     if rep_data["is_manager"]:
         team_list = rep_data["direct_reports"]
-        lines.append(f"👥 *YOUR TEAM SUMMARY (Direct Reports: {len(team_list)})*")
+        lines.append(f"👥 *REPORTING STAFF ({len(team_list)})*")
         for idx, member in enumerate(team_list, start=1):
             lines.append(f"{idx}. *{member['employee_name']}* — {member['designation']} (`{member['name']}`)")
         lines.append("")
 
-    lines.append("Type 'menu' to return to the main menu.")
     lines.extend(_hr_contact_footer(lang))
     return "\n".join(lines)
 

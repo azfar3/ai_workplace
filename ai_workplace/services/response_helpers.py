@@ -32,10 +32,15 @@ def label_automated_response(body_text: str) -> str:
     return f"{AUTOMATED_RESPONSE_LABEL}\n\n{body}"
 
 
-def wrap_with_menu_again(body_text: str, context: dict[str, Any]) -> OutboundMessage:
+def wrap_with_menu_again(
+    body_text: str,
+    context: dict[str, Any],
+    *,
+    menu_prompt: str | None = None,
+) -> OutboundMessage:
     """Attach a 'Show Menu' button message after a plain-text service response."""
     msg = OutboundMessage(body_text=body_text)
-    menu_btn = build_show_menu_again_button(context)
+    menu_btn = build_show_menu_again_button(context, prompt=menu_prompt)
     if menu_btn:
         msg.follow_up = [menu_btn]
     return msg

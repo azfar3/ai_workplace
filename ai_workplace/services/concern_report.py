@@ -193,6 +193,13 @@ def _resolve_indexed_choice(
     label_key: str | None = None,
 ) -> Optional[Any]:
     clean = text.strip().lower()
+    numeric_choice = clean.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")).rstrip(".۔").strip()
+    if numeric_choice.isdigit():
+        idx = int(numeric_choice) - 1
+        if 0 <= idx < len(options):
+            item = options[idx]
+            return item.get(label_key) if label_key and isinstance(item, dict) else item
+
     if clean.startswith(f"{prefix}_") and clean[len(prefix) + 1 :].isdigit():
         idx = int(clean[len(prefix) + 1 :])
         if 0 <= idx < len(options):

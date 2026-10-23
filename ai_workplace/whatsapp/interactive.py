@@ -343,7 +343,7 @@ def build_submenu_remaining_list_message(
     return build_grouped_service_list_message(context, services, rows_override=rows, parent_key=parent_key)
 
 
-def build_show_menu_again_button(context: dict[str, Any]) -> OutboundMessage:
+def build_show_menu_again_button(context: dict[str, Any], *, prompt: str | None = None) -> OutboundMessage:
     """Single button to return to the main menu."""
     lang = context.get("preferred_language", "English")
     if lang == "Urdu":
@@ -356,6 +356,7 @@ def build_show_menu_again_button(context: dict[str, Any]) -> OutboundMessage:
         body = "Need something else? Tap below to open the main menu:"
         title = "🏠 Main Menu"
 
+    body = prompt or body
     interactive = {
         "type": "button",
         "body": {"text": body},
