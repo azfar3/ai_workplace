@@ -51,25 +51,13 @@ def _is_numbered_menu_reply(value: str) -> bool:
 
 
 def _should_resolve_from_menu_cache(value: str, cached_obj: dict[str, Any]) -> bool:
-    """Use cached IDs for labels and button numbers, but route list numbers by state."""
+    """Resolve custom-adapter replies against the exact menu most recently sent."""
     if not _is_numbered_menu_reply(value):
         return True
-    # A text list is resolved by the conversation's active menu/submenu. Buttons
-    # can be navigation choices whose numbers differ from that menu's numbering.
-    menu_type = cached_obj.get("menu_type")
-    if menu_type:
-        return menu_type == "button"
-
-    # Older cache records predate menu_type. Infer short choice prompts from the
-    # number of numbered entries. Full menus have more than three options and
-    # should always be routed using the active conversation menu.
-    cached_map = cached_obj.get("map", cached_obj)
-    numbered_options = {
-        key.rstrip(".۔")
-        for key in cached_map
-        if isinstance(key, str) and key.rstrip(".۔").isdigit() and key.rstrip(".۔") != "0"
-    }
-    return 0 < len(numbered_options) <= 3
+    # Custom WhatsApp sends numbered text versions of interactive menus. The
+    # active service can expose a subset of a submenu, so resolving against the
+    # complete submenu would select a different item than the number shown.
+    return cached_obj.get("version") == 3
 
 
 def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
@@ -167,7 +155,7 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 2 and _should_resolve_from_menu_cache(message_text, cached_obj):
+        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 3 and _should_resolve_from_menu_cache(message_text, cached_obj):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = message_text.strip()
             
@@ -325,7 +313,7 @@ def _parse_message(msg: dict[str, Any], value: dict[str, Any]) -> dict[str, Any]
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 2 and _should_resolve_from_menu_cache(text, cached_obj):
+        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 3 and _should_resolve_from_menu_cache(text, cached_obj):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = text.strip()
             matched_id = (

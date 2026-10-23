@@ -924,6 +924,9 @@ def _transform_to_baileys(
     number = payload.get("to", "")
     message: Any = ""
     msg_type = payload.get("type", "text")
+
+    if msg_type != "interactive":
+        _clear_custom_menu_cache(number)
     
     media_url = ""
     media_type = ""
@@ -1014,18 +1017,18 @@ def _transform_to_baileys(
             message = menu_text.strip()
             if option_map:
                 new_cache_obj = {
-                    "version": 2,
+                    "version": 3,
                     "timestamp": now,
                     "menu_type": "button",
                     "map": option_map
                 }
                 clean_num = "".join(filter(str.isdigit, number))
                 if clean_num:
-                    frappe.cache().set_value(f"custom_wa_menu_{clean_num}", new_cache_obj, expires_in_sec=86400)
+                    frappe.cache().set_value(f"custom_wa_menu_{clean_num}", new_cache_obj, expires_in_sec=3600)
                     if len(clean_num) >= 10:
-                        frappe.cache().set_value(f"custom_wa_menu_{clean_num[-10:]}", new_cache_obj, expires_in_sec=86400)
-                        frappe.cache().set_value(f"custom_wa_menu_0{clean_num[-10:]}", new_cache_obj, expires_in_sec=86400)
-                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=86400)
+                        frappe.cache().set_value(f"custom_wa_menu_{clean_num[-10:]}", new_cache_obj, expires_in_sec=3600)
+                        frappe.cache().set_value(f"custom_wa_menu_0{clean_num[-10:]}", new_cache_obj, expires_in_sec=3600)
+                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=3600)
                 
         elif itype == "list":
             menu_text = f"{full_text}\n"
@@ -1083,18 +1086,18 @@ def _transform_to_baileys(
             message = menu_text.strip()
             if option_map:
                 new_cache_obj = {
-                    "version": 2,
+                    "version": 3,
                     "timestamp": now,
                     "menu_type": "list",
                     "map": option_map
                 }
                 clean_num = "".join(filter(str.isdigit, number))
                 if clean_num:
-                    frappe.cache().set_value(f"custom_wa_menu_{clean_num}", new_cache_obj, expires_in_sec=86400)
+                    frappe.cache().set_value(f"custom_wa_menu_{clean_num}", new_cache_obj, expires_in_sec=3600)
                     if len(clean_num) >= 10:
-                        frappe.cache().set_value(f"custom_wa_menu_{clean_num[-10:]}", new_cache_obj, expires_in_sec=86400)
-                        frappe.cache().set_value(f"custom_wa_menu_0{clean_num[-10:]}", new_cache_obj, expires_in_sec=86400)
-                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=86400)
+                        frappe.cache().set_value(f"custom_wa_menu_{clean_num[-10:]}", new_cache_obj, expires_in_sec=3600)
+                        frappe.cache().set_value(f"custom_wa_menu_0{clean_num[-10:]}", new_cache_obj, expires_in_sec=3600)
+                frappe.cache().set_value(f"custom_wa_menu_{number.lstrip('+')}", new_cache_obj, expires_in_sec=3600)
         else:
             message = full_text
     else:
@@ -1128,3 +1131,19 @@ def _transform_to_baileys(
         out["mime_type"] = payload.get("mime_type")
         
     return out
+
+
+def _clear_custom_menu_cache(number: str) -> None:
+    """Forget numbered choices when the latest outgoing message is not a menu."""
+    clean_num = "".join(filter(str.isdigit, str(number or "")))
+    if not clean_num:
+        return
+    keys = {f"custom_wa_menu_{clean_num}"}
+    if len(clean_num) >= 10:
+        keys.add(f"custom_wa_menu_{clean_num[-10:]}")
+        keys.add(f"custom_wa_menu_0{clean_num[-10:]}")
+    try:
+        for key in keys:
+            frappe.cache().delete_value(key)
+    except Exception:
+        pass
