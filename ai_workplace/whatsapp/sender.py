@@ -990,8 +990,7 @@ def _transform_to_baileys(
                         option_map[clean_btn] = opt_id
 
                 is_nav_btn = (
-                    len(buttons) == 1
-                    or opt_id.startswith("svc_")
+                    opt_id in ("svc_main_menu", "svc_back", "main_menu", "back_to_main")
                     or "back" in opt_id.lower()
                     or "back" in btn_title.lower()
                     or "wapas" in opt_id.lower()
@@ -1011,12 +1010,11 @@ def _transform_to_baileys(
                     option_map["pichle menu"] = opt_id
                     option_map["واپس"] = opt_id
                     option_map["پچھلا مینو"] = opt_id
-                    if len(buttons) == 1:
-                        option_map["menu"] = opt_id
-                
+
             message = menu_text.strip()
             if option_map:
                 new_cache_obj = {
+                    "version": 2,
                     "timestamp": now,
                     "menu_type": "button",
                     "map": option_map
@@ -1085,6 +1083,7 @@ def _transform_to_baileys(
             message = menu_text.strip()
             if option_map:
                 new_cache_obj = {
+                    "version": 2,
                     "timestamp": now,
                     "menu_type": "list",
                     "map": option_map

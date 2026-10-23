@@ -56,15 +56,15 @@ class PayrollHandler:
 
         # 1) Specific period selection (1, 3, or 6 months)
         elif clean_intent in ("pay_slip_latest", "pay_slip_3m", "pay_slip_6m") or (
-            getattr(conv, "active_service", None) == "pay_download_slip" and text_lower in ("0", "1", "3", "6", "3m", "6m", "3 months", "6 months", "latest", "last", "last 3", "last 6")
+            getattr(conv, "active_service", None) == "pay_download_slip" and text_lower in ("0", "1", "2", "3", "6", "3m", "6m", "3 months", "6 months", "latest", "last", "last 3", "last 6")
         ):
             from ai_workplace.services.payroll import build_salary_slip_download_outbound
             limit = 1
             if clean_intent == "pay_slip_latest" or text_lower in ("latest", "0", "last", "1"):
                 limit = 1
-            elif clean_intent == "pay_slip_3m" or text_lower in ("3", "3m", "3 months", "last 3"):
+            elif clean_intent == "pay_slip_3m" or text_lower in ("2", "3m", "3 months", "last 3"):
                 limit = 3
-            elif clean_intent == "pay_slip_6m" or text_lower in ("6", "6m", "6 months", "last 6"):
+            elif clean_intent == "pay_slip_6m" or text_lower in ("3", "6", "6m", "6 months", "last 6"):
                 limit = 6
 
             update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service=None)

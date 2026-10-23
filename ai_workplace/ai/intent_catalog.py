@@ -566,6 +566,7 @@ INTENT_CATALOG: Dict[str, Dict[str, Any]] = {
             "micromerger company overview",
             "micromerger services",
             "when was micromerger founded",
+            "when was the micromerger founded",
             "when was micromerger established",
             "can i do a dual job",
             "policy on dual job",

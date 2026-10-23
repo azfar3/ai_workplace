@@ -100,9 +100,19 @@ def search_official_company_website(query: str) -> list[dict[str, Any]]:
     if not is_company_information_query(query):
         return []
 
+    cache_key = "ai_workplace:company_site_query:" + " ".join(query.lower().split())
+    try:
+        import frappe
+
+        cached = frappe.cache().get_value(cache_key)
+        if cached is not None:
+            return cached
+    except Exception:
+        frappe = None
+
     session = requests.Session()
     headers = {"User-Agent": "MicroMerger-HR-Assistant/1.0 (+https://micromerger.com/)"}
-    page_urls = [_BASE_URL + "/", _BASE_URL + "/about"]
+    page_urls = [_BASE_URL + "/"]
     try:
         # Discover a relevant official page from homepage links (for example Services).
         homepage = _fetch_page(session, page_urls[0], headers)
@@ -120,7 +130,9 @@ def search_official_company_website(query: str) -> list[dict[str, Any]]:
                     term in searchable for term in ("service", "what-we-do", "about", "industry")
                 ):
                     candidates.append(absolute)
-            page_urls.extend(candidates)
+            page_urls.extend(candidates[:2])
+        if len(page_urls) == 1:
+            page_urls.append(_BASE_URL + "/about")
 
         results: list[dict[str, Any]] = []
         seen_urls: set[str] = set()
@@ -139,15 +151,38 @@ def search_official_company_website(query: str) -> list[dict[str, Any]]:
                     "source_type": "official_website",
                     "source_url": url,
                 })
+        if results and frappe:
+            try:
+                frappe.cache().set_value(cache_key, results, expires_in_sec=3600)
+            except Exception:
+                pass
         return results
-    except requests.RequestException:
+    except Exception as exc:
+        try:
+            import frappe
+
+            frappe.logger("ai_workplace").warning(
+                f"Official company website lookup failed ({type(exc).__name__}): {exc}"
+            )
+        except Exception:
+            pass
         return []
     finally:
         session.close()
 
 
 def _fetch_page(session: requests.Session, url: str, headers: dict[str, str]) -> str:
-    response = session.get(url, headers=headers, timeout=(3, 6), allow_redirects=True, stream=True)
+    cache_key = "ai_workplace:company_site_page:" + url
+    try:
+        import frappe
+
+        cached_html = frappe.cache().get_value(cache_key)
+        if cached_html is not None:
+            return cached_html
+    except Exception:
+        frappe = None
+
+    response = session.get(url, headers=headers, timeout=(2, 4), allow_redirects=True, stream=True)
     try:
         final_host = (urlparse(response.url).hostname or "").lower()
         if final_host not in {"micromerger.com", "www.micromerger.com"}:
@@ -165,7 +200,13 @@ def _fetch_page(session: requests.Session, url: str, headers: dict[str, str]) ->
             if size > _MAX_RESPONSE_BYTES:
                 break
             chunks.append(chunk)
-        return "".join(chunks)
+        html = "".join(chunks)
+        if html and frappe:
+            try:
+                frappe.cache().set_value(cache_key, html, expires_in_sec=3600)
+            except Exception:
+                pass
+        return html
     finally:
         response.close()
 

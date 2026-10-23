@@ -37,6 +37,7 @@ raw body access.  We import frappe.local to access request.data.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import datetime
 from typing import Any
@@ -85,6 +86,13 @@ def is_hr_session_exit_command(text: str) -> bool:
         "close_session",
         "main menu",
         "main_menu",
+        "go to main menu",
+        "take me to main menu",
+        "direct me to main menu",
+        "back to the main menu",
+        "return to main menu",
+        "go to menu",
+        "take me to menu",
         "btn_menu",
         "btn_end_hr_chat",
         "svc_end_hr_chat",
@@ -105,7 +113,11 @@ def is_hr_session_exit_command(text: str) -> bool:
         "چیٹ ختم کریں",
     }
 
-    return cmd_lower in exit_keywords or clean_cmd in exit_keywords
+    natural_menu_command = bool(re.fullmatch(
+        r"(?:please )?(?:take|bring|direct|send|go|return|back).{0,30}(?:to )?(?:the )?(?:main )?menu(?: please)?[.!]?",
+        clean_cmd,
+    ))
+    return cmd_lower in exit_keywords or clean_cmd in exit_keywords or natural_menu_command
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -737,6 +749,17 @@ def process_async_whatsapp_message(
             body_text="Sorry, we could not process your request. Please type *menu* to continue."
         )
 
+    # Concurrent async jobs can finish out of order. Do not deliver an older
+    # answer after a newer message from the same sender has already been handled.
+    if _has_newer_inbound_message(inbound_log, wa_id):
+        frappe.logger("ai_workplace").info(
+            f"AI Workplace [{trace_id}]: Suppressing stale reply for message_id={message_id}; "
+            "a newer inbound message was received."
+        )
+        _finalize_log(inbound_log, status="Received")
+        frappe.cache().set_value(lock_key, "1")
+        return {"success": True, "skipped": True, "reason": "superseded by newer inbound message"}
+
     skip_send = isinstance(outbound, OutboundMessage) and outbound.skip_send
     if skip_send:
         send_result = {"success": True, "message_id": "", "skipped": True}
@@ -892,6 +915,30 @@ def _is_duplicate(message_id: str) -> bool:
             {"meta_message_id": message_id, "direction": "Inbound"},
         )
     )
+
+
+def _has_newer_inbound_message(inbound_log: Any, wa_id: str) -> bool:
+    """Return True when a newer inbound message makes this async reply stale."""
+    try:
+        inbound_created = getattr(inbound_log, "creation", None)
+        if not inbound_created or not wa_id:
+            return False
+        return bool(frappe.get_all(
+            "WhatsApp Message Log",
+            filters={
+                "whatsapp_id": wa_id,
+                "direction": "Inbound",
+                "creation": [">", inbound_created],
+            },
+            fields=["name"],
+            order_by="creation desc",
+            limit=1,
+        ))
+    except Exception as exc:
+        frappe.logger("ai_workplace").warning(
+            f"Could not check for newer inbound message before sending a WhatsApp reply: {exc}"
+        )
+        return False
 
 
 def _create_message_log(

@@ -6,6 +6,7 @@ Conversation Orchestrator — Phase 2.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional, Union
 
 import frappe
@@ -64,6 +65,13 @@ SERVICE_ALIASES: dict[str, str] = {
     "staff_supervisor": "supervisor_reporting",
     "staff_contact_hr": "contact_hr",
 }
+
+
+def _is_natural_main_menu_navigation(text: str) -> bool:
+    return bool(re.fullmatch(
+        r"(?:please )?(?:take|bring|direct|send|go|return|back).{0,30}(?:to )?(?:the )?(?:main )?menu(?: please)?[.!]?",
+        (text or "").lower().strip(),
+    ))
 
 
 def _resolve_service_key(service_key: str) -> str:
@@ -586,6 +594,7 @@ def _process_message_internal(
                 "khatam karein",
                 "چیٹ ختم کریں",
             )
+            or _is_natural_main_menu_navigation(clean_text)
         ):
             if session_to_use:
                 try:
@@ -844,6 +853,17 @@ def _process_message_internal(
                         pin_out.follow_up.append(OutboundMessage(body_text=str(service_out)))
                 return pin_out
             return pin_out
+
+    if _is_natural_main_menu_navigation(clean_text):
+        update_conversation(
+            conv,
+            state=ConversationState.AWAITING_SELECTION,
+            current_intent=None,
+            active_service=None,
+            clear_active_fields=True,
+        )
+        menu_out, _unused = build_menu(context)
+        return menu_out
 
     # ── PIN setup buttons (Open HRMIS Portal / I Have Set My PIN) ────────────
     from ai_workplace.security.pin_flow import handle_pin_setup_action

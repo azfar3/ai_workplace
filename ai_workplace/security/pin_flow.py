@@ -5,6 +5,7 @@ WhatsApp Support PIN user-facing flows and orchestrator helpers.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Optional, Union
 
 import frappe
@@ -331,6 +332,25 @@ def handle_waiting_for_pin(
     clean = (message_text or "").strip()
     lower = clean.lower()
 
+    navigation_command = lower.replace("🏠", "").replace("🔙", "").strip()
+    natural_menu_command = bool(re.fullmatch(
+        r"(?:please )?(?:take|bring|direct|send|go|return|back).{0,30}(?:to )?(?:the )?(?:main )?menu(?: please)?[.!]?",
+        navigation_command,
+    ))
+    if navigation_command in {
+        "menu", "main menu", "svc_main_menu", "main_menu", "exit", "quit", "cancel", "stop", "home"
+    } or natural_menu_command:
+        update_conversation(
+            conv,
+            state=ConversationState.AWAITING_SELECTION,
+            current_intent=None,
+            clear_active_fields=True,
+        )
+        from ai_workplace.conversation.menu import build_menu
+
+        menu_out, _ = build_menu(context)
+        return menu_out
+
     if lower in FORGOT_PIN_TRIGGERS or clean == "svc_forgot_pin":
         return build_forgot_pin_message(context)
 
@@ -353,8 +373,10 @@ def handle_waiting_for_pin(
 
     if not is_pin_shaped_text(clean):
         return OutboundMessage(
-            body_text=build_pin_failed_message(context, attempts_remaining=0)
-            + "\n\nType *forgot pin* for help or *menu* to go back."
+            body_text=(
+                "Please enter your existing *4-digit Support PIN*, or type *menu* to return to the main menu.\n\n"
+                "Type *forgot pin* for help."
+            )
         )
 
     employee = context.get("employee") or ""

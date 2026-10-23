@@ -195,6 +195,8 @@ INTENT_PATTERNS: Dict[str, list[str]] = {
     ],
     # ── Profile / Navigation ───────────────────────────────────────────────────
     "menu_help": [
+        r"(?:take|bring|direct|send|go|return|back).{0,30}(?:to )?(?:the )?(?:main )?menu",
+        r"(?:main menu|menu).{0,20}(?:please|now)$",
         r"what (can you do|do you do|are your capabilities|services do you offer)",
         r"(show |list )?(all )?(services|options|features|capabilities)",
         r"(help|mدد|madat)",

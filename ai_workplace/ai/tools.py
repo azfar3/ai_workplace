@@ -367,16 +367,21 @@ def get_careers_guide(service_key: str = "guest_careers", context: Optional[dict
 
 def search_knowledge(query: str, limit: int = 5, context: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
     from ai_workplace.ai.indexer import search_knowledge as _search
+    from ai_workplace.ai.company_website import (
+        is_company_information_query,
+        search_official_company_website,
+    )
+
+    # Use the official site as the primary source for public company-profile facts.
+    # Internal search can return unrelated near-matches for short questions such as
+    # "when was MicroMerger founded?", which would otherwise suppress the fallback.
+    if is_company_information_query(query):
+        website_matches = search_official_company_website(query)
+        if website_matches:
+            return website_matches
 
     emp_type = (context or {}).get("employment_type", "") if context else ""
-    matches = _search(query, limit=limit, employment_type=emp_type, context=context)
-    if matches:
-        return matches
-
-    # Fill gaps for public company-profile questions from MicroMerger's official site.
-    from ai_workplace.ai.company_website import search_official_company_website
-
-    return search_official_company_website(query)
+    return _search(query, limit=limit, employment_type=emp_type, context=context)
 
 
 def get_leave_history(employee: str) -> list[dict[str, Any]]:

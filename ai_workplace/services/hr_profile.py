@@ -155,6 +155,7 @@ def get_supervisor_reporting_data(employee_id: Optional[str]) -> dict[str, Any]:
             filters={"reports_to": employee_id, "status": "Active"},
             fields=["name", "employee_name", "designation"],
             order_by="employee_name asc",
+            limit_page_length=0,
         )
         if reports:
             res["is_manager"] = True
@@ -285,10 +286,8 @@ def build_supervisor_reporting_response(context: dict[str, Any]) -> str:
         if rep_data["is_manager"]:
             team_list = rep_data["direct_reports"]
             lines.append(f"👥 *آپ کی ٹیم (Direct Reports: {len(team_list)})*")
-            for idx, member in enumerate(team_list[:5], start=1):
+            for idx, member in enumerate(team_list, start=1):
                 lines.append(f"{idx}. *{member['employee_name']}* — {member['designation']} (`{member['name']}`)")
-            if len(team_list) > 5:
-                lines.append(f"*(اور دیگر {len(team_list) - 5} ممبران)*")
             lines.append("")
 
         lines.append("مین مینو پر واپس جانے کے لیے 'menu' لکھیے۔")
@@ -320,10 +319,8 @@ def build_supervisor_reporting_response(context: dict[str, Any]) -> str:
         if rep_data["is_manager"]:
             team_list = rep_data["direct_reports"]
             lines.append(f"👥 *Aap Ki Team (Direct Reports: {len(team_list)})*")
-            for idx, member in enumerate(team_list[:5], start=1):
+            for idx, member in enumerate(team_list, start=1):
                 lines.append(f"{idx}. *{member['employee_name']}* — {member['designation']} (`{member['name']}`)")
-            if len(team_list) > 5:
-                lines.append(f"*(aur mazeed {len(team_list) - 5} members)*")
             lines.append("")
 
         lines.append("Main menu par wapas jaane ke liye 'menu' likhein.")
@@ -354,10 +351,8 @@ def build_supervisor_reporting_response(context: dict[str, Any]) -> str:
     if rep_data["is_manager"]:
         team_list = rep_data["direct_reports"]
         lines.append(f"👥 *YOUR TEAM SUMMARY (Direct Reports: {len(team_list)})*")
-        for idx, member in enumerate(team_list[:5], start=1):
+        for idx, member in enumerate(team_list, start=1):
             lines.append(f"{idx}. *{member['employee_name']}* — {member['designation']} (`{member['name']}`)")
-        if len(team_list) > 5:
-            lines.append(f"*(and {len(team_list) - 5} more members)*")
         lines.append("")
 
     lines.append("Type 'menu' to return to the main menu.")

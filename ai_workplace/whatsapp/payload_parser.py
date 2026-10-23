@@ -167,7 +167,7 @@ def parse_webhook_payload(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict) and _should_resolve_from_menu_cache(message_text, cached_obj):
+        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 2 and _should_resolve_from_menu_cache(message_text, cached_obj):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = message_text.strip()
             
@@ -325,7 +325,7 @@ def _parse_message(msg: dict[str, Any], value: dict[str, Any]) -> dict[str, Any]
             or (frappe.cache().get_value(f"custom_wa_menu_{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
             or (frappe.cache().get_value(f"custom_wa_menu_0{clean_phone[-10:]}") if len(clean_phone) >= 10 else None)
         )
-        if cached_obj and isinstance(cached_obj, dict) and _should_resolve_from_menu_cache(text, cached_obj):
+        if cached_obj and isinstance(cached_obj, dict) and cached_obj.get("version") == 2 and _should_resolve_from_menu_cache(text, cached_obj):
             cached_map = cached_obj.get("map", cached_obj)
             cleaned_msg = text.strip()
             matched_id = (
