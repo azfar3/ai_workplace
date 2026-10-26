@@ -4,6 +4,8 @@ Documents & Contract hub and contract status for employees.
 
 from __future__ import annotations
 
+import os
+import threading
 from typing import Any
 
 import frappe
@@ -13,6 +15,88 @@ from ai_workplace.whatsapp.outbound import OutboundMessage
 from ai_workplace.config import BOT_PDF_LETTERHEAD
 
 PORTAL_URL = "https://portal.micromerger.com"
+CONTRACT_PDF_TIMEOUT_SECONDS = 120
+
+
+class ContractPdfRenderTimeout(TimeoutError):
+    """Raised when Employee Contract PDF rendering exceeds its time limit."""
+
+
+def _kill_new_child_processes(existing_pids: set[int]) -> None:
+    """Stop renderer subprocesses launched during this PDF render."""
+    try:
+        import psutil
+
+        children = psutil.Process(os.getpid()).children(recursive=True)
+    except Exception:
+        return
+
+    for child in children:
+        if child.pid in existing_pids:
+            continue
+        try:
+            child.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    for child in children:
+        if child.pid in existing_pids:
+            continue
+        try:
+            child.wait(timeout=2)
+        except (psutil.NoSuchProcess, psutil.TimeoutExpired, psutil.AccessDenied):
+            continue
+
+
+def _render_contract_pdf_with_timeout(contract_name: str) -> bytes:
+    """Render the PDF and kill renderer subprocesses after 120 seconds."""
+    import psutil
+
+    try:
+        before_pids = {
+            process.pid
+            for process in psutil.Process(os.getpid()).children(recursive=True)
+        }
+    except psutil.Error:
+        before_pids = set()
+    timed_out = threading.Event()
+
+    def _stop_renderer_processes():
+        timed_out.set()
+        _kill_new_child_processes(before_pids)
+
+    timeout_timer = threading.Timer(CONTRACT_PDF_TIMEOUT_SECONDS, _stop_renderer_processes)
+    timeout_timer.daemon = True
+    previous_user = frappe.session.user
+    previous_form_dict = frappe.local.form_dict
+    timeout_timer.start()
+    try:
+        frappe.set_user("Administrator")
+        frappe.local.form_dict = frappe._dict()
+        try:
+            pdf_bytes = frappe.get_print(
+                "Employee Contract",
+                contract_name,
+                print_format="Employee Contract Print",
+                as_pdf=True,
+                letterhead=BOT_PDF_LETTERHEAD,
+            )
+        except Exception as exc:
+            if timed_out.is_set():
+                raise ContractPdfRenderTimeout(
+                    f"Employee Contract PDF rendering exceeded {CONTRACT_PDF_TIMEOUT_SECONDS} seconds."
+                ) from exc
+            raise
+        if timed_out.is_set():
+            raise ContractPdfRenderTimeout(
+                f"Employee Contract PDF rendering exceeded {CONTRACT_PDF_TIMEOUT_SECONDS} seconds."
+            )
+        if not pdf_bytes or not bytes(pdf_bytes).startswith(b"%PDF"):
+            frappe.throw("Employee Contract PDF generation returned invalid data.")
+        return bytes(pdf_bytes)
+    finally:
+        timeout_timer.cancel()
+        frappe.local.form_dict = previous_form_dict
+        frappe.set_user(previous_user)
 
 
 def build_documents_hub(context: dict[str, Any]) -> OutboundMessage:
@@ -110,6 +194,22 @@ def build_contract_status(context: dict[str, Any]) -> OutboundMessage:
             document_mimetype="application/pdf",
             document_caption=body,
         )
+    except ContractPdfRenderTimeout:
+        frappe.log_error(
+            title="Employee Contract PDF Rendering Timed Out",
+            message=(
+                f"Contract {contract.get('name')} exceeded "
+                f"{CONTRACT_PDF_TIMEOUT_SECONDS} seconds during PDF rendering."
+            ),
+        )
+        from ai_workplace.services.response_helpers import wrap_with_parent_menu
+
+        return wrap_with_parent_menu(
+            "Sorry, due to a system failure, we couldn't generate your Employee Contract. "
+            "Please try again later.",
+            context,
+            "documents",
+        )
     except Exception:
         frappe.log_error(
             title="Employee Contract PDF Retrieval Failed",
@@ -126,27 +226,8 @@ def build_contract_status(context: dict[str, Any]) -> OutboundMessage:
 def _get_employee_contract_pdf(contract: dict[str, Any]) -> tuple[bytes, str]:
     """Render the selected Employee Contract with the contract print format."""
     contract_name = contract.get("name") or ""
-    previous_user = frappe.session.user
-    previous_form_dict = frappe.local.form_dict
-    try:
-        frappe.set_user("Administrator")
-        frappe.local.form_dict = frappe._dict()
-        pdf_bytes = frappe.get_print(
-            "Employee Contract",
-            contract_name,
-            print_format="Employee Contract Print",
-            as_pdf=True,
-            letterhead=BOT_PDF_LETTERHEAD,
-        )
-    finally:
-        frappe.local.form_dict = previous_form_dict
-        frappe.set_user(previous_user)
-
-    if not pdf_bytes:
-        frappe.throw("No contract PDF is available.")
-    if not bytes(pdf_bytes).startswith(b"%PDF"):
-        frappe.throw("Employee Contract PDF generation returned invalid data.")
-    return bytes(pdf_bytes), f"Employee_Contract_{contract_name}.pdf"
+    pdf_bytes = _render_contract_pdf_with_timeout(contract_name)
+    return pdf_bytes, f"Employee_Contract_{contract_name}.pdf"
 
 
 def _contract_portal_fallback() -> OutboundMessage:

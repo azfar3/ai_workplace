@@ -467,7 +467,9 @@ def _process_receive():
         frappe.enqueue(
             "ai_workplace.api.whatsapp_webhook.process_async_whatsapp_message",
             queue="short",
-            timeout=120,
+            # Leave room for the contract PDF's own 120-second renderer timeout
+            # and for the worker to send its timeout reply with menu actions.
+            timeout=180,
             is_async=True,
             inbound_log_name=inbound_log.name,
             message_id=message_id,
