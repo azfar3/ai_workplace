@@ -1532,20 +1532,24 @@ def _process_message_internal(
                         conv, _workflow_intent, clean_text, context, trace_id
                     )
 
-        # ── QueryResolver returned unknown → AI Agent or keyword router navigation fallback
+        # ── QueryResolver returned unknown → deterministic menu shortcut first
+        # Short phrases such as "consultant deliverable" are navigation requests,
+        # not open-ended questions. Resolve known service keywords before the AI
+        # fallback so the bot does not answer with repeated generic guidance.
+        from ai_workplace.services.keyword_router import match_keyword_service
+        kw_service = match_keyword_service(clean_text)
+        if kw_service:
+            selected_service = {"key": kw_service, "title": kw_service}
+
+        # ── Only send genuinely unmatched natural-language requests to the AI Agent
         from ai_workplace.ai.router import is_ai_chat_enabled
         is_natural_question = (
             len(clean_text.split()) > 1
             or any(w in clean_text.lower() for w in ("what", "how", "why", "where", "when", "can", "tell", "explain", "policy", "rule", "handbook", "slip", "leave", "detail"))
         )
-        if is_ai_chat_enabled() and is_natural_question:
+        if not selected_service and is_ai_chat_enabled() and is_natural_question:
             from ai_workplace.services.hr_agent import handle_hr_agent_message
             return handle_hr_agent_message(conv, clean_text, context)
-
-        from ai_workplace.services.keyword_router import match_keyword_service
-        kw_service = match_keyword_service(clean_text)
-        if kw_service:
-            selected_service = {"key": kw_service, "title": kw_service}
 
     if selected_service:
         svc_key = _resolve_service_key(selected_service["key"])
