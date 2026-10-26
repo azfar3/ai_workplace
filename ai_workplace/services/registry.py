@@ -86,6 +86,14 @@ FALLBACK_SERVICES: dict[str, dict[str, Any]] = {
         "mode": "available",
         "description": "Latest salary slip year",
     },
+    "former_tax_certificate": {
+        "key": "former_tax_certificate",
+        "title": "🧾 Tax Certificate (Last Generated)",
+        "title_urdu": "🧾 ٹیکس سرٹیفکیٹ (آخری جاری شدہ)",
+        "title_roman_urdu": "🧾 Tax Certificate (Last Generated)",
+        "mode": "available",
+        "description": "Download the certificate for the last generated salary year.",
+    },
     "pay_slip_latest": {
         "key": "pay_slip_latest",
         "title": "📄 Last",

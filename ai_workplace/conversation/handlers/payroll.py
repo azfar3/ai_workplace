@@ -13,6 +13,7 @@ class PayrollHandler:
             or intent.startswith("svc_pay_")
             or clean in (
                 "former_payslip",
+                "former_tax_certificate",
                 "former_letter",
                 "doc_experience_letter",
                 "experience_letter",
@@ -78,6 +79,12 @@ class PayrollHandler:
             resp_text = build_salary_slip_download_intro(context)
             outbound = wrap_salary_slip_period_options(resp_text, context)
             action = "download_payslip_intro"
+
+        elif clean_intent == "former_tax_certificate":
+            from ai_workplace.services.tax_certificate import build_tax_certificate_download_outbound
+            update_conversation(conv, state=ConversationState.AWAITING_SELECTION, current_intent=intent, active_service="payroll")
+            outbound = build_tax_certificate_download_outbound(context, period="latest")
+            action = "download_tax_cert_latest_for_former_employee"
             
         # 1.5) Tax Certificate options picker
         elif clean_intent in ("pay_tax_deduction", "tax_certificate"):

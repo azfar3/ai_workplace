@@ -22,6 +22,7 @@ PAYROLL_DOCUMENT_KEYS = frozenset(
         "tax_cert_current",
         "tax_cert_previous",
         "tax_cert_latest",
+        "former_tax_certificate",
         "pay_bank_letter",
         "pay_bank_faysal",
         "pay_bank_scb",
@@ -202,6 +203,7 @@ def authorize(
         "pay_bank_faysal",
         "pay_bank_scb",
         "former_payslip",
+        "former_tax_certificate",
         "former_letter",
         "tax_deductions",
         "get_tax_details",
@@ -219,6 +221,7 @@ def authorize(
             "payroll" in allowed_services
             or service_clean in allowed_services
             or "former_payslip" in allowed_services
+            or "former_tax_certificate" in allowed_services
             or "former_letter" in allowed_services
         ):
             return {
@@ -309,5 +312,4 @@ def authorize(
         "action": action,
         "reason": "SERVICE_NOT_ALLOWED",
     }
-
 

@@ -1357,11 +1357,10 @@ def _process_message_internal(
     # tax-period numbers against that picker before interpreting them against
     # the parent Salary & Payroll menu (where "1" means Salary Slip).
     tax_period_choice = _numeric_reply_index(clean_text)
-    if active_parent == "pay_tax_deduction" and tax_period_choice in (1, 2, 3):
+    if active_parent == "pay_tax_deduction" and tax_period_choice in (1, 2):
         tax_period_keys = {
             1: "tax_cert_current",
             2: "tax_cert_previous",
-            3: "tax_cert_latest",
         }
         selected_service = {"key": tax_period_keys[tax_period_choice], "title": "Tax Certificate period"}
 

@@ -128,6 +128,7 @@ def get_user_context(identity: IdentityResult | dict) -> dict[str, Any]:
             allowed_services = [
                 "former_letter",
                 "former_payslip",
+                "former_tax_certificate",
                 "former_verification",
                 "former_concern",
                 "former_careers",

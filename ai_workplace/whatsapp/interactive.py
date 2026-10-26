@@ -634,5 +634,31 @@ def build_bank_letter_options_message(context: dict[str, Any]) -> OutboundMessag
     return build_flow_group_message(context, "bank_letter_select")
 
 def build_tax_certificate_period_options_message(context: dict[str, Any]) -> OutboundMessage:
-    """Three-button period picker for tax certificate download."""
-    return build_flow_group_message(context, "tax_certificate_period")
+    """Show current and previous fiscal years for active employees."""
+    from ai_workplace.services.tax_certificate import resolve_tax_certificate_fiscal_year
+
+    lang = context.get("preferred_language", "English")
+    try:
+        current_fy = resolve_tax_certificate_fiscal_year("current")
+        previous_fy = resolve_tax_certificate_fiscal_year("previous")
+    except Exception:
+        current_fy, previous_fy = "Current Year", "Previous Year"
+
+    if lang == "Urdu":
+        prompt = f"🧾 ٹیکس سرٹیفکیٹ\n\nبراہ کرم مالی سال منتخب کریں۔"
+        current_title, previous_title = f"موجودہ {current_fy}", f"پچھلا {previous_fy}"
+    elif lang == "Roman Urdu":
+        prompt = "🧾 Tax Certificate\n\nBarah karam fiscal year select karein."
+        current_title, previous_title = f"Current {current_fy}", f"Previous {previous_fy}"
+    else:
+        prompt = "🧾 Tax Certificate\n\nPlease select the fiscal year."
+        current_title, previous_title = f"Current {current_fy}", f"Previous {previous_fy}"
+
+    buttons = [
+        {"type": "reply", "reply": {"id": "svc_tax_cert_current", "title": _truncate(current_title, 20)}},
+        {"type": "reply", "reply": {"id": "svc_tax_cert_previous", "title": _truncate(previous_title, 20)}},
+    ]
+    return OutboundMessage(
+        body_text=prompt,
+        interactive={"type": "button", "body": {"text": prompt}, "action": {"buttons": buttons}},
+    )

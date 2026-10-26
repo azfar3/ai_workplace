@@ -87,6 +87,7 @@ _DEFAULT_POLICIES: dict[str, str] = {
     "doc_contract": POLICY_PIN_REQUIRED,
     "doc_my_requests": POLICY_PIN_REQUIRED,
     "former_payslip": POLICY_PIN_REQUIRED,
+    "former_tax_certificate": POLICY_PIN_REQUIRED,
     "former_letter": POLICY_PIN_REQUIRED,
     "payroll": POLICY_PIN_REQUIRED,
     "svc_open_hrmis": POLICY_NONE,
