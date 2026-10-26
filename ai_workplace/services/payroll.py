@@ -11,6 +11,7 @@ from typing import Any
 import frappe
 from frappe.utils import add_months, formatdate, get_first_day, get_last_day, getdate, today
 
+from ai_workplace.config import BOT_PDF_LETTERHEAD
 from ai_workplace.whatsapp.interactive import build_salary_slip_period_options_message
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
@@ -61,7 +62,7 @@ def generate_salary_slip_pdf(slip_name: str) -> tuple[bytes, str]:
             slip_name,
             print_format=print_format,
             as_pdf=True,
-            letterhead="MM",
+            letterhead=BOT_PDF_LETTERHEAD,
         )
         if not pdf_bytes or not bytes(pdf_bytes).startswith(b"%PDF"):
             frappe.throw("Salary Slip PDF generation returned invalid data.")

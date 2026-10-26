@@ -9,11 +9,14 @@ Uses the same report and HTML template as the employee Portal
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import frappe
 from frappe import _
 from frappe.utils.pdf import get_pdf
+
+from ai_workplace.config import BOT_PDF_LETTERHEAD
 
 REPORT_NAME = "CNIC Wise Salary Slip & Certificate of Deduction"
 
@@ -89,10 +92,20 @@ def generate_tax_certificate_pdf(employee_id: str, fiscal_year: str | None = Non
         data,
         {"name": employee_id, "company": company},
         fy,
-        # Match the Portal certificate renderer, which includes the configured
-        # company letterhead in the generated document.
-        letter_head=1,
+        letter_head=0,
     )
+    letterhead = frappe.get_doc("Letter Head", BOT_PDF_LETTERHEAD)
+    letterhead_context = {"doc": frappe._dict(name=employee_id, company=company)}
+    header_html = frappe.render_template(letterhead.content or "", letterhead_context)
+    footer_html = frappe.render_template(letterhead.footer or "", letterhead_context)
+    header_block = _as_pdf_header_block(header_html)
+    footer_block = _as_pdf_footer_block(footer_html)
+    injection = header_block + footer_block
+    if re.search(r"</body\s*>", html, flags=re.IGNORECASE):
+        html = re.sub(r"</body\s*>", injection + "</body>", html, count=1, flags=re.IGNORECASE)
+    else:
+        html += injection
+
     prev_form_dict = frappe.local.form_dict
     try:
         frappe.local.form_dict = frappe._dict(pdf_generator="wkhtmltopdf")
@@ -102,6 +115,18 @@ def generate_tax_certificate_pdf(employee_id: str, fiscal_year: str | None = Non
     safe_name = (emp.employee_name or employee_id).replace("/", "-").replace(" ", "_")
     filename = f"Tax_Certificate_{safe_name}_{fy}.pdf"
     return pdf_bytes, filename
+
+
+def _as_pdf_header_block(content: str) -> str:
+    if not content.strip() or re.search(r'id=["\']header-html["\']', content, re.IGNORECASE):
+        return content
+    return f'<div id="header-html" class="hidden-pdf">{content}</div>'
+
+
+def _as_pdf_footer_block(content: str) -> str:
+    if not content.strip() or re.search(r'id=["\']footer-html["\']', content, re.IGNORECASE):
+        return content
+    return f'<div id="footer-html" class="visible-pdf">{content}</div>'
 
 
 def build_tax_certificate_caption(context: dict[str, Any], fiscal_year: str) -> str:

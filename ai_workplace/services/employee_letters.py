@@ -13,6 +13,8 @@ from typing import Any, Optional
 import frappe
 from frappe.utils import fmt_money, formatdate, get_first_day, get_last_day, getdate, today
 
+from ai_workplace.config import BOT_PDF_LETTERHEAD
+
 
 BANK_CHOICES = ("Faysal Bank", "Standard Chartered Bank")
 
@@ -183,7 +185,7 @@ def _letter_pdf_bytes(letter_name: str) -> bytes:
             letter_name,
             print_format=print_format,
             as_pdf=True,
-            letterhead="MM",
+            letterhead=BOT_PDF_LETTERHEAD,
         )
     finally:
         frappe.local.form_dict = prev_form_dict

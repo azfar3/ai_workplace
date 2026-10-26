@@ -13,6 +13,7 @@ from frappe.utils import getdate, today
 from ai_workplace.services.profile_completion import build_portal_gap_guide
 from ai_workplace.whatsapp.interactive import build_button_message
 from ai_workplace.whatsapp.outbound import OutboundMessage
+from ai_workplace.config import BOT_PDF_LETTERHEAD
 
 PORTAL_URL = "https://portal.micromerger.com"
 
@@ -193,6 +194,7 @@ def _get_employee_contract_pdf(contract: dict[str, Any]) -> tuple[bytes, str]:
             "Employee Contract",
             contract_name,
             as_pdf=True,
+            letterhead=BOT_PDF_LETTERHEAD,
         )
     finally:
         frappe.local.form_dict = previous_form_dict
