@@ -23,6 +23,7 @@ from ai_workplace.services.response_helpers import wrap_with_menu_again
 from ai_workplace.whatsapp.interactive import (
     build_deliverable_post_save_buttons,
     build_option_list_message,
+    build_return_to_parent_button,
     build_yes_no_buttons,
 )
 from ai_workplace.whatsapp.media import is_allowed_attachment_filename
@@ -38,6 +39,23 @@ SUBMIT_TRIGGER_IDS = frozenset({
 })
 
 SUBMIT_WORKFLOW_ACTION = "Send for Approval"
+
+
+def with_deliverables_navigation(outbound: OutboundMessage, context: dict[str, Any]) -> OutboundMessage:
+    """Offer a route back to the Deliverables submenu after any flow response."""
+    navigation = build_return_to_parent_button(context, "deliverables")
+    parent_id = "svc_deliverables"
+    for follow_up in outbound.follow_up:
+        buttons = (follow_up.interactive or {}).get("action", {}).get("buttons", [])
+        ids = [(button.get("reply") or {}).get("id", "") for button in buttons]
+        if parent_id in ids:
+            return outbound
+        if ids == ["svc_main_menu"]:
+            follow_up.interactive = navigation.interactive
+            follow_up.body_text = navigation.body_text
+            return outbound
+    outbound.follow_up.append(navigation)
+    return outbound
 
 
 def is_submit_for_approval_trigger(message_text: str) -> bool:
@@ -66,8 +84,10 @@ def handle_submit_for_approval_request(conv: Any, context: dict[str, Any]) -> Ou
     """Route submit triggers to post-save submit or the standard draft picker flow."""
     draft = _load_draft(conv)
     if (draft.get("saved_doc") or "").strip():
-        return start_submit_saved_deliverable(conv, context)
-    return start_submit_deliverable(conv, context)
+        outbound = start_submit_saved_deliverable(conv, context)
+    else:
+        outbound = start_submit_deliverable(conv, context)
+    return with_deliverables_navigation(outbound, context)
 _DATE_HINT = "e.g. 01-Sep-2026 or 2026-09-01"
 _ATTACHMENT_HINT = "PDF, Word, Excel, ZIP, or other document file"
 _CANCEL_WORDS = frozenset({"cancel", "menu", "stop", "exit", "back"})
@@ -113,13 +133,13 @@ def start_add_deliverable(conv: Any, context: dict[str, Any]) -> OutboundMessage
         draft_payload=json.dumps(draft),
     )
 
-    return OutboundMessage(
+    return with_deliverables_navigation(OutboundMessage(
         body_text=_(
             "📦 *Add Deliverable*\n\n"
             "Step 1 of 5 — Enter the *From Date* for this deliverable period\n"
             "({0}):"
         ).format(_DATE_HINT)
-    )
+    ), context)
 
 
 def start_submit_saved_deliverable(conv: Any, context: dict[str, Any]) -> OutboundMessage:
@@ -154,16 +174,16 @@ def start_submit_deliverable(conv: Any, context: dict[str, Any]) -> OutboundMess
 
     drafts = _list_draft_deliverables(employee_id)
     if not drafts:
-        return wrap_with_menu_again(
+        return with_deliverables_navigation(wrap_with_menu_again(
             _(
                 "You have no draft deliverables to submit.\n\n"
                 "Use *Add Deliverable* to create one first."
             ),
             context,
-        )
+        ), context)
 
     if len(drafts) == 1:
-        return _begin_submit_confirm(conv, context, drafts[0]["name"])
+        return with_deliverables_navigation(_begin_submit_confirm(conv, context, drafts[0]["name"]), context)
 
     draft = {
         "step": "awaiting_pick_draft",
@@ -178,7 +198,7 @@ def start_submit_deliverable(conv: Any, context: dict[str, Any]) -> OutboundMess
         draft_payload=json.dumps(draft),
     )
 
-    return _build_draft_pick_outbound(drafts)
+    return with_deliverables_navigation(_build_draft_pick_outbound(drafts), context)
 
 
 def build_deliverable_status_outbound(context: dict[str, Any]) -> OutboundMessage:
@@ -189,7 +209,7 @@ def build_deliverable_status_outbound(context: dict[str, Any]) -> OutboundMessag
     employee_id = context.get("employee") or ""
     if employee_id and _list_draft_deliverables(employee_id):
         msg.follow_up = [_build_submit_from_status_button(context)]
-    return msg
+    return with_deliverables_navigation(msg, context)
 
 
 def _build_submit_from_status_button(context: dict[str, Any]) -> OutboundMessage:
@@ -287,30 +307,32 @@ def handle_deliverable_add_message(
     clean = text.lower()
 
     if clean in _CANCEL_WORDS:
-        return _cancel_flow(conv, context)
+        return with_deliverables_navigation(_cancel_flow(conv, context), context)
 
     if step == "awaiting_from_date":
-        return _handle_from_date(conv, context, draft, text)
-    if step == "awaiting_to_date":
-        return _handle_to_date(conv, context, draft, text)
-    if step == "awaiting_line_description":
-        return _handle_line_description(conv, context, draft, text)
-    if step == "awaiting_line_amount":
-        return _handle_line_amount(conv, context, draft, text)
-    if step == "awaiting_line_attachment":
-        return _prompt_line_attachment(context, draft)
-    if step == "awaiting_more_lines":
-        return _handle_more_lines(conv, context, draft, text)
-    if step == "awaiting_remarks":
-        return _handle_remarks(conv, context, draft, text)
-    if step == "awaiting_confirm":
-        return _handle_add_confirm(conv, context, draft, text)
+        outbound = _handle_from_date(conv, context, draft, text)
+    elif step == "awaiting_to_date":
+        outbound = _handle_to_date(conv, context, draft, text)
+    elif step == "awaiting_line_description":
+        outbound = _handle_line_description(conv, context, draft, text)
+    elif step == "awaiting_line_amount":
+        outbound = _handle_line_amount(conv, context, draft, text)
+    elif step == "awaiting_line_attachment":
+        outbound = _prompt_line_attachment(context, draft)
+    elif step == "awaiting_more_lines":
+        outbound = _handle_more_lines(conv, context, draft, text)
+    elif step == "awaiting_remarks":
+        outbound = _handle_remarks(conv, context, draft, text)
+    elif step == "awaiting_confirm":
+        outbound = _handle_add_confirm(conv, context, draft, text)
+    else:
+        from ai_workplace.services.response_helpers import label_automated_response
 
-    from ai_workplace.services.response_helpers import label_automated_response
+        outbound = wrap_with_menu_again(label_automated_response(
+            _("I couldn’t continue this request because of an unexpected system issue. Type *menu* to start again.")
+        ), context)
 
-    return wrap_with_menu_again(label_automated_response(
-        _("I couldn’t continue this request because of an unexpected system issue. Type *menu* to start again.")
-    ), context)
+    return with_deliverables_navigation(outbound, context)
 
 
 def handle_deliverable_add_attachment(
@@ -340,20 +362,20 @@ def handle_deliverable_add_attachment(
                 "File received. Please select an option from the menu before uploading any document.\n\n"
                 "Type *menu* to view available options."
             )
-        return OutboundMessage(body_text=msg)
+        return with_deliverables_navigation(OutboundMessage(body_text=msg), context)
 
     clean_url = (file_url or "").strip()
     if not clean_url:
-        return _prompt_line_attachment(context, draft)
+        return with_deliverables_navigation(_prompt_line_attachment(context, draft), context)
 
     display_name = (filename or clean_url.split("/")[-1] or "attachment").strip()
     if not is_allowed_attachment_filename(display_name):
-        return OutboundMessage(
+        return with_deliverables_navigation(OutboundMessage(
             body_text=_(
                 "Unsupported file type for *{0}*.\n\n"
                 "Please send a supported attachment ({1})."
             ).format(display_name, _ATTACHMENT_HINT)
-        )
+        ), context)
 
     pending = draft.get("pending_line") or {}
     pending["attachment"] = clean_url
@@ -366,7 +388,7 @@ def handle_deliverable_add_attachment(
     _save_draft(conv, draft)
 
     total = sum(flt(line.get("amount")) for line in lines)
-    return build_yes_no_buttons(
+    return with_deliverables_navigation(build_yes_no_buttons(
         _(
             "Attachment saved for *{0}*.\n"
             "Line total so far: *{1:,.2f}*\n\n"
@@ -376,7 +398,7 @@ def handle_deliverable_add_attachment(
         no_id="dlv_more_no",
         yes_label=_("Add Another"),
         no_label=_("Continue"),
-    )
+    ), context)
 
 
 def is_awaiting_deliverable_attachment(conv: Any) -> bool:
@@ -399,18 +421,19 @@ def handle_deliverable_submit_message(
     clean = text.lower()
 
     if clean in _CANCEL_WORDS:
-        return _cancel_flow(conv, context)
+        return with_deliverables_navigation(_cancel_flow(conv, context), context)
 
     if step == "awaiting_pick_draft":
-        return _handle_pick_draft(conv, context, draft, text)
-    if step == "awaiting_submit_confirm":
-        return _handle_submit_confirm(conv, context, draft, text)
+        outbound = _handle_pick_draft(conv, context, draft, text)
+    elif step == "awaiting_submit_confirm":
+        outbound = _handle_submit_confirm(conv, context, draft, text)
+    else:
+        from ai_workplace.services.response_helpers import label_automated_response
 
-    from ai_workplace.services.response_helpers import label_automated_response
-
-    return wrap_with_menu_again(label_automated_response(
-        _("I couldn’t continue this request because of an unexpected system issue. Type *menu* to start again.")
-    ), context)
+        outbound = wrap_with_menu_again(label_automated_response(
+            _("I couldn’t continue this request because of an unexpected system issue. Type *menu* to start again.")
+        ), context)
+    return with_deliverables_navigation(outbound, context)
 
 
 def _load_draft(conv: Any) -> dict[str, Any]:
