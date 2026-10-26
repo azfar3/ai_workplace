@@ -8,13 +8,7 @@ Uses the same Letter Template + Employee Letter flow as the HR profile.
 from __future__ import annotations
 
 import re
-import html
-import os
-import shutil
-import subprocess
-import tempfile
 from typing import Any, Optional
-from pathlib import Path
 
 import frappe
 from frappe.utils import fmt_money, formatdate, get_first_day, get_last_day, getdate, today
@@ -181,95 +175,19 @@ def _letter_pdf_bytes(letter_name: str) -> bytes:
     prev_form_dict = frappe.local.form_dict
     try:
         frappe.set_user("Administrator")
-        # Let Frappe render the configured Print Format and letterhead, then
-        # use headless Chrome to print that HTML to PDF. This keeps the
-        # WhatsApp PDF layout aligned with Chrome's ERP print preview.
+        # Isolate the print request from webhook parameters and use Frappe's
+        # configured PDF renderer for the selected Print Format.
         frappe.local.form_dict = frappe._dict()
-        rendered = frappe.get_print(
+        return frappe.get_print(
             "Employee Letter",
             letter_name,
             print_format=print_format,
-            as_pdf=False,
+            as_pdf=True,
             letterhead="MM",
         )
-        if isinstance(rendered, bytes):
-            rendered = rendered.decode("utf-8")
-        if not isinstance(rendered, str) or not rendered.strip():
-            frappe.throw("Employee Letter print format returned empty HTML.")
-
-        chrome = _find_chrome_binary()
-        if not chrome:
-            frappe.throw(
-                "Headless Chrome is required to generate Employee Letter PDFs. "
-                "Install Chrome/Chromium on the server or set AI_WORKPLACE_CHROME_BIN."
-            )
-
-        site_url = frappe.utils.get_url()
-        base_tag = f'<base href="{html.escape(site_url.rstrip("/") + "/", quote=True)}">'
-        if re.search(r"<head(?:\s[^>]*)?>", rendered, flags=re.IGNORECASE):
-            rendered = re.sub(
-                r"<head(\s[^>]*)?>",
-                lambda match: match.group(0) + base_tag,
-                rendered,
-                count=1,
-                flags=re.IGNORECASE,
-            )
-        else:
-            rendered = (
-                "<!doctype html><html><head><meta charset=\"utf-8\">"
-                + base_tag
-                + "</head><body>"
-                + rendered
-                + "</body></html>"
-            )
-
-        with tempfile.TemporaryDirectory(prefix="employee-letter-pdf-") as temp_dir:
-            html_path = Path(temp_dir) / "letter.html"
-            pdf_path = Path(temp_dir) / "letter.pdf"
-            html_path.write_text(rendered, encoding="utf-8")
-            command = [
-                chrome,
-                "--headless",
-                "--disable-gpu",
-                "--disable-dev-shm-usage",
-                "--no-first-run",
-                "--no-pdf-header-footer",
-                f"--print-to-pdf={pdf_path}",
-                html_path.as_uri(),
-            ]
-            try:
-                result = subprocess.run(
-                    command,
-                    check=False,
-                    capture_output=True,
-                    timeout=60,
-                )
-            except subprocess.TimeoutExpired:
-                frappe.throw("Chrome timed out while generating the Employee Letter PDF.")
-
-            if result.returncode != 0 or not pdf_path.is_file():
-                detail = (result.stderr or result.stdout).decode("utf-8", errors="replace")[-2000:]
-                frappe.throw(f"Chrome failed to generate the Employee Letter PDF: {detail}")
-
-            pdf_bytes = pdf_path.read_bytes()
-            if not pdf_bytes.startswith(b"%PDF-"):
-                frappe.throw("Chrome returned invalid Employee Letter PDF data.")
-            return pdf_bytes
     finally:
         frappe.local.form_dict = prev_form_dict
         frappe.set_user(prev_user)
-
-
-def _find_chrome_binary() -> str | None:
-    """Find the configured Chrome/Chromium executable for server-side PDF output."""
-    configured = os.environ.get("AI_WORKPLACE_CHROME_BIN")
-    if configured and Path(configured).is_file() and os.access(configured, os.X_OK):
-        return configured
-    for binary in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"):
-        discovered = shutil.which(binary)
-        if discovered:
-            return discovered
-    return None
 
 
 def render_experience_letter_content(emp: Any, template_content: str) -> str:
