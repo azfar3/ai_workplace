@@ -441,23 +441,8 @@ def build_yes_no_buttons(
 
 
 def build_deliverable_post_save_buttons(body_text: str) -> OutboundMessage:
-    """Offer the submit action after a deliverable draft is saved."""
-    interactive = {
-        "type": "button",
-        "body": {"text": body_text},
-        "action": {
-            "buttons": [
-                {
-                    "type": "reply",
-                    "reply": {
-                        "id": "dlv_submit_now",
-                        "title": _truncate("Submit for Approval", 20),
-                    },
-                },
-            ],
-        },
-    }
-    return OutboundMessage(body_text=body_text, interactive=interactive)
+    """Return the save confirmation; submission starts from the Deliverables menu."""
+    return OutboundMessage(body_text=body_text)
 
 
 def build_leave_type_list_message(

@@ -15,7 +15,7 @@ from typing import Any, Optional
 
 import frappe
 from frappe import _
-from frappe.utils import add_months, flt, formatdate, getdate, today
+from frappe.utils import flt, formatdate, getdate
 
 from ai_workplace.conversation.manager import update_conversation
 from ai_workplace.conversation.state import ConversationState
@@ -95,12 +95,8 @@ def is_submit_for_approval_trigger(message_text: str) -> bool:
 
 
 def handle_submit_for_approval_request(conv: Any, context: dict[str, Any]) -> OutboundMessage:
-    """Route submit triggers to post-save submit or the standard draft picker flow."""
-    draft = _load_draft(conv)
-    if (draft.get("saved_doc") or "").strip():
-        outbound = start_submit_saved_deliverable(conv, context)
-    else:
-        outbound = start_submit_deliverable(conv, context)
+    """Route submit triggers through the employee's current draft list."""
+    outbound = start_submit_deliverable(conv, context)
     return with_deliverables_navigation(outbound, context, conv)
 _DATE_HINT = "e.g. 01-Sep-2026 or 2026-09-01"
 _ATTACHMENT_HINT = "PDF, Word, Excel, ZIP, or other document file"
@@ -867,14 +863,9 @@ def _is_draft_deliverable(row: dict[str, Any]) -> bool:
 
 
 def _list_draft_deliverables(employee_id: str) -> list[dict[str, Any]]:
-    since = add_months(today(), -3)
     records = frappe.get_all(
         "Consultant Deliverable",
-        filters={
-            "employee": employee_id,
-            "docstatus": 0,
-            "modified": [">=", since],
-        },
+        filters={"employee": employee_id, "docstatus": 0},
         fields=["name", "from_date", "to_date", "total_amount", "workflow_state", "status", "docstatus"],
         order_by="modified desc",
         limit=20,
