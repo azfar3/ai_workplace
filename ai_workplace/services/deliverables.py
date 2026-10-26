@@ -752,6 +752,15 @@ def _handle_submit_confirm(conv: Any, context: dict[str, Any], draft: dict, text
         frappe.logger("ai_workplace").error(
             f"Deliverable submit failed ({doc_name}): {error_detail}\n{frappe.get_traceback()}"
         )
+        if _is_deliverable_already_submitted(doc_name, context):
+            update_conversation(
+                conv,
+                state=ConversationState.AWAITING_SELECTION,
+                current_intent=None,
+                active_service="deliverables",
+                draft_payload=None,
+            )
+            return _build_submitted_confirmation(doc_name, context)
         update_conversation(
             conv,
             state=ConversationState.AWAITING_SELECTION,
@@ -771,6 +780,10 @@ def _handle_submit_confirm(conv: Any, context: dict[str, Any], draft: dict, text
         active_service="deliverables",
         draft_payload=None,
     )
+    return _build_submitted_confirmation(doc_name, context)
+
+
+def _build_submitted_confirmation(doc_name: str, context: dict[str, Any]) -> OutboundMessage:
     return wrap_with_menu_again(
         _(
             "✅ *Submitted for Approval*\n\n"
@@ -780,6 +793,22 @@ def _handle_submit_confirm(conv: Any, context: dict[str, Any], draft: dict, text
         ).format(doc_name),
         context,
     )
+
+
+def _is_deliverable_already_submitted(doc_name: str, context: dict[str, Any]) -> bool:
+    """Detect a committed workflow transition after a later hook raised an error."""
+    employee_id = context.get("employee") or ""
+    row = frappe.db.get_value(
+        "Consultant Deliverable",
+        doc_name,
+        ["employee", "workflow_state", "status", "docstatus"],
+        as_dict=True,
+    )
+    if not row or row.get("employee") != employee_id:
+        return False
+
+    state = (row.get("workflow_state") or row.get("status") or "").strip().lower()
+    return row.get("docstatus") == 1 or "approval" in state
 
 
 def _is_draft_deliverable(row: dict[str, Any]) -> bool:
