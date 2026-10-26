@@ -14,14 +14,14 @@ class DeliverablesHandler:
         action = intent
         
         if intent == "dlv_add":
-            from ai_workplace.services.deliverables import start_deliverable_add
-            outbound = start_deliverable_add(conv, context)
-            action = "start_deliverable_add"
+            from ai_workplace.services.deliverables import start_add_deliverable
+            outbound = start_add_deliverable(conv, context)
+            action = "start_add_deliverable"
             
         elif intent == "dlv_submit":
-            from ai_workplace.services.deliverables import start_deliverable_submit
-            outbound = start_deliverable_submit(conv, context)
-            action = "start_deliverable_submit"
+            from ai_workplace.services.deliverables import start_submit_deliverable
+            outbound = start_submit_deliverable(conv, context)
+            action = "start_submit_deliverable"
             
         elif intent == "dlv_status":
             from ai_workplace.services.deliverables import build_deliverable_status_response
