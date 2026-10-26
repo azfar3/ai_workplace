@@ -205,7 +205,9 @@ def start_submit_deliverable(conv: Any, context: dict[str, Any]) -> OutboundMess
         state=ConversationState.PROCESSING,
         current_intent=INTENT_SUBMIT,
         active_service="deliverables",
-        draft_payload=json.dumps(draft),
+        # ERPNext may return date/decimal objects in draft options; stringify
+        # those values so the multi-draft picker can be saved in conversation JSON.
+        draft_payload=json.dumps(draft, default=str),
     )
 
     return with_deliverables_navigation(_build_draft_pick_outbound(drafts), context, conv)
