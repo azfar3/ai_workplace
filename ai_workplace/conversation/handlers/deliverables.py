@@ -32,7 +32,7 @@ class DeliverablesHandler:
 
         if outbound:
             from ai_workplace.services.deliverables import with_deliverables_navigation
-            outbound = with_deliverables_navigation(outbound, context)
+            outbound = with_deliverables_navigation(outbound, context, conv)
             log_ai_action(
                 trace_id=trace_id,
                 conversation_name=conv.name,

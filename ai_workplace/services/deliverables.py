@@ -41,8 +41,22 @@ SUBMIT_TRIGGER_IDS = frozenset({
 SUBMIT_WORKFLOW_ACTION = "Send for Approval"
 
 
-def with_deliverables_navigation(outbound: OutboundMessage, context: dict[str, Any]) -> OutboundMessage:
-    """Offer a route back to the Deliverables submenu after any flow response."""
+def with_deliverables_navigation(
+    outbound: OutboundMessage,
+    context: dict[str, Any],
+    conv: Any = None,
+) -> OutboundMessage:
+    """Offer submenu navigation outside a flow, or a cancel hint during one."""
+    if conv is not None and conv.current_state == ConversationState.PROCESSING:
+        instruction = _("Type *cancel* to cancel this process and return to the Deliverables menu.")
+        if instruction not in (outbound.body_text or ""):
+            outbound.body_text = f"{outbound.body_text or ''}\n\n{instruction}".strip()
+        if outbound.interactive:
+            body = outbound.interactive.get("body")
+            if isinstance(body, dict) and instruction not in (body.get("text") or ""):
+                body["text"] = f"{body.get('text') or outbound.body_text}\n\n{instruction}".strip()
+        return outbound
+
     navigation = build_return_to_parent_button(context, "deliverables")
     parent_id = "svc_deliverables"
     for follow_up in outbound.follow_up:
@@ -87,10 +101,10 @@ def handle_submit_for_approval_request(conv: Any, context: dict[str, Any]) -> Ou
         outbound = start_submit_saved_deliverable(conv, context)
     else:
         outbound = start_submit_deliverable(conv, context)
-    return with_deliverables_navigation(outbound, context)
+    return with_deliverables_navigation(outbound, context, conv)
 _DATE_HINT = "e.g. 01-Sep-2026 or 2026-09-01"
 _ATTACHMENT_HINT = "PDF, Word, Excel, ZIP, or other document file"
-_CANCEL_WORDS = frozenset({"cancel", "menu", "stop", "exit", "back"})
+_CANCEL_WORDS = frozenset({"cancel"})
 _SKIP_WORDS = frozenset({"skip", "na", "n/a", "-", "none"})
 
 
@@ -139,7 +153,7 @@ def start_add_deliverable(conv: Any, context: dict[str, Any]) -> OutboundMessage
             "Step 1 of 5 — Enter the *From Date* for this deliverable period\n"
             "({0}):"
         ).format(_DATE_HINT)
-    ), context)
+    ), context, conv)
 
 
 def start_submit_saved_deliverable(conv: Any, context: dict[str, Any]) -> OutboundMessage:
@@ -180,10 +194,10 @@ def start_submit_deliverable(conv: Any, context: dict[str, Any]) -> OutboundMess
                 "Use *Add Deliverable* to create one first."
             ),
             context,
-        ), context)
+        ), context, conv)
 
     if len(drafts) == 1:
-        return with_deliverables_navigation(_begin_submit_confirm(conv, context, drafts[0]["name"]), context)
+        return with_deliverables_navigation(_begin_submit_confirm(conv, context, drafts[0]["name"]), context, conv)
 
     draft = {
         "step": "awaiting_pick_draft",
@@ -198,7 +212,7 @@ def start_submit_deliverable(conv: Any, context: dict[str, Any]) -> OutboundMess
         draft_payload=json.dumps(draft),
     )
 
-    return with_deliverables_navigation(_build_draft_pick_outbound(drafts), context)
+    return with_deliverables_navigation(_build_draft_pick_outbound(drafts), context, conv)
 
 
 def build_deliverable_status_outbound(context: dict[str, Any]) -> OutboundMessage:
@@ -307,7 +321,7 @@ def handle_deliverable_add_message(
     clean = text.lower()
 
     if clean in _CANCEL_WORDS:
-        return with_deliverables_navigation(_cancel_flow(conv, context), context)
+        return _cancel_flow(conv, context)
 
     if step == "awaiting_from_date":
         outbound = _handle_from_date(conv, context, draft, text)
@@ -332,7 +346,9 @@ def handle_deliverable_add_message(
             _("I couldn’t continue this request because of an unexpected system issue. Type *menu* to start again.")
         ), context)
 
-    return with_deliverables_navigation(outbound, context)
+    if (outbound.interactive or {}).get("type") == "list":
+        return outbound
+    return with_deliverables_navigation(outbound, context, conv)
 
 
 def handle_deliverable_add_attachment(
@@ -362,11 +378,11 @@ def handle_deliverable_add_attachment(
                 "File received. Please select an option from the menu before uploading any document.\n\n"
                 "Type *menu* to view available options."
             )
-        return with_deliverables_navigation(OutboundMessage(body_text=msg), context)
+        return with_deliverables_navigation(OutboundMessage(body_text=msg), context, conv)
 
     clean_url = (file_url or "").strip()
     if not clean_url:
-        return with_deliverables_navigation(_prompt_line_attachment(context, draft), context)
+        return with_deliverables_navigation(_prompt_line_attachment(context, draft), context, conv)
 
     display_name = (filename or clean_url.split("/")[-1] or "attachment").strip()
     if not is_allowed_attachment_filename(display_name):
@@ -375,7 +391,7 @@ def handle_deliverable_add_attachment(
                 "Unsupported file type for *{0}*.\n\n"
                 "Please send a supported attachment ({1})."
             ).format(display_name, _ATTACHMENT_HINT)
-        ), context)
+        ), context, conv)
 
     pending = draft.get("pending_line") or {}
     pending["attachment"] = clean_url
@@ -398,7 +414,7 @@ def handle_deliverable_add_attachment(
         no_id="dlv_more_no",
         yes_label=_("Add Another"),
         no_label=_("Continue"),
-    ), context)
+    ), context, conv)
 
 
 def is_awaiting_deliverable_attachment(conv: Any) -> bool:
@@ -421,7 +437,7 @@ def handle_deliverable_submit_message(
     clean = text.lower()
 
     if clean in _CANCEL_WORDS:
-        return with_deliverables_navigation(_cancel_flow(conv, context), context)
+        return _cancel_flow(conv, context)
 
     if step == "awaiting_pick_draft":
         outbound = _handle_pick_draft(conv, context, draft, text)
@@ -433,7 +449,9 @@ def handle_deliverable_submit_message(
         outbound = wrap_with_menu_again(label_automated_response(
             _("I couldn’t continue this request because of an unexpected system issue. Type *menu* to start again.")
         ), context)
-    return with_deliverables_navigation(outbound, context)
+    if (outbound.interactive or {}).get("type") == "list":
+        return outbound
+    return with_deliverables_navigation(outbound, context, conv)
 
 
 def _load_draft(conv: Any) -> dict[str, Any]:
@@ -457,7 +475,14 @@ def _cancel_flow(conv: Any, context: dict[str, Any]) -> OutboundMessage:
         active_service="deliverables",
         draft_payload=None,
     )
-    return wrap_with_menu_again(_("Deliverable flow cancelled."), context)
+    from ai_workplace.conversation.menu import build_menu
+
+    menu_out, _services = build_menu(
+        context,
+        header_prefix=_("Deliverable flow cancelled. Choose another Deliverables option:"),
+        parent_key="deliverables",
+    )
+    return menu_out
 
 
 def _parse_date(text: str):
