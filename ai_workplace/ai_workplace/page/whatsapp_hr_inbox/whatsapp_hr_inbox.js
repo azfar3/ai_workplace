@@ -1687,20 +1687,31 @@ frappe.whatsapp_hr_inbox = {
 	_unlock_notification_audio() {
 		if (this._audio_unlocked) return;
 		const unlock = () => {
+			const AudioContext = window.AudioContext || window.webkitAudioContext;
+			if (!AudioContext) return;
 			try {
-				const AudioContext = window.AudioContext || window.webkitAudioContext;
-				if (!AudioContext) return;
 				this._audio_context = this._audio_context || new AudioContext();
-				if (this._audio_context.state === "suspended") this._audio_context.resume();
-				this._audio_unlocked = this._audio_context.state === "running";
-				if (this._audio_unlocked) {
+				const ctx = this._audio_context;
+				const mark_unlocked = () => {
+					if (ctx.state !== "running") return;
+					this._audio_unlocked = true;
 					document.removeEventListener("pointerdown", unlock);
+					document.removeEventListener("touchend", unlock);
 					document.removeEventListener("keydown", unlock);
+					document.removeEventListener("click", unlock);
+				};
+				if (ctx.state === "running") {
+					mark_unlocked();
+				} else {
+					// resume() is asynchronous; wait for it to finish before setting the flag.
+					ctx.resume().then(mark_unlocked).catch(() => {});
 				}
 			} catch (e) { }
 		};
 		document.addEventListener("pointerdown", unlock);
+		document.addEventListener("touchend", unlock);
 		document.addEventListener("keydown", unlock);
+		document.addEventListener("click", unlock);
 	},
 
 	play_notify(kind = "message", session_name = null) {
@@ -1709,7 +1720,7 @@ frappe.whatsapp_hr_inbox = {
 			if (!AudioContext) return;
 			const ctx = this._audio_context || new AudioContext();
 			this._audio_context = ctx;
-			if (ctx.state === "suspended" || !this._audio_unlocked) return;
+			if (!this._audio_unlocked) return;
 
 			// session_opened and its first inbound event can arrive back-to-back.
 			if (kind === "queue" && session_name) {
@@ -1718,19 +1729,27 @@ frappe.whatsapp_hr_inbox = {
 				this._last_queue_sound = { name: session_name, time: now };
 			}
 
-			const notes = kind === "queue" ? [783.99, 987.77] : [587.33];
-			notes.forEach((frequency, index) => {
-				const start = ctx.currentTime + index * 0.12;
-				const osc = ctx.createOscillator();
-				const gain = ctx.createGain();
-				osc.connect(gain);
-				gain.connect(ctx.destination);
-				osc.frequency.value = frequency;
-				gain.gain.setValueAtTime(0.12, start);
-				gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
-				osc.start(start);
-				osc.stop(start + 0.22);
-			});
+			const play_tones = () => {
+				if (ctx.state !== "running") return;
+				const notes = kind === "queue" ? [783.99, 987.77] : [587.33];
+				notes.forEach((frequency, index) => {
+					const start = ctx.currentTime + index * 0.12;
+					const osc = ctx.createOscillator();
+					const gain = ctx.createGain();
+					osc.connect(gain);
+					gain.connect(ctx.destination);
+					osc.frequency.value = frequency;
+					gain.gain.setValueAtTime(0.12, start);
+					gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+					osc.start(start);
+					osc.stop(start + 0.22);
+				});
+			};
+			if (ctx.state === "running") {
+				play_tones();
+			} else if (ctx.state === "suspended") {
+				ctx.resume().then(play_tones).catch(() => {});
+			}
 		} catch (e) { }
 	},
 
