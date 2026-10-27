@@ -1313,14 +1313,10 @@ frappe.whatsapp_hr_inbox = {
 				this.isSubscribed = !(subscription === null);
 				this.push_btn.prop("disabled", false);
 				this.update_push_btn_ui();
-				if (!this.isSubscribed && window.Notification && Notification.permission === "default") {
-					const prompt_key = "wa_hr_inbox_notification_prompted";
-					let already_prompted = false;
-					try {
-						already_prompted = sessionStorage.getItem(prompt_key) === "1";
-						sessionStorage.setItem(prompt_key, "1");
-					} catch (e) { }
-					if (!already_prompted) {
+				if (!this.isSubscribed && window.Notification) {
+					if (Notification.permission === "denied") {
+						frappe.msgprint(__("Notifications are blocked for this site. Change this site’s notification permission in your browser settings, then reload the HR Inbox. Browser settings can’t be changed by the page."));
+					} else {
 						frappe.confirm(
 							__("Enable desktop notifications and inbox sounds for new queue chats and active chat messages?"),
 							() => this.toggle_push_subscription()
