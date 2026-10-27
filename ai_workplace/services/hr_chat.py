@@ -150,9 +150,13 @@ def get_employee_image(employee: Optional[str] = None, erp_user: Optional[str] =
     return image_url or None
 
 
-def _session_payload(session: Any) -> dict[str, Any]:
-    can_reply, reason = evaluate_reply_permission(session)
-    office = get_office_hours_info()
+def _session_payload(
+    session: Any, *, include_tab_counts: bool = True, include_unread_count: bool = True,
+    include_last_message: bool = True, include_office_hours: bool = True,
+    include_reply_permission: bool = True,
+) -> dict[str, Any]:
+    can_reply, reason = evaluate_reply_permission(session) if include_reply_permission else (False, "")
+    office = get_office_hours_info() if include_office_hours else {}
 
     display_title = session.display_name or ""
     if not display_title and session.employee:
@@ -167,7 +171,7 @@ def _session_payload(session: Any) -> dict[str, Any]:
     last_user = get_datetime(session.last_user_message_at)
     last_hr = get_datetime(session.last_hr_reply_at)
     unread_count = 0
-    if last_user and (not last_hr or last_user > last_hr):
+    if include_unread_count and last_user and (not last_hr or last_user > last_hr):
         cnt_filters = {"hr_live_chat_session": session.name, "direction": "Inbound"}
         if last_hr:
             cnt_filters["timestamp"] = [">", last_hr]
@@ -180,7 +184,7 @@ def _session_payload(session: Any) -> dict[str, Any]:
         fields=["message", "media_file", "message_type"],
         order_by="timestamp desc, creation desc",
         limit_page_length=1,
-    )
+    ) if include_last_message else []
     if last_logs:
         msg_obj = last_logs[0]
         if msg_obj.get("message"):
@@ -188,7 +192,7 @@ def _session_payload(session: Any) -> dict[str, Any]:
         elif msg_obj.get("media_file"):
             last_message = f"📎 Media ({msg_obj.get('message_type') or 'file'})"
 
-    tab_counts = get_inbox_tab_counts()
+    tab_counts = get_inbox_tab_counts() if include_tab_counts else None
     emp_image = get_employee_image(session.employee, session.erp_user)
 
     closed_by = getattr(session, "closed_by", None)
@@ -229,16 +233,16 @@ def _session_payload(session: Any) -> dict[str, Any]:
         "last_message_preview": last_message,
         "unread_count": unread_count,
         "unread": bool(unread_count > 0),
-        "tab_counts": tab_counts,
+        **({"tab_counts": tab_counts} if tab_counts is not None else {}),
         "can_reply": can_reply,
         "can_reply_reason": reason,
-        "is_office_hours": office["is_office_hours"],
+        "is_office_hours": office.get("is_office_hours", False),
         "hr_support_status": office.get("hr_support_status"),
         "is_holiday": office.get("is_holiday"),
         "closed_reason": office.get("closed_reason"),
-        "office_timezone": office["timezone"],
-        "office_local_time": office["local_time"],
-        "office_local_date": office["local_date"],
+        "office_timezone": office.get("timezone", ""),
+        "office_local_time": office.get("local_time", ""),
+        "office_local_date": office.get("local_date", ""),
     }
 
 
@@ -246,7 +250,7 @@ def _session_payload(session: Any) -> dict[str, Any]:
 def publish_session_update(
     session: Any, extra: Optional[dict[str, Any]] = None
 ) -> None:
-    payload = _session_payload(session)
+    payload = _session_payload(session, include_tab_counts=False)
     if extra:
         payload.update(extra)
 

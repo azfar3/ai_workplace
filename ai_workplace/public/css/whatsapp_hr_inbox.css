@@ -4,6 +4,39 @@
 	display: none;
 }
 
+.wa-push-btn.enabled {
+	color: #e5a000 !important;
+	filter: drop-shadow(0 0 3px rgba(229, 160, 0, 0.35));
+}
+
+.wa-push-btn:disabled {
+	cursor: wait !important;
+	opacity: 0.45;
+}
+
+.wa-chat-loading {
+	align-self: center;
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	margin: auto;
+	color: var(--text-muted, #667781);
+	font-size: 13px;
+}
+
+.wa-chat-loading-spinner {
+	width: 16px;
+	height: 16px;
+	border: 2px solid rgba(102, 119, 129, 0.25);
+	border-top-color: #008069;
+	border-radius: 50%;
+	animation: wa-chat-spin 0.7s linear infinite;
+}
+
+@keyframes wa-chat-spin {
+	to { transform: rotate(360deg); }
+}
+
 /* Fit inside Frappe desk page — no outer scrollbar */
 .wa-inbox-page-wrapper .layout-main-section,
 .wa-inbox-page {

@@ -83,7 +83,14 @@ def get_session_detail(session_name: str, start: int = 0, limit: int = 15) -> di
     start_val = frappe.utils.cint(start)
     limit_val = frappe.utils.cint(limit) or 15
 
-    payload = _session_payload(session)
+    payload = _session_payload(
+        session,
+        include_tab_counts=False,
+        include_unread_count=False,
+        include_last_message=False,
+        include_office_hours=False,
+        include_reply_permission=False,
+    )
     thread = get_session_thread(session_name, limit=limit_val, start=start_val)
 
     # Compute unread count and tag individual messages accurately using datetime objects

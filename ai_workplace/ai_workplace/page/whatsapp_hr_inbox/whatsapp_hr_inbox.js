@@ -991,6 +991,8 @@ frappe.whatsapp_hr_inbox = {
 	_thread_content_keys: new Set(),
 	_poll_timer: null,
 	_last_thread_len: 0,
+	_refresh_generation: 0,
+	_refreshing_session: false,
 	_audio_context: null,
 	_audio_unlocked: false,
 	_last_queue_sound: null,
@@ -1003,7 +1005,7 @@ frappe.whatsapp_hr_inbox = {
 				<aside class="wa-sidebar">
 					<div class="wa-sidebar-header">
 						<span class="wa-live-dot"></span>${__("WhatsApp HR Inbox")}
-						<button class="wa-push-btn hidden p-0" title="${__('Enable Desktop Notifications')}" style="background: none; border: none; cursor: pointer; float: right; color: #54656f; display: inline-flex; align-items: center; justify-content: center;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+						<button class="wa-push-btn hidden p-0" aria-label="${__('Enable notifications and sounds')}" title="${__('Enable notifications and sounds')}" style="background: none; border: none; cursor: pointer; float: right; color: #54656f; display: inline-flex; align-items: center; justify-content: center;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
 					</div>
 					<div class="wa-filters">
 						<button class="wa-filter-btn active" data-filter="mine">${__("Active")} <span class="wa-tab-badge wa-tab-badge-mine hidden"></span></button>
@@ -1300,6 +1302,7 @@ frappe.whatsapp_hr_inbox = {
 			return;
 		}
 		this.push_btn.removeClass("hidden");
+		this.push_btn.prop("disabled", true);
 
 		navigator.serviceWorker.register('/assets/ai_workplace/js/sw.js')
 			.then(swReg => {
@@ -1308,9 +1311,28 @@ frappe.whatsapp_hr_inbox = {
 			})
 			.then(subscription => {
 				this.isSubscribed = !(subscription === null);
+				this.push_btn.prop("disabled", false);
 				this.update_push_btn_ui();
+				if (!this.isSubscribed && window.Notification && Notification.permission === "default") {
+					const prompt_key = "wa_hr_inbox_notification_prompted";
+					let already_prompted = false;
+					try {
+						already_prompted = sessionStorage.getItem(prompt_key) === "1";
+						sessionStorage.setItem(prompt_key, "1");
+					} catch (e) { }
+					if (!already_prompted) {
+						frappe.confirm(
+							__("Enable desktop notifications and inbox sounds for new queue chats and active chat messages?"),
+							() => this.toggle_push_subscription()
+						);
+					}
+				}
 			})
-			.catch(err => console.error("Service Worker Error", err));
+			.catch(err => {
+				this.push_btn.prop("disabled", false);
+				this.push_btn.attr("title", __("Notifications are unavailable in this browser"));
+				console.error("Service Worker Error", err);
+			});
 
 		this.push_btn.on("click", () => this.toggle_push_subscription());
 	},
@@ -1331,10 +1353,14 @@ frappe.whatsapp_hr_inbox = {
 	update_push_btn_ui() {
 		if (this.isSubscribed) {
 			this.push_btn.css("opacity", "1");
-			this.push_btn.attr("title", __("Disable Desktop Notifications"));
+			this.push_btn.addClass("enabled");
+			this.push_btn.attr("title", __("Notifications enabled. Click to disable"));
+			this.push_btn.attr("aria-label", __("Notifications enabled. Click to disable"));
 		} else {
 			this.push_btn.css("opacity", "0.5");
-			this.push_btn.attr("title", __("Enable Desktop Notifications"));
+			this.push_btn.removeClass("enabled");
+			this.push_btn.attr("title", __("Enable desktop notifications and inbox sounds"));
+			this.push_btn.attr("aria-label", __("Enable desktop notifications and inbox sounds"));
 		}
 	},
 
@@ -1350,6 +1376,10 @@ frappe.whatsapp_hr_inbox = {
 	},
 
 	toggle_push_subscription() {
+		if (!this.swRegistration) {
+			frappe.msgprint(__("Notifications are still initializing. Please try again in a moment."));
+			return;
+		}
 		if (this.isSubscribed) {
 			this.swRegistration.pushManager.getSubscription()
 				.then(subscription => {
@@ -1368,7 +1398,11 @@ frappe.whatsapp_hr_inbox = {
 					}
 				});
 		} else {
-			frappe.call({
+			if (!("Notification" in window)) {
+				frappe.msgprint(__("This browser does not support desktop notifications."));
+				return;
+			}
+			const subscribe = () => frappe.call({
 				method: "ai_workplace.api.notifications.get_vapid_public_key",
 				callback: (r) => {
 					if (!r.message) {
@@ -1403,8 +1437,22 @@ frappe.whatsapp_hr_inbox = {
 								frappe.msgprint(__("Notification permission was denied."));
 							}
 						});
-				}
+					}
 			});
+			if (Notification.permission === "granted") {
+				subscribe();
+			} else if (Notification.permission === "default") {
+				// Browsers only allow this permission prompt after a user action.
+				Notification.requestPermission().then((permission) => {
+					if (permission === "granted") {
+						subscribe();
+					} else {
+						frappe.msgprint(__("Allow notifications in your browser to receive chat alerts. The click also enables inbox sounds."));
+					}
+				});
+			} else {
+				frappe.msgprint(__("Notifications are blocked in your browser settings. Allow them for this site, then reload the HR Inbox."));
+			}
 		}
 	},
 
@@ -2054,6 +2102,8 @@ frappe.whatsapp_hr_inbox = {
 	},
 
 	load_session(name, silent) {
+		this._refresh_generation++;
+		this._refreshing_session = false;
 		this.current_session = name;
 		this._thread_message_ids = new Set();
 		this._thread_content_keys = new Set();
@@ -2061,6 +2111,7 @@ frappe.whatsapp_hr_inbox = {
 		this._msg_start = 0;
 		this._has_more_messages = true;
 		this._loading_messages = false;
+		this.messages_el.html(`<div class="wa-chat-loading"><span class="wa-chat-loading-spinner"></span>${__("Loading messages…")}</div>`);
 		this.list_el.find(".wa-chat-item").removeClass("active");
 		this.list_el.find(".wa-chat-item").each(function () {
 			if ($(this).attr("data-name") === name) {
@@ -2090,20 +2141,21 @@ frappe.whatsapp_hr_inbox = {
 		});
 	},
 
-	_refreshing_session: false,
-
 	refresh_session(silent) {
 		if (!this.current_session || this._refreshing_session) return;
 		this._refreshing_session = true;
+		const requested_session = this.current_session;
+		const generation = ++this._refresh_generation;
 
 		frappe.call({
 			method: "ai_workplace.api.hr_chat.get_session_detail",
 			args: {
-				session_name: this.current_session,
+				session_name: requested_session,
 				start: 0,
 				limit: this._msg_limit,
 			},
 			callback: (r) => {
+				if (generation !== this._refresh_generation || requested_session !== this.current_session) return;
 				this._refreshing_session = false;
 				if (!r.message) return;
 				const thread = r.message.thread || [];
@@ -2136,7 +2188,7 @@ frappe.whatsapp_hr_inbox = {
 				this._session_data = r.message;
 			},
 			error: () => {
-				this._refreshing_session = false;
+				if (generation === this._refresh_generation) this._refreshing_session = false;
 			},
 		});
 	},
@@ -2559,15 +2611,19 @@ frappe.whatsapp_hr_inbox = {
 	},
 
 	render_thread(messages) {
-		this.messages_el.empty();
+		const live_messages_el = this.messages_el;
+		const staged_messages_el = $("<div></div>");
+		this.messages_el = staged_messages_el;
 		this._thread_message_ids = new Set();
 		this._thread_content_keys = new Set();
 		if (!messages.length) {
-			this.messages_el.append(`
+			staged_messages_el.append(`
 				<div class="wa-empty">
 					<div class="wa-empty-sub">${__("No messages yet. Waiting for WhatsApp messages…")}</div>
 				</div>
 			`);
+			this.messages_el = live_messages_el;
+			live_messages_el.empty().append(staged_messages_el.contents());
 			return;
 		}
 		let last_date = "";
@@ -2589,6 +2645,8 @@ frappe.whatsapp_hr_inbox = {
 			}
 			this.append_thread_message(m, true);
 		});
+		this.messages_el = live_messages_el;
+		live_messages_el.empty().append(staged_messages_el.contents());
 		this.scroll_to_bottom();
 	},
 
