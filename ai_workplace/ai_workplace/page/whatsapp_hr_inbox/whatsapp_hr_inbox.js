@@ -991,6 +991,9 @@ frappe.whatsapp_hr_inbox = {
 	_thread_content_keys: new Set(),
 	_poll_timer: null,
 	_last_thread_len: 0,
+	_audio_context: null,
+	_audio_unlocked: false,
+	_last_queue_sound: null,
 
 	make(page) {
 		this.page = page;
@@ -1201,6 +1204,7 @@ frappe.whatsapp_hr_inbox = {
 		});
 
 		this._realtime_handler = (payload) => this.on_realtime_update(payload);
+		this._unlock_notification_audio();
 		this._setup_realtime();
 
 		$(window).on("beforeunload", () => this.stop_live_poll());
@@ -1477,6 +1481,11 @@ frappe.whatsapp_hr_inbox = {
 		const target_session = payload.name || payload.session_name || (payload.doc ? payload.doc.name : null);
 		if (!target_session) return;
 
+		// A queue lifecycle event identifies a newly opened/queued conversation.
+		if ((payload.event === "session_opened" || payload.event === "queued") && payload.status === "Queued") {
+			this.play_notify("queue", target_session);
+		}
+
 		// 1. Update tab indicators using tab_counts snapshot if provided
 		if (payload.tab_counts) {
 			this.update_tab_indicators(payload.tab_counts);
@@ -1502,8 +1511,10 @@ frappe.whatsapp_hr_inbox = {
 					media_file: payload.media_file || "",
 				});
 				this._update_compose_from_payload(payload);
-				if (document.hidden) {
-					this.play_notify();
+				if (payload.status === "Queued") {
+					this.play_notify("queue", target_session);
+				} else {
+					this.play_notify("message");
 				}
 
 				// Automatically mark session read since agent is viewing this chat
@@ -1542,8 +1553,12 @@ frappe.whatsapp_hr_inbox = {
 				this.show_notification(payload, target_session);
 			}
 		} else if (payload.event === "inbound_message") {
-			// Play notification chime for background incoming message
-			this.play_notify();
+			// Incoming messages for assigned conversations use the active-chat tone.
+			if (payload.status === "Queued") {
+				this.play_notify("queue", target_session);
+			} else {
+				this.play_notify("message");
+			}
 			this.show_notification(payload, target_session);
 		}
 	},
@@ -1669,18 +1684,53 @@ frappe.whatsapp_hr_inbox = {
 		}
 	},
 
-	play_notify() {
+	_unlock_notification_audio() {
+		if (this._audio_unlocked) return;
+		const unlock = () => {
+			try {
+				const AudioContext = window.AudioContext || window.webkitAudioContext;
+				if (!AudioContext) return;
+				this._audio_context = this._audio_context || new AudioContext();
+				if (this._audio_context.state === "suspended") this._audio_context.resume();
+				this._audio_unlocked = this._audio_context.state === "running";
+				if (this._audio_unlocked) {
+					document.removeEventListener("pointerdown", unlock);
+					document.removeEventListener("keydown", unlock);
+				}
+			} catch (e) { }
+		};
+		document.addEventListener("pointerdown", unlock);
+		document.addEventListener("keydown", unlock);
+	},
+
+	play_notify(kind = "message", session_name = null) {
 		try {
-			const ctx = new (window.AudioContext || window.webkitAudioContext)();
-			const osc = ctx.createOscillator();
-			const gain = ctx.createGain();
-			osc.connect(gain);
-			gain.connect(ctx.destination);
-			osc.frequency.value = 587.33;
-			gain.gain.setValueAtTime(0.15, ctx.currentTime);
-			gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-			osc.start(ctx.currentTime);
-			osc.stop(ctx.currentTime + 0.35);
+			const AudioContext = window.AudioContext || window.webkitAudioContext;
+			if (!AudioContext) return;
+			const ctx = this._audio_context || new AudioContext();
+			this._audio_context = ctx;
+			if (ctx.state === "suspended" || !this._audio_unlocked) return;
+
+			// session_opened and its first inbound event can arrive back-to-back.
+			if (kind === "queue" && session_name) {
+				const now = Date.now();
+				if (this._last_queue_sound && this._last_queue_sound.name === session_name && now - this._last_queue_sound.time < 2500) return;
+				this._last_queue_sound = { name: session_name, time: now };
+			}
+
+			const notes = kind === "queue" ? [783.99, 987.77] : [587.33];
+			notes.forEach((frequency, index) => {
+				const start = ctx.currentTime + index * 0.12;
+				const osc = ctx.createOscillator();
+				const gain = ctx.createGain();
+				osc.connect(gain);
+				gain.connect(ctx.destination);
+				osc.frequency.value = frequency;
+				gain.gain.setValueAtTime(0.12, start);
+				gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+				osc.start(start);
+				osc.stop(start + 0.22);
+			});
 		} catch (e) { }
 	},
 
