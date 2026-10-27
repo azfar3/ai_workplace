@@ -1741,18 +1741,21 @@ frappe.whatsapp_hr_inbox = {
 
 			const play_tones = () => {
 				if (ctx.state !== "running") return;
-				const notes = kind === "queue" ? [783.99, 987.77] : [587.33];
+				// Use a bright, higher-volume two-note alert for messages and a
+				// longer three-note pattern for new queue chats.
+				const notes = kind === "queue" ? [880, 1174.66, 880] : [659.25, 880];
 				notes.forEach((frequency, index) => {
-					const start = ctx.currentTime + index * 0.12;
+					const start = ctx.currentTime + index * 0.2;
 					const osc = ctx.createOscillator();
 					const gain = ctx.createGain();
 					osc.connect(gain);
 					gain.connect(ctx.destination);
 					osc.frequency.value = frequency;
-					gain.gain.setValueAtTime(0.12, start);
-					gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+					gain.gain.setValueAtTime(0.0001, start);
+					gain.gain.linearRampToValueAtTime(0.65, start + 0.015);
+					gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
 					osc.start(start);
-					osc.stop(start + 0.22);
+					osc.stop(start + 0.32);
 				});
 			};
 			if (ctx.state === "running") {
