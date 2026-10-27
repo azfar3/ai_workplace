@@ -58,27 +58,37 @@ class OutboundMessage:
             itype = self.interactive.get("type", "")
             if itype == "location_request_message":
                 return f"{self.body_text}\n\n[location request: send current location]"
-            buttons = []
             action = self.interactive.get("action", {})
-            for b in action.get("buttons", []):
-                reply = b.get("reply", {})
-                if reply.get("id") and reply.get("title"):
-                    buttons.append({"id": reply.get("id"), "title": reply.get("title")})
-            for s in action.get("sections", []):
-                for r in s.get("rows", []):
-                    if r.get("id") and r.get("title"):
-                        buttons.append({"id": r.get("id"), "title": r.get("title")})
-            
-            base_text = f"{self.body_text}\n\n[{itype} menu]"
-            if buttons:
-                import json
-                try:
-                    btns_json = json.dumps(buttons)
-                    return f"{base_text}\n<!-- _WEB_BUTTONS_: {btns_json} -->"
-                except Exception:
-                    pass
-                    
-            return base_text
+            pieces = []
+            if self.interactive.get("header", {}).get("text"):
+                pieces.append(self.interactive["header"]["text"])
+            if self.body_text:
+                pieces.append(self.body_text)
+            if self.interactive.get("footer", {}).get("text"):
+                pieces.append(self.interactive["footer"]["text"])
+            rendered = "\n\n".join(pieces)
+
+            if itype == "list":
+                index = 1
+                for section in action.get("sections", []):
+                    if section.get("title"):
+                        rendered += f"\n\n{section['title']}"
+                    for row in section.get("rows", []):
+                        title = row.get("title", "")
+                        description = row.get("description", "")
+                        suffix = f" — {description}" if description and description != title else ""
+                        rendered += f"\n{index}. {title}{suffix}"
+                        index += 1
+                return rendered
+
+            if itype == "button":
+                for index, button in enumerate(action.get("buttons", []), 1):
+                    title = button.get("reply", {}).get("title", "")
+                    if title:
+                        rendered += f"\n{index}. {title}"
+                return rendered
+
+            return rendered or self.body_text
         return self.body_text
 
     def __str__(self) -> str:

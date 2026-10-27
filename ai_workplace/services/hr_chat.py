@@ -7,6 +7,7 @@ HR Live Chat session lifecycle, 24-hour window enforcement, and messaging.
 from __future__ import annotations
 
 import os
+import json
 from datetime import timedelta
 from typing import Any, Optional
 
@@ -43,6 +44,32 @@ IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".gif", ".webp"})
 DOCUMENT_EXTENSIONS = frozenset(
     {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv", ".zip", ".mp3", ".wav", ".ogg", ".mp4", ".mov", ".webm"}
 )
+
+
+def _clean_logged_interactive_text(message: str) -> str:
+    """Render legacy interactive log entries as the plain text sent to Baileys."""
+    text = (message or "").strip()
+    marker = "<!-- _WEB_BUTTONS_:"
+    marker_start = text.find(marker)
+    if marker_start < 0:
+        return text
+
+    metadata = text[marker_start + len(marker):].split("-->", 1)[0].strip()
+    try:
+        options = json.loads(metadata)
+    except (TypeError, ValueError):
+        return text[:marker_start].strip()
+
+    body = text[:marker_start].rstrip()
+    is_list = "[list menu]" in body
+    body = body.replace("[list menu]", "").replace("[button menu]", "").rstrip()
+    if is_list and options:
+        body += "\n\nServices"
+    for index, option in enumerate(options, 1):
+        title = (option.get("title") or "").strip()
+        if title:
+            body += f"\n{index}. {title}"
+    return body
 MAX_ATTACHMENT_BYTES = 16 * 1024 * 1024
 
 
@@ -157,7 +184,7 @@ def _session_payload(session: Any) -> dict[str, Any]:
     if last_logs:
         msg_obj = last_logs[0]
         if msg_obj.get("message"):
-            last_message = msg_obj["message"]
+            last_message = _clean_logged_interactive_text(msg_obj["message"])
         elif msg_obj.get("media_file"):
             last_message = f"📎 Media ({msg_obj.get('message_type') or 'file'})"
 
@@ -1652,6 +1679,8 @@ def get_session_thread(
             sender_name_map[u["name"]] = u.get("full_name") or u["name"]
 
     for row in rows:
+        if row.get("direction") == "Outbound" and row.get("message"):
+            row["message"] = _clean_logged_interactive_text(row["message"])
         if row.get("direction") == "Outbound":
             row["delivery_status"] = row.get("delivery_status") or (
                 "Failed" if row.get("status") == "Failed" else "Sent"
