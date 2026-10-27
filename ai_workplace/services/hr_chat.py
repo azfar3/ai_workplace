@@ -249,6 +249,16 @@ def publish_session_update(
     payload = _session_payload(session)
     if extra:
         payload.update(extra)
+
+    event = payload.get("event")
+    if event in ("inbound_message", "session_opened", "queued"):
+        is_queue = session.status == "Queued" and not session.assigned_to
+        payload["notification_kind"] = "queue" if is_queue else "message"
+        # Shared by realtime and Web Push so the browser plays one tone per log entry.
+        payload["notification_id"] = (
+            payload.get("meta_message_id")
+            or f"{event}:{session.name}:{payload.get('timestamp') or frappe.utils.now()}"
+        )
         
     try:
         users = set()
@@ -281,7 +291,13 @@ def publish_session_update(
 
         # Publish privately & send notifications
         for u in enabled_users:
-            frappe.publish_realtime(REALTIME_EVENT, payload, user=u, after_commit=False)
+            user_payload = payload
+            if event in ("inbound_message", "session_opened", "queued"):
+                user_payload = {
+                    **payload,
+                    "should_play_sound": u in push_target_users,
+                }
+            frappe.publish_realtime(REALTIME_EVENT, user_payload, user=u, after_commit=False)
             
             # Send Web Push & Desk Notification Log for target users
             if u in push_target_users:
@@ -293,6 +309,8 @@ def publish_session_update(
 
                     push_payload = {
                         "conversation": session.name,
+                        "notification_kind": payload.get("notification_kind", "message"),
+                        "notification_id": payload.get("notification_id"),
                         "sender_name": session.display_name or session.wa_id,
                         "message_preview": msg_preview,
                         "message_type": extra.get("message_type") if extra else "text",

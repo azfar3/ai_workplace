@@ -994,6 +994,7 @@ frappe.whatsapp_hr_inbox = {
 	_audio_context: null,
 	_audio_unlocked: false,
 	_last_queue_sound: null,
+	_played_sound_ids: new Set(),
 
 	make(page) {
 		this.page = page;
@@ -1115,6 +1116,7 @@ frappe.whatsapp_hr_inbox = {
 		this.inbox_el = this.wrapper;
 
 		this.init_mobile_nav();
+		this._setup_push_sound_listener();
 		this.init_push_notifications();
 
 		this.search_input.on("input", (e) => {
@@ -1313,6 +1315,19 @@ frappe.whatsapp_hr_inbox = {
 		this.push_btn.on("click", () => this.toggle_push_subscription());
 	},
 
+	_setup_push_sound_listener() {
+		if (!navigator.serviceWorker) return;
+		if (this._push_sound_handler) {
+			navigator.serviceWorker.removeEventListener("message", this._push_sound_handler);
+		}
+		this._push_sound_handler = (event) => {
+			const data = event.data;
+			if (!data || data.type !== "hr_chat_notification") return;
+			this.play_notify(data.kind === "queue" ? "queue" : "message", data.conversation, data.notification_id);
+		};
+		navigator.serviceWorker.addEventListener("message", this._push_sound_handler);
+	},
+
 	update_push_btn_ui() {
 		if (this.isSubscribed) {
 			this.push_btn.css("opacity", "1");
@@ -1480,10 +1495,9 @@ frappe.whatsapp_hr_inbox = {
 
 		const target_session = payload.name || payload.session_name || (payload.doc ? payload.doc.name : null);
 		if (!target_session) return;
-
-		// A queue lifecycle event identifies a newly opened/queued conversation.
-		if ((payload.event === "session_opened" || payload.event === "queued") && payload.status === "Queued") {
-			this.play_notify("queue", target_session);
+		if (payload.should_play_sound && ["session_opened", "queued", "inbound_message"].includes(payload.event)) {
+			const kind = payload.notification_kind === "queue" ? "queue" : "message";
+			this.play_notify(kind, target_session, payload.notification_id);
 		}
 
 		// 1. Update tab indicators using tab_counts snapshot if provided
@@ -1511,11 +1525,6 @@ frappe.whatsapp_hr_inbox = {
 					media_file: payload.media_file || "",
 				});
 				this._update_compose_from_payload(payload);
-				if (payload.status === "Queued") {
-					this.play_notify("queue", target_session);
-				} else {
-					this.play_notify("message");
-				}
 
 				// Automatically mark session read since agent is viewing this chat
 				this.mark_session_read_remote(this.current_session);
@@ -1553,12 +1562,6 @@ frappe.whatsapp_hr_inbox = {
 				this.show_notification(payload, target_session);
 			}
 		} else if (payload.event === "inbound_message") {
-			// Incoming messages for assigned conversations use the active-chat tone.
-			if (payload.status === "Queued") {
-				this.play_notify("queue", target_session);
-			} else {
-				this.play_notify("message");
-			}
 			this.show_notification(payload, target_session);
 		}
 	},
@@ -1714,19 +1717,26 @@ frappe.whatsapp_hr_inbox = {
 		document.addEventListener("click", unlock);
 	},
 
-	play_notify(kind = "message", session_name = null) {
+	play_notify(kind = "message", session_name = null, notification_id = null) {
 		try {
 			const AudioContext = window.AudioContext || window.webkitAudioContext;
 			if (!AudioContext) return;
 			const ctx = this._audio_context || new AudioContext();
 			this._audio_context = ctx;
 			if (!this._audio_unlocked) return;
+			if (notification_id && this._played_sound_ids.has(notification_id)) return;
 
 			// session_opened and its first inbound event can arrive back-to-back.
 			if (kind === "queue" && session_name) {
 				const now = Date.now();
 				if (this._last_queue_sound && this._last_queue_sound.name === session_name && now - this._last_queue_sound.time < 2500) return;
 				this._last_queue_sound = { name: session_name, time: now };
+			}
+			if (notification_id) {
+				this._played_sound_ids.add(notification_id);
+				if (this._played_sound_ids.size > 100) {
+					this._played_sound_ids.delete(this._played_sound_ids.values().next().value);
+				}
 			}
 
 			const play_tones = () => {

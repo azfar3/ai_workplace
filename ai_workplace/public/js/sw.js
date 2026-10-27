@@ -17,9 +17,23 @@ self.addEventListener('push', function(event) {
                 url: targetUrl
             }
         };
+
+        // Forward the same server notification to an open inbox tab so it can
+        // play its queue or active-chat sound, including when the tab is hidden.
+        const notificationMessage = {
+            type: 'hr_chat_notification',
+            kind: payload.notification_kind || 'message',
+            conversation: payload.conversation || '',
+            notification_id: payload.notification_id || payload.meta_message_id || ''
+        };
         
         event.waitUntil(
             clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+                clientList.forEach(function(client) {
+                    if (client.url.includes('/whatsapp-hr-inbox')) {
+                        client.postMessage(notificationMessage);
+                    }
+                });
                 let isFocused = false;
                 for (let i = 0; i < clientList.length; i++) {
                     let client = clientList[i];
