@@ -110,9 +110,11 @@ def is_company_question(query):
     return bool(re.search(r"\b(know|about|company|what|who|services?|background|history|founded|founder|established|mission|vision|offices?|location|address|clients?|sectors?|business|industries|overview)\b", query))
 
 
-def concise_company_answer(text, limit=90):
+def concise_company_answer(text, limit=90, *, user_query=""):
     """Keep complete sentences/lines; do not rewrite or invent company facts."""
     import re
+    if wants_detailed_answer(user_query):
+        return text
     if len(text.split()) <= limit:
         return text
     chunks = re.split(r"(?<=[.!?۔؟])\s+|\n+", text.strip())
@@ -125,3 +127,39 @@ def concise_company_answer(text, limit=90):
         count += words
     # Avoid truncating a single long sentence into a misleading factual claim.
     return "\n".join(kept).strip() if kept and count >= 12 else text
+
+
+
+def wants_detailed_answer(query):
+    """Recognize explicit depth requests, including repeated-letter typos."""
+    import re
+    query = (query or "").lower()
+    if re.search(r"\b(brief|briefly|short|shortly|concise|summari[sz]e)\b", query):
+        return False
+    return bool(re.search(
+        r"\b(detail+l*(?:ed|s)?|full(?:y)?|in[ -]depth|comprehensive|thorough|elaborate|explain more|tell me more)\b|تفصیل|تفصیلی|tafs[ei]el|tafseel",
+        query,
+    ))
+
+
+def company_answer_instructions(query):
+    if wants_detailed_answer(query):
+        depth = (
+            "The user explicitly requested detail. Give a thorough, organized explanation "
+            "with short headings and readable sections for the requested topics. "
+            "Do not apply the brief introduction word limit. Explain services and company "
+            "background to the extent supported by retrieved sources; avoid repetition and filler. "
+        )
+    else:
+        depth = (
+            "Give a concise WhatsApp answer of at most 80 words. For a broad introduction, "
+            "use 2–3 sentences about the company and its main services. For a specific "
+            "question, answer that question directly. "
+        )
+    return (
+        " For this public company-information question, retrieve approved knowledge before answering. "
+        + depth +
+        "Avoid promotional claims. Include statistics only when relevant to the request and "
+        "supported by the retrieved sources; do not invent facts or calculate years of "
+        "experience from outdated website copy. Do not add a closing question; the application supplies it."
+    )

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
 
-from ai_workplace.conversation_guidance import eligible, load_memory, quiet_now, is_company_question, concise_company_answer
+from ai_workplace.conversation_guidance import eligible, load_memory, quiet_now, is_company_question, concise_company_answer, wants_detailed_answer, company_answer_instructions
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
 
@@ -296,6 +296,52 @@ class TestGuidance(unittest.TestCase):
         self.assertTrue(short.endswith("."))
         self.assertIn("MicroMerger provides", short)
         self.assertEqual(concise_company_answer("A short factual answer."), "A short factual answer.")
+
+    def test_explicit_detail_requests_include_reported_typo(self):
+        for query in (
+            "tell me in detailll what do you know more about micromerger in detail",
+            "what do you know about micromerger tell me in detail full explanation please",
+            "Give me a detailed explanation", "explain in depth", "tell me more",
+            "تفصیل سے بتائیں", "tafseel se batao",
+        ):
+            self.assertTrue(wants_detailed_answer(query), query)
+        self.assertFalse(wants_detailed_answer("tell me about MicroMerger"))
+        self.assertFalse(wants_detailed_answer("give me a brief company overview"))
+
+    def test_detailed_answer_is_not_truncated(self):
+        text = "A supported explanation of company services and background. " * 50
+        self.assertEqual(concise_company_answer(text, user_query="explain in detailll"), text)
+        self.assertLess(len(concise_company_answer(text).split()), len(text.split()))
+
+    def test_both_generation_paths_can_share_adaptive_instructions(self):
+        detailed = company_answer_instructions("tell me in detail")
+        brief = company_answer_instructions("what do you know about micromerger")
+        self.assertIn("thorough, organized explanation", detailed)
+        self.assertNotIn("at most 80 words", detailed)
+        self.assertIn("at most 80 words", brief)
+        self.assertIn("retrieved sources", detailed)
+
+    def test_company_question_displays_before_schema_migration(self):
+        self.conv.meta = SimpleNamespace(has_field=lambda _: False)
+        out = OutboundMessage(body_text="Supported company information.", follow_up=[OutboundMessage(body_text="Type another message")])
+        self.service.guide_policy(self.conv, self.context, out, "search_knowledge", [{"text": "source"}], user_query="Tell me about MicroMerger in detail")
+        self.assertIn("career opportunities", out.body_text)
+        self.assertEqual(out.follow_up, [])
+        self.assertIsNone(self.conv.guidance_memory)
+        self.assertIsNone(self.conv.followup_status)
+
+    def test_missing_new_setting_uses_guidance_default(self):
+        self.cfg.pop("guided_conversations_enabled")
+        out = OutboundMessage(body_text="Supported company information.")
+        self.service.guide_policy(self.conv, self.context, out, "search_knowledge", [{"text": "source"}], user_query="Tell me about MicroMerger")
+        self.assertIn("career opportunities", out.body_text)
+
+    def test_explicitly_disabled_company_guidance_stays_disabled(self):
+        self.cfg["guided_conversations_enabled"] = 0
+        out = OutboundMessage(body_text="Supported company information.", follow_up=[OutboundMessage(body_text="generic")])
+        self.service.guide_policy(self.conv, self.context, out, "search_knowledge", [{"text": "source"}], user_query="Tell me about MicroMerger")
+        self.assertEqual(out.body_text, "Supported company information.")
+        self.assertEqual(len(out.follow_up), 1)
 
     def test_worker_stays_quiet(self):
         self.frappe.utils.now_datetime.return_value = self.now.replace(hour=22)

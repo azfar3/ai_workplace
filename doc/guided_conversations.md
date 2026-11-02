@@ -96,8 +96,10 @@ On a test site, run the existing Frappe suite and verify:
 ## Company discovery
 
 Public company questions such as “what do you know about micromerger” receive
-concise-answer instructions in both the hybrid handler and HR agent. Long
-answers are bounded at complete sentence/line boundaries when possible. A single
+concise-answer instructions in both the hybrid handler and HR agent. Brief
+answers are bounded at complete sentence/line boundaries when possible. Explicit
+requests for detail (including “detailll”, full explanations, Urdu and Roman Urdu
+depth requests) bypass that bound and use thorough-answer instructions. A single
 long sentence is preserved rather than cutting a factual statement midway.
 The instructions avoid unsolicited statistics and promotional claims; all company
 facts must still come from the retrieved evidence.
@@ -109,3 +111,11 @@ services answer it asks which service to explore. This replaces the separate
 knowledge/careers services; explicit new HR questions keep normal routing.
 The optional catch-up settings and delivery restrictions apply to company topics.
 No reminder is sent to guest identities without a linked active employee/user.
+
+During rolling deployments, supported answers can display their next question
+without the new conversation fields. Durable memory and reminder scheduling
+remain disabled for such documents until migration. An unset new guidance setting
+uses its enabled default for response presentation; an explicit disabled value
+is always respected. If a production reply still has the generic closing, verify
+that the new workers are running, guidance is enabled, and retrieval returned
+supporting evidence; this checkout cannot inspect the live site's configuration.

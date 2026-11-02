@@ -170,8 +170,10 @@ def finish_turn(conv, context, outbound):
 
 def guide_policy(conv, context, outbound, intent_key, raw_data, user_query=""):
     """Offer a policy/company next step only when retrieval supplied content."""
-    if not conv or not available(conv) or not settings().get("guided_conversations_enabled"):
+    enabled = settings().get("guided_conversations_enabled")
+    if not conv or (enabled is not None and not int(enabled)):
         return outbound
+    can_persist = available(conv)
     if not isinstance(raw_data, (dict, list)) or not raw_data:
         return outbound
     if isinstance(raw_data, dict) and (raw_data.get("error") or raw_data.get("status") == "error" or raw_data.get("has_leave_policy") is False or raw_data.get("has_expense_structure") is False):
@@ -181,7 +183,7 @@ def guide_policy(conv, context, outbound, intent_key, raw_data, user_query=""):
     company = is_company_question(user_query)
     if not company and "policy" not in intent_key and "carry_forward" not in intent_key:
         return outbound
-    memory = load_memory(conv.get("guidance_memory"))
+    memory = load_memory(conv.get("guidance_memory")) if can_persist else {}
     if memory.get("opted_out"):
         return outbound
     copy = copy_for(context.get("preferred_language"))
@@ -194,6 +196,10 @@ def guide_policy(conv, context, outbound, intent_key, raw_data, user_query=""):
         if outbound.interactive and isinstance(outbound.interactive.get("body"), dict):
             outbound.interactive["body"]["text"] = outbound.body_text
     outbound.follow_up = []
+    if not can_persist:
+        # Display guidance during rolling deployments; durable resume/reminders
+        # still require the migrated fields. Never schedule without persistence.
+        return outbound
     now = frappe.utils.now_datetime()
     memory.update(topic="company information" if company else "policy guidance", intent=intent_key, status="awaiting_user",
                   question=question, employee=context.get("employee"),
