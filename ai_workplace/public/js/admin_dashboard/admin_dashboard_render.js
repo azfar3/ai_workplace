@@ -62,6 +62,7 @@ window.AdminDashboardRender = (function () {
             { id: 'ai_analytics', label: 'AI Usage & Cost', icon: 'fa-bolt' },
             { id: 'deterministic', label: 'Deterministic Engine', icon: 'fa-cogs' },
             { id: 'users', label: 'User Analytics', icon: 'fa-users' },
+            { id: 'engagement', label: 'Engagement', icon: 'fa-comments-o' },
             { id: 'conversations', label: 'Conversations', icon: 'fa-comments' },
             { id: 'health', label: 'System Health', icon: 'fa-heartbeat' },
             { id: 'errors', label: 'Errors & Failures', icon: 'fa-exclamation-triangle' },
@@ -417,6 +418,26 @@ window.AdminDashboardRender = (function () {
     }
 
     // 5. Conversation Analytics Tab
+    function renderEngagementTab(data) {
+        var e = (data && data.engagement) || {};
+        var counts = e.counts || {};
+        var cards = [
+            ['Guided conversations', e.guided_conversations], ['Response rate (%)', e.response_rate],
+            ['Tasks completed', counts.completed], ['Tasks resumed', counts.resumed],
+            ['Reminders sent', counts.reminder_sent], ['Reminders dismissed', counts.dismissed],
+            ['Knowledge gaps', counts.knowledge_gap], ['AI tokens', e.tokens]
+        ];
+        var html = '<div class="tab-pane-content"><div class="dash-card-grid">';
+        cards.forEach(function (card) {
+            html += '<div class="stat-card"><div class="stat-content"><div class="stat-value">' + U.formatNumber(card[1] || 0) + '</div><div class="stat-label">' + U.escapeHtml(card[0]) + '</div></div></div>';
+        });
+        html += '</div><div class="dash-table-card"><div class="table-card-title">Guided topics</div><table class="dash-table"><thead><tr><th>Topic</th><th>Questions</th></tr></thead><tbody>';
+        (e.topics || []).forEach(function (row) {
+            html += '<tr><td>' + U.escapeHtml(row.topic || 'Other') + '</td><td>' + U.formatNumber(row.questions || 0) + '</td></tr>';
+        });
+        return html + '</tbody></table></div></div>';
+    }
+
     function renderConversationsTab(data) {
         if (!data || !data.conversations) return '<div class="dash-empty">No conversation analytics available.</div>';
         var c = data.conversations;
@@ -825,6 +846,7 @@ window.AdminDashboardRender = (function () {
             else if (activeTab === 'ai_analytics') html += renderAiAnalyticsTab(data);
             else if (activeTab === 'deterministic') html += renderDeterministicTab(data);
             else if (activeTab === 'users') html += renderUsersTab(data);
+            else if (activeTab === 'engagement') html += renderEngagementTab(data);
             else if (activeTab === 'conversations') html += renderConversationsTab(data);
             else if (activeTab === 'health') html += renderHealthTab(data);
             else if (activeTab === 'errors') html += renderErrorsTab(data);

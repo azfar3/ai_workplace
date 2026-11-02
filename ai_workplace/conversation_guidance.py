@@ -163,3 +163,66 @@ def company_answer_instructions(query):
         "supported by the retrieved sources; do not invent facts or calculate years of "
         "experience from outdated website copy. Do not add a closing question; the application supplies it."
     )
+
+
+# Application-owned next actions. IDs always return through normal authorization.
+SERVICE_GUIDANCE = {
+    'leave': ('leave services', {
+        'English': 'Would you like to check your leave balance or start a leave application?',
+        'Urdu': 'کیا آپ چھٹیوں کا بیلنس دیکھنا یا چھٹی کی درخواست دینا چاہتے ہیں؟',
+        'Roman Urdu': 'Kya aap leave balance check karna ya leave apply karna chahte hain?',
+    }, {'balance': 'svc_leave_balance', 'apply': 'svc_leave_apply'}),
+    'attendance': ('attendance services', {
+        'English': 'Do you need help reviewing attendance or requesting a correction?',
+        'Urdu': 'کیا آپ حاضری دیکھنا یا اس کی درستگی کی درخواست دینا چاہتے ہیں؟',
+        'Roman Urdu': 'Kya aap attendance dekhna ya correction request karna chahte hain?',
+    }, {'review': 'svc_att_monthly', 'correction': 'apply for attendance request'}),
+    'payroll': ('payroll services', {
+        'English': 'Would you like help with a salary slip, tax information, or an HR question?',
+        'Urdu': 'کیا آپ کو سیلری سلپ، ٹیکس کی معلومات یا HR کے سوال میں مدد چاہیے؟',
+        'Roman Urdu': 'Kya aap ko salary slip, tax information, ya HR sawal mein madad chahiye?',
+    }, {'salary slip': 'svc_pay_slip_latest', 'tax': 'svc_tax_certificate', 'hr': 'svc_contact_hr'}),
+    'travel': ('travel services', {
+        'English': 'Would you like to explore travel rules or start a travel request?',
+        'Urdu': 'کیا آپ سفر کے قواعد جاننا یا سفر کی درخواست دینا چاہتے ہیں؟',
+        'Roman Urdu': 'Kya aap travel rules jaanna ya travel request shuru karna chahte hain?',
+    }, {'rules': 'what is my travel policy', 'apply': 'svc_trv_apply'}),
+    'profile': ('profile services', {
+        'English': 'Which profile detail would you like help reviewing or updating?',
+        'Urdu': 'آپ اپنی پروفائل کی کون سی تفصیل دیکھنا یا درست کرنا چاہتے ہیں؟',
+        'Roman Urdu': 'Aap profile ki kaunsi detail dekhna ya update karna chahte hain?',
+    }, {'update': 'svc_update_profile', 'review': 'svc_my_profile'}),
+    'careers': ('career guidance', {
+        'English': 'Are you looking for vacancies, application guidance, or application status?',
+        'Urdu': 'کیا آپ آسامیوں، درخواست دینے کے طریقے یا درخواست کی حیثیت کے بارے میں جاننا چاہتے ہیں؟',
+        'Roman Urdu': 'Kya aap vacancies, apply karne ka tareeqa, ya application status jaanna chahte hain?',
+    }, {'vacancies': 'svc_guest_careers', 'application status': 'svc_guest_job_status', 'guidance': 'how do I apply for a job at MicroMerger?'}),
+    'onboarding': ('onboarding guidance', {
+        'English': 'Which onboarding step or required document would you like help with?',
+        'Urdu': 'آپ کو ملازمت شروع کرنے کے کس مرحلے یا دستاویز میں مدد چاہیے؟',
+        'Roman Urdu': 'Aap ko onboarding ke kis step ya document mein madad chahiye?',
+    }, {}),
+    'documents': ('document guidance', {
+        'English': 'Which document do you need, and what would you like help doing with it?',
+        'Urdu': 'آپ کو کون سی دستاویز چاہیے اور اس کے لیے کیا مدد درکار ہے؟',
+        'Roman Urdu': 'Aap ko kaunsa document chahiye aur us mein kya madad chahiye?',
+    }, {}),
+}
+
+
+def guidance_category(intent, query=''):
+    import re
+    value = f'{intent} {query}'.lower().replace('_', ' ')
+    for category, pattern in [
+        ('careers',r'\b(career|careers|job|jobs|vacancies)\b'),
+        ('onboarding',r'\b(onboarding|joining)\b'),
+        ('leave',r'\b(leave|leaves)\b'),
+        ('attendance',r'\b(attendance|checkin|checkout)\b'),
+        ('payroll',r'\b(payroll|salary|payslip|tax|deduction|slip)\b'),
+        ('travel',r'\b(travel|trv|dsa|expense)\b'),
+        ('profile',r'\b(profile|department|designation|bank|contact)\b'),
+        ('documents',r'\b(document|documents|letter|certificate)\b'),
+    ]:
+        if re.search(pattern,value):
+            return category
+    return None

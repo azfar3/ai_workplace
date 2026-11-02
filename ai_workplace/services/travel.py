@@ -1235,6 +1235,9 @@ def _handle_travel_confirm(conv: Any, context: dict[str, Any], draft: dict, text
             "travel",
         )
 
+    from ai_workplace.services.conversation_engagement import complete_task
+    complete_task(conv, context, 'trv_apply')
+
     update_conversation(
         conv,
         state=ConversationState.AWAITING_SELECTION,

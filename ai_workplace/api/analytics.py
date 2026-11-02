@@ -77,6 +77,8 @@ def get_full_admin_dashboard_data(
     performance = get_performance_monitoring(start_dt, end_dt)
     live_feed = get_live_activity_stream()
     bot_messages = get_bot_messages_analytics(start_dt, end_dt)
+    from ai_workplace.api.conversation_engagement import engagement_metrics
+    engagement = engagement_metrics(start_dt, end_dt)
     alerts = generate_admin_alerts(health, overview, errors, knowledge)
 
     return {
@@ -93,6 +95,7 @@ def get_full_admin_dashboard_data(
         "user_analytics": user_analytics,
         "conversations": conversations,
         "bot_messages": bot_messages,
+        "engagement": engagement,
         "health": health,
         "errors": errors,
         "security": security,

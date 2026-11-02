@@ -7,6 +7,8 @@ from ai_workplace.ai.evidence import classify_data_safety, CLASS_ORGANIZATIONAL
 
 class AIKnowledgeEntry(Document):
     def validate(self):
+        from ai_workplace.services.knowledge_guidance import validate_metadata
+        validate_metadata(self)
         if getattr(self, "file_attachment", None):
             extracted = self.extract_attachment_text()
             if extracted and not self.answer:
@@ -75,6 +77,8 @@ class AIKnowledgeEntry(Document):
         """Auto-index into Knowledge Chunk vector/search index when saved/published."""
         if self.status in ("APPROVED", "PUBLISHED"):
             self.sync_to_knowledge_chunks()
+        else:
+            frappe.db.delete('AI Workplace Knowledge Chunk', {'source_type': 'AI Knowledge Entry', 'source_id': self.name})
 
     def sync_to_knowledge_chunks(self):
         """Chunk and save entry into AI Workplace Knowledge Chunk."""
@@ -91,6 +95,7 @@ class AIKnowledgeEntry(Document):
         # Delete existing chunks for this specific entry
         frappe.db.delete("AI Workplace Knowledge Chunk", {"knowledge_source": "knowledge_entries", "chunk_text": ["like", f"%[{self.title}]%"]})
 
+        frappe.db.delete('AI Workplace Knowledge Chunk', {'source_type': 'AI Knowledge Entry', 'source_id': self.name})
         # Insert new chunk with Employment Type scoping
         emp_type = getattr(self, "applicable_employment_type", None) or "All"
         emp_type_str = f" [Target Employment Type: {emp_type}]" if emp_type != "All" else ""
@@ -99,5 +104,17 @@ class AIKnowledgeEntry(Document):
         doc.knowledge_source = "knowledge_entries"
         doc.chunk_index = 0
         doc.chunk_text = chunk_text
+        doc.source_type = 'AI Knowledge Entry'
+        doc.source_id = self.name
+        doc.document_name = self.title
+        doc.target_employment_type = emp_type
+        doc.target_department = self.get('target_department')
+        doc.target_location = self.get('target_location')
+        doc.policy_version = str(self.get('version') or '1')
+        doc.effective_date = self.get('effective_from')
+        doc.effective_to = self.get('effective_to')
+        doc.source_date = self.get('approved_on') or self.get('effective_from')
+        doc.guided_questions = self.get('guided_questions')
+        doc.related_intent = self.get('related_intent')
         doc.insert(ignore_permissions=True)
         frappe.db.commit()

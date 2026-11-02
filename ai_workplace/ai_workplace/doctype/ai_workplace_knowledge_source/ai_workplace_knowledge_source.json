@@ -10,7 +10,15 @@
   "description",
   "is_active",
   "last_indexed",
-  "version_hash"
+  "version_hash",
+  "guided_questions",
+  "related_intent",
+  "target_employment_type",
+  "target_department",
+  "target_location",
+  "effective_from",
+  "effective_to",
+  "version"
  ],
  "fields": [
   {
@@ -94,6 +102,18 @@
    "fieldtype": "Data",
    "label": "Version Hash",
    "read_only": 1
+  },
+  {
+   "fieldname": "guided_questions",
+   "fieldtype": "Long Text",
+   "label": "Guided Questions",
+   "description": "JSON object with English, Urdu and/or Roman Urdu question text. Approved content only."
+  },
+  {
+   "fieldname": "related_intent",
+   "fieldtype": "Data",
+   "label": "Related Intent",
+   "description": "Intent key from the application intent catalog; permissions are checked when selected."
   }
  ],
  "module": "Ai Workplace",

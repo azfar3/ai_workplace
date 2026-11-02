@@ -4,6 +4,8 @@ from frappe.model.document import Document
 
 class AIWorkplaceKnowledgeSource(Document):
     def validate(self):
+        from ai_workplace.services.knowledge_guidance import validate_metadata
+        validate_metadata(self)
         if self.file_attachment:
             extracted = self.extract_attachment_text()
             if extracted:

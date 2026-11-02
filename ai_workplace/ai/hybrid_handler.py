@@ -181,6 +181,9 @@ def handle_hybrid(
 
     # ── 5. Build AI response with a single Main Menu action ───────────────────
     _log_hybrid(intent_key, tool_name, context, conv, trace_id, res)
+    from ai_workplace.services.conversation_engagement import event
+    usage = res.get('usage') or {}
+    event(conv, 'answer', intent=intent_key, token_count=res.get('tokens_total', usage.get('total_tokens', 0)), cost=res.get('total_cost', 0))
 
     from ai_workplace.ai.response_formatter import ResponseFormatter
     text = ResponseFormatter.sanitize_whatsapp_text(res.get("text") or "")
@@ -189,8 +192,8 @@ def handle_hybrid(
     from ai_workplace.services.hr_agent import _build_ai_response_message
 
     outbound = _build_ai_response_message(text, context, conv, llm_answered=True)
-    from ai_workplace.services.conversation_guidance import guide_policy
-    return guide_policy(conv, context, outbound, intent_key, raw_data, user_query=user_query)
+    from ai_workplace.services.conversation_guidance import guide_answer
+    return guide_answer(conv, context, outbound, intent_key, raw_data, user_query=user_query)
 
 
 def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_query: str = "", *, conv: Any = None) -> OutboundMessage:
@@ -226,8 +229,8 @@ def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_quer
     if is_company_question(user_query):
         text = concise_company_answer(text, user_query=user_query)
     outbound = _build_ai_response_message(text, context, conv, llm_answered=False)
-    from ai_workplace.services.conversation_guidance import guide_policy
-    return guide_policy(conv, context, outbound, intent_key, raw_data, user_query=user_query)
+    from ai_workplace.services.conversation_guidance import guide_answer
+    return guide_answer(conv, context, outbound, intent_key, raw_data, user_query=user_query)
 
 
 def _log_hybrid(

@@ -47,7 +47,7 @@ CUSTOM_LEAVE_REASONS = [
 ]
 
 
-def start_leave_application(conv: Any, context: dict[str, Any]) -> OutboundMessage:
+def start_leave_application(conv: Any, context: dict[str, Any], initial_text: str = "") -> OutboundMessage:
     """Begin leave application — show predefined custom_leave_reasons as leave reasons/types."""
     lang = context.get("preferred_language", "English")
     employee_id = context.get("employee") or conv.employee or ""
@@ -91,10 +91,79 @@ def start_leave_application(conv: Any, context: dict[str, Any]) -> OutboundMessa
             "Step 1 of 4 — Select your *Leave Reason (Type)*:"
         )
 
-    return _build_leave_reason_list_message(context, reasons, header)
+    outbound = _build_leave_reason_list_message(context, reasons, header)
+    if initial_text:
+        from ai_workplace.advanced_conversation import extract_leave_slots
+        draft['prefill'] = extract_leave_slots(initial_text, getdate(today()))
+        _save_draft(conv, draft)
+        return _consume_prefill(conv, context, outbound)
+    return outbound
 
 
-def handle_leave_apply_message(
+def handle_leave_apply_message(conv: Any, message_text: str, context: dict[str, Any]) -> OutboundMessage:
+    # A later message can supply several remaining fields, but never bypasses
+    # the existing validation handlers or explicit final confirmation.
+    draft = _load_draft(conv)
+    from ai_workplace.advanced_conversation import extract_leave_slots
+    slots = extract_leave_slots(message_text, getdate(today()))
+    # A date supplied to the From Date question is not an instruction to end
+    # leave that same day. Only reuse both ends of an explicit range/request.
+    import re
+    explicit_range = bool(re.search(r'\b(?:from|to|until|through|leave|tomorrow|today|one day|single day)\b', message_text, re.I))
+    if draft.get('step') == 'awaiting_from_date' and not explicit_range:
+        slots.pop('to_date', None)
+    if draft.get('step') == 'awaiting_to_date' and not re.search(r'\bfrom\b', message_text, re.I):
+        slots.pop('from_date', None)
+    if slots and draft.get('step') != 'awaiting_confirm':
+        draft.setdefault('prefill', {}).update(slots)
+        _save_draft(conv, draft)
+        result = _consume_prefill(conv, context, None)
+        if result is not None:
+            return result
+    result = _handle_leave_apply_step(conv, message_text, context)
+    return _consume_prefill(conv, context, result)
+
+
+def _consume_prefill(conv: Any, context: dict[str, Any], outbound):
+    handlers = {
+        'awaiting_leave_type': ('custom_leave_reason', _handle_leave_type),
+        'awaiting_from_date': ('from_date', _handle_from_date),
+        'awaiting_to_date': ('to_date', _handle_to_date),
+        'awaiting_half_day': ('half_day', _handle_half_day),
+        'awaiting_reason': ('description', _handle_reason),
+    }
+    for _ in range(5):
+        draft = _load_draft(conv)
+        step = draft.get('step')
+        if step not in handlers:
+            break
+        key, handler = handlers[step]
+        prefill = draft.get('prefill') or {}
+        if key not in prefill:
+            break
+        value = prefill.pop(key)
+        _save_draft(conv, draft)
+        value = ('leave_half_yes' if value else 'leave_half_no') if key == 'half_day' else str(value)
+        outbound = handler(conv, context, draft, value)
+        if _load_draft(conv).get('step') == step:
+            break  # Validation failed: ask the user instead of replaying it.
+    return outbound
+
+
+def resume_leave_prompt(conv, context):
+    draft = _load_draft(conv)
+    step = draft.get('step')
+    if step == 'awaiting_leave_type':
+        return _build_leave_reason_list_message(context, draft.get('custom_leave_reasons') or CUSTOM_LEAVE_REASONS, 'Select your leave reason:', page=int(draft.get('page') or 1))
+    if step == 'awaiting_half_day':
+        return _handle_half_day(conv, context, draft, '')
+    if step == 'awaiting_confirm':
+        return _handle_confirm(conv, context, draft, '')
+    from ai_workplace.conversation_guidance import LEAVE_QUESTIONS
+    return OutboundMessage(body_text=LEAVE_QUESTIONS.get(step, 'Which leave detail would you like to provide?'))
+
+
+def _handle_leave_apply_step(
     conv: Any,
     message_text: str,
     context: dict[str, Any],
@@ -574,6 +643,9 @@ def _handle_confirm(conv: Any, context: dict[str, Any], draft: dict, text: str) 
             else "I couldn’t submit your leave application due to a temporary system issue. Please try again or contact HR for assistance."
         )
         return wrap_with_parent_menu(err, context, "attendance_leave")
+
+    from ai_workplace.services.conversation_engagement import complete_task
+    complete_task(conv, context, 'leave_apply')
 
     update_conversation(
         conv,

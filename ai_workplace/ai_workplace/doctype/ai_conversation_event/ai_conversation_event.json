@@ -1,0 +1,82 @@
+{
+ "doctype": "DocType",
+ "name": "AI Conversation Event",
+ "module": "Ai Workplace",
+ "autoname": "hash",
+ "engine": "InnoDB",
+ "field_order": [
+  "conversation",
+  "topic",
+  "event",
+  "intent",
+  "channel",
+  "message_key",
+  "latency_ms",
+  "token_count",
+  "cost"
+ ],
+ "fields": [
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Data",
+   "label": "Conversation",
+   "search_index": 1
+  },
+  {
+   "fieldname": "topic",
+   "fieldtype": "Data",
+   "label": "Topic"
+  },
+  {
+   "fieldname": "event",
+   "fieldtype": "Select",
+   "label": "Event",
+   "options": "question\nreply\ncompleted\ndismissed\npaused\nresumed\nreminder_scheduled\nreminder_sent\nreminder_failed\nknowledge_gap\npreference_changed\nanswer",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "intent",
+   "fieldtype": "Data",
+   "label": "Intent"
+  },
+  {
+   "fieldname": "channel",
+   "fieldtype": "Data",
+   "label": "Channel"
+  },
+  {
+   "fieldname": "message_key",
+   "fieldtype": "Data",
+   "label": "Message Key",
+   "unique": 1
+  },
+  {
+   "fieldname": "latency_ms",
+   "fieldtype": "Int",
+   "label": "Latency Ms"
+  },
+  {
+   "fieldname": "token_count",
+   "fieldtype": "Int",
+   "label": "Token Count"
+  },
+  {
+   "fieldname": "cost",
+   "fieldtype": "Currency",
+   "label": "Cost"
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

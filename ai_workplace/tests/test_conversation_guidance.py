@@ -26,6 +26,10 @@ class TestGuidance(unittest.TestCase):
     def setUp(self):
         self.now = datetime(2026, 11, 2, 12)
         self.frappe = MagicMock()
+        self.frappe.db.exists.return_value = False
+        module_patch = patch.dict('sys.modules', {'frappe': self.frappe})
+        module_patch.start()
+        self.addCleanup(module_patch.stop)
         self.frappe.utils.now_datetime.return_value = self.now
         self.frappe.utils.get_datetime.side_effect = lambda v: datetime.fromisoformat(v) if isinstance(v, str) else v
         self.cfg = {"guided_conversations_enabled": 1, "conversation_followups_enabled": 1,
@@ -342,6 +346,35 @@ class TestGuidance(unittest.TestCase):
         self.service.guide_policy(self.conv, self.context, out, "search_knowledge", [{"text": "source"}], user_query="Tell me about MicroMerger")
         self.assertEqual(out.body_text, "Supported company information.")
         self.assertEqual(len(out.follow_up), 1)
+
+    def test_read_services_get_relevant_guidance(self):
+        for intent,expected in [('leave_balance','leave balance'),('monthly_attendance','attendance'),('latest_salary_slip','salary slip'),('employee_city_dsa','travel'),('my_profile','profile'),('careers','vacancies')]:
+            self.conv.current_state='AWAITING_SELECTION'
+            self.conv.current_intent=None
+            out=OutboundMessage(body_text='Verified service result.',follow_up=[OutboundMessage(body_text='generic')])
+            self.service.guide_answer(self.conv,self.context,out,intent,{'verified':True})
+            self.assertIn(expected,out.body_text)
+            self.assertEqual(out.follow_up,[])
+
+    def test_guidance_does_not_interrupt_active_transaction(self):
+        out=OutboundMessage(body_text='Submit this request?')
+        self.service.guide_answer(self.conv,self.context,out,'leave_balance',{'verified':True})
+        self.assertEqual(out.body_text,'Submit this request?')
+
+    def test_metadata_question_is_used_in_selected_language(self):
+        raw=[{'text':'approved policy','guided_questions':json.dumps({'English':'Which department does your question concern?'}),'related_intent':'leave_balance'}]
+        out=OutboundMessage(body_text='Verified policy information.')
+        self.service.guide_policy(self.conv,self.context,out,'search_knowledge',raw,user_query='What is the remote work policy?')
+        self.assertIn('Which department',out.body_text)
+        self.assertEqual(self.memory()['related_intent'],'leave_balance')
+
+    def test_generic_guidance_choice_reenters_normal_service_routing(self):
+        self.conv.current_state='AWAITING_SELECTION'
+        self.conv.current_intent=None
+        self.service.guide_answer(self.conv,self.context,OutboundMessage(body_text='Verified information.'),'leave_balance',{'verified':True})
+        text,response=self.service.begin_turn(self.conv,'apply',self.context)
+        self.assertEqual(text,'svc_leave_apply')
+        self.assertIsNone(response)
 
     def test_worker_stays_quiet(self):
         self.frappe.utils.now_datetime.return_value = self.now.replace(hour=22)

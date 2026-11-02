@@ -386,6 +386,10 @@ def handle_hr_agent_message(
     from ai_workplace.conversation_guidance import is_company_question, concise_company_answer, company_answer_instructions
     company_query = is_company_question(clean)
     company_evidence = []
+    observed_evidence = []
+    observed_intent = ''
+    engagement_tokens = 0
+    engagement_cost = 0.0
     if company_query:
         system_prompt += company_answer_instructions(clean)
     # Build messages list: system → conversation history → current user message
@@ -409,6 +413,8 @@ def handle_hr_agent_message(
                 employee=context.get("employee"),
             )
 
+            engagement_tokens += int(res.get('tokens_total') or 0)
+            engagement_cost += float(res.get('total_cost') or 0)
             if not res.get("success"):
                 frappe.log_error(
                     title="HR Agent AI Completion Failed",
@@ -472,6 +478,10 @@ def handle_hr_agent_message(
                     )
                 except Exception:
                     pass
+                from ai_workplace.services.conversation_engagement import event
+                usage = res.get('usage') or {}
+                event(conv, 'answer', 'company information' if company_query else 'HR guidance',
+                      token_count=engagement_tokens, cost=engagement_cost)
                 update_conversation(conv, state=ConversationState.AWAITING_SELECTION)
                 if company_query:
                     final_text = concise_company_answer(final_text, user_query=clean)
@@ -479,6 +489,9 @@ def handle_hr_agent_message(
                 if company_query and not _is_ai_failure_response(final_text):
                     from ai_workplace.services.conversation_guidance import guide_policy
                     return guide_policy(conv, context, outbound, "company_information", company_evidence, user_query=clean)
+                if observed_evidence and not _is_ai_failure_response(final_text):
+                    from ai_workplace.services.conversation_guidance import guide_answer
+                    return guide_answer(conv, context, outbound, observed_intent or 'hr_guidance', (observed_evidence[-1] if observed_intent == 'search_knowledge' else observed_evidence), user_query=clean)
                 return outbound
 
             # Execute tools observed by the planner
@@ -492,6 +505,9 @@ def handle_hr_agent_message(
                     t_args = {}
 
                 raw_res = run_tool(t_name, context, **t_args)
+                if raw_res:
+                    observed_evidence.append(raw_res)
+                    observed_intent = t_name
                 if company_query and t_name == "search_knowledge" and isinstance(raw_res, list):
                     company_evidence.extend(raw_res)
                 messages.append(

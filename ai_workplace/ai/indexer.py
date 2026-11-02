@@ -219,6 +219,9 @@ def reindex_source(source_name: str) -> int:
         doc.policy_version = source.get("version")
         doc.effective_date = source.get("effective_from")
         doc.source_date    = source.get("effective_from") or source.get("last_indexed")
+        doc.effective_to = source.get('effective_to')
+        doc.guided_questions = source.get('guided_questions')
+        doc.related_intent = source.get('related_intent')
         
         doc.insert(ignore_permissions=True)
 
@@ -502,6 +505,8 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
         "source_type", "source_id", "source_date",
     ]
 
+    meta = frappe.get_meta('AI Workplace Knowledge Chunk')
+    fields.extend(field for field in ('effective_to','guided_questions','related_intent') if meta.has_field(field))
     chunks = frappe.get_all(
         "AI Workplace Knowledge Chunk",
         filters={"knowledge_source": ["in", _active_source_names()]},
@@ -537,33 +542,21 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
     else:
         _allowed_chunk_scopes: set[str] = {"All", "HO", ""}
 
-    # Phase C: Pre-filtering via metadata scopes
+    # Scopes and validity are hard filters; never widen access on no matches.
+    from ai_workplace.advanced_conversation import applicable_metadata
     filtered_chunks = []
     for chunk in chunks:
-        # Effective Date filtering (if set, chunk must be effective already)
-        if chunk.effective_date and frappe.utils.getdate(chunk.effective_date) > frappe.utils.getdate(today_str):
-            continue
-
-        # Policy Scope filtering — inclusive allowed-scope check
-        chunk_scope = (chunk.target_employment_type or "").strip()
-        if chunk_scope and chunk_scope not in _allowed_chunk_scopes:
-            continue
-
-        # Hard Scoping for department / location (unchanged)
-        if chunk.target_department and user_dept and chunk.target_department != user_dept:
-            continue
-        if chunk.target_location and user_loc and chunk.target_location != user_loc:
-            continue
-
-        filtered_chunks.append(chunk)
-
-    # Fallback: if strictly scoped chunks yielded nothing, include all valid active chunks
-    if not filtered_chunks:
-        for chunk in chunks:
-            if chunk.effective_date and frappe.utils.getdate(chunk.effective_date) > frappe.utils.getdate(today_str):
+        chunk_scope = (chunk.get('target_employment_type') or '').strip()
+        scope_context = dict(context or {})
+        scope_context.update(department=user_dept, location=user_loc)
+        if chunk_scope in {'HO','Project'}:
+            if chunk_scope not in _allowed_chunk_scopes:
                 continue
+            scope_context['employment_type'] = chunk_scope
+        else:
+            scope_context['employment_type'] = user_emp_type
+        if applicable_metadata(chunk, scope_context, frappe.utils.getdate(today_str)):
             filtered_chunks.append(chunk)
-
     if not filtered_chunks:
         return []
 
@@ -711,6 +704,9 @@ def search_knowledge(query: str, limit: int = 5, employment_type: str = "", cont
             "version":        c.policy_version or "1.0",
             "source_date":    s_date,
             "effective_date": str(c.effective_date) if c.effective_date else None,
+            "effective_to": str(c.get('effective_to')) if c.get('effective_to') else None,
+            "guided_questions": c.get('guided_questions') or '',
+            "related_intent": c.get('related_intent') or '',
             "score":          round(final_s, 4),
             "keyword_score":  round(kw_s, 4),
             "semantic_score": round(sem_s, 4),

@@ -1,0 +1,60 @@
+{
+ "doctype": "DocType",
+ "name": "AI Conversation Preference",
+ "module": "Ai Workplace",
+ "autoname": "field:user",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "reminders_enabled",
+  "quiet_start",
+  "quiet_end",
+  "timezone"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "reminders_enabled",
+   "fieldtype": "Check",
+   "label": "Reminders Enabled",
+   "default": "1"
+  },
+  {
+   "fieldname": "quiet_start",
+   "fieldtype": "Int",
+   "label": "Quiet Start",
+   "default": "20"
+  },
+  {
+   "fieldname": "quiet_end",
+   "fieldtype": "Int",
+   "label": "Quiet End",
+   "default": "9"
+  },
+  {
+   "fieldname": "timezone",
+   "fieldtype": "Data",
+   "label": "Timezone",
+   "default": "Asia/Karachi"
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

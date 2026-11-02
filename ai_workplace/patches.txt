@@ -10,3 +10,4 @@ ai_workplace.patches.v1.set_default_hr_contact_details
 ai_workplace.patches.v1.backfill_delivery_status
 ai_workplace.patches.v1.whatsapp_attendance_custom_fields
 ai_workplace.scripts.seed_whatsapp_attendance
+ai_workplace.patches.v1.backfill_conversation_knowledge

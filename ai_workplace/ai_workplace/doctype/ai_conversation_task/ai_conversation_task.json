@@ -1,0 +1,123 @@
+{
+ "doctype": "DocType",
+ "name": "AI Conversation Task",
+ "module": "Ai Workplace",
+ "autoname": "hash",
+ "engine": "InnoDB",
+ "field_order": [
+  "erp_user",
+  "employee",
+  "whatsapp_identity",
+  "channel",
+  "conversation",
+  "topic",
+  "intent",
+  "active_service",
+  "state",
+  "draft_payload",
+  "question",
+  "guidance_payload",
+  "status",
+  "expires_at",
+  "source_message_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "erp_user",
+   "fieldtype": "Link",
+   "label": "Erp User",
+   "options": "User",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "whatsapp_identity",
+   "fieldtype": "Data",
+   "label": "Whatsapp Identity"
+  },
+  {
+   "fieldname": "channel",
+   "fieldtype": "Data",
+   "label": "Channel"
+  },
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Data",
+   "label": "Conversation"
+  },
+  {
+   "fieldname": "topic",
+   "fieldtype": "Data",
+   "label": "Topic"
+  },
+  {
+   "fieldname": "intent",
+   "fieldtype": "Data",
+   "label": "Intent"
+  },
+  {
+   "fieldname": "active_service",
+   "fieldtype": "Data",
+   "label": "Active Service"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State"
+  },
+  {
+   "fieldname": "draft_payload",
+   "fieldtype": "Long Text",
+   "label": "Draft Payload",
+   "hidden": 1
+  },
+  {
+   "fieldname": "question",
+   "fieldtype": "Small Text",
+   "label": "Question"
+  },
+  {
+   "fieldname": "guidance_payload",
+   "fieldtype": "Long Text",
+   "label": "Guidance Payload",
+   "hidden": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Paused\nResumed\nCompleted\nCancelled",
+   "default": "Paused",
+   "search_index": 1
+  },
+  {
+   "fieldname": "expires_at",
+   "fieldtype": "Datetime",
+   "label": "Expires At",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_message_id",
+   "fieldtype": "Data",
+   "label": "Source Message Id"
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

@@ -289,6 +289,10 @@ def process_expired_conversation(
         except Exception:
             pass
 
+    # Keep owned, resumable drafts available in the next session.
+    from ai_workplace.services.conversation_engagement import pause_task
+    if frappe.get_single('AI Workplace Settings').get('guided_conversations_enabled'):
+        pause_task(conv, {'employee': conv.employee, 'user': conv.erp_user})
     now = frappe.utils.now_datetime()
     expire_conversation(conv, trace_id=trace_id)
 

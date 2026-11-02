@@ -341,6 +341,9 @@ def _handle_confirm(conv: Any, context: dict[str, Any], draft: dict, text: str) 
         )
         return wrap_with_parent_menu(err, context, "attendance_leave")
 
+    from ai_workplace.services.conversation_engagement import complete_task
+    complete_task(conv, context, 'att_request_apply')
+
     update_conversation(
         conv,
         state=ConversationState.AWAITING_SELECTION,

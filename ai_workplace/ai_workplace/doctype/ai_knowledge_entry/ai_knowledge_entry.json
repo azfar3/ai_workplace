@@ -23,7 +23,11 @@
   "section_approval",
   "approved_by",
   "approved_on",
-  "created_from_gap"
+  "created_from_gap",
+  "guided_questions",
+  "related_intent",
+  "target_department",
+  "target_location"
  ],
  "fields": [
   {
@@ -149,6 +153,30 @@
    "fieldtype": "Link",
    "label": "Created From Gap",
    "options": "AI Knowledge Gap Log"
+  },
+  {
+   "fieldname": "guided_questions",
+   "fieldtype": "Long Text",
+   "label": "Guided Questions",
+   "description": "JSON object with English, Urdu and/or Roman Urdu question text. Approved content only."
+  },
+  {
+   "fieldname": "related_intent",
+   "fieldtype": "Data",
+   "label": "Related Intent",
+   "description": "Intent key from the application intent catalog; permissions are checked when selected."
+  },
+  {
+   "fieldname": "target_department",
+   "fieldtype": "Link",
+   "label": "Target Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "target_location",
+   "fieldtype": "Link",
+   "label": "Target Location",
+   "options": "Location"
   }
  ],
  "icon": "fa fa-book",

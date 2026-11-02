@@ -285,6 +285,9 @@ def _start_workflow_from_intent(
     This allows the QueryResolver to kick off leave applications, attendance
     exceptions, etc. directly from free-text — without a submenu round-trip.
     """
+    workflow_parent = {'leave_apply': 'attendance_leave', 'att_request_apply': 'attendance_leave', 'trv_apply': 'travel'}.get(workflow_intent)
+    if workflow_parent and not authorize(None, context, service=workflow_parent).get('allowed'):
+        return OutboundMessage(body_text='You do not have access to this service.')
     log_ai_action(
         trace_id=trace_id,
         conversation_name=conv.name,
@@ -305,7 +308,7 @@ def _start_workflow_from_intent(
             state=ConversationState.PROCESSING,
             current_intent="leave_apply",
         )
-        return start_leave_application(conv, context)
+        return start_leave_application(conv, context, initial_text=original_text)
 
     if workflow_intent == "att_request_apply":
         from ai_workplace.services.attendance_request_apply import start_attendance_request_application
@@ -598,6 +601,7 @@ def _process_message_internal(
         return guidance_response
 
     cmd_lower = clean_text.lower()
+    current_state = conv.current_state or ConversationState.NEW
 
     if current_state == ConversationState.LIVE_HR_CHAT or session_to_use:
         from ai_workplace.services.hr_chat import handle_live_hr_inbound, get_session_doc, close_session
@@ -1432,6 +1436,10 @@ def _process_message_internal(
         from ai_workplace.ai.router import is_ai_chat_enabled
 
         _intent_key, _meta, _confidence = QueryResolver.resolve(clean_text)
+        from ai_workplace.advanced_conversation import leave_request
+        if leave_request(clean_text):
+            from ai_workplace.ai.intent_catalog import INTENT_CATALOG
+            _intent_key, _meta, _confidence = 'apply_leave', INTENT_CATALOG['apply_leave'], 1.0
 
         if _intent_key and _intent_key != "unknown" and _meta:
             # Authentication guard
@@ -1489,7 +1497,9 @@ def _process_message_internal(
                     status="Success",
                 )
                 from ai_workplace.services.hr_agent import _build_ai_response_message
-                return _build_ai_response_message(_formatted, context, conv, llm_answered=False)
+                outbound = _build_ai_response_message(_formatted, context, conv, llm_answered=False)
+                from ai_workplace.services.conversation_guidance import guide_answer
+                return guide_answer(conv, context, outbound, _intent_key, _raw_data, user_query=clean_text)
 
             # ── HYBRID: lightweight synthesis — tool data → LLM narration ──────
             # Phase 4: uses hybrid_handler (1 LLM call, no tool-loop) instead
