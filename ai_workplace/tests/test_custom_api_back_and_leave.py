@@ -152,19 +152,19 @@ class TestCustomAPIBackAndParentMenu(unittest.TestCase):
         mock_cache.return_value = mock_cache_inst
 
         # Test sending "1"
-        res1 = parse_webhook_payload({"number": "923001234567", "message": "1"})
+        res1 = parse_webhook_payload({"number": "923001234567", "message": "1", "message_id": "custom-menu-1"})
         self.assertEqual(res1["text"], "svc_attendance_leave")
 
         # Test sending "back"
         cache_store["custom_wa_menu_923001234567"] = {
             "map": {"back": "svc_attendance_leave", "0": "svc_attendance_leave"}
         }
-        res2 = parse_webhook_payload({"number": "923001234567@s.whatsapp.net", "message": "back"})
+        res2 = parse_webhook_payload({"number": "923001234567@s.whatsapp.net", "message": "back", "message_id": "custom-menu-2"})
         self.assertEqual(res2["text"], "svc_attendance_leave")
 
         # Test sending "0"
         cache_store["custom_wa_menu_923001234567"] = {
             "map": {"back": "svc_attendance_leave", "0": "svc_attendance_leave"}
         }
-        res3 = parse_webhook_payload({"number": "+923001234567", "message": "0"})
+        res3 = parse_webhook_payload({"number": "+923001234567", "message": "0", "message_id": "custom-menu-3"})
         self.assertEqual(res3["text"], "svc_attendance_leave")

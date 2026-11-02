@@ -35,7 +35,9 @@
   "section_error",
   "error",
   "sender_name",
-  "receiver_name"
+  "receiver_name",
+  "processing_state",
+  "reply_to_message_id"
  ],
  "fields": [
   {
@@ -181,7 +183,7 @@
    "options": "\nEmployee\nHR Agent\nSystem"
   },
   {
-   "description": "WhatsApp delivery lifecycle for outbound messages (sent \u2192 delivered \u2192 read).",
+   "description": "WhatsApp delivery lifecycle for outbound messages (sent → delivered → read).",
    "fieldname": "delivery_status",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -214,6 +216,21 @@
    "fieldname": "receiver_name",
    "fieldtype": "Data",
    "label": "Receiver Name"
+  },
+  {
+   "fieldname": "processing_state",
+   "fieldtype": "Select",
+   "label": "Inbound Processing State",
+   "options": "\nClaimed\nSending\nSent\nSkipped\nFailed",
+   "read_only": 1,
+   "description": "Durable inbound claim. Never reset Sending/Claimed automatically: a provider send or ERP write may already have completed."
+  },
+  {
+   "fieldname": "reply_to_message_id",
+   "fieldtype": "Data",
+   "label": "Reply to Inbound Message ID",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "icon": "fa fa-comments",

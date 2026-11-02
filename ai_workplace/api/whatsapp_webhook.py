@@ -471,6 +471,7 @@ def _process_receive():
             # and for the worker to send its timeout reply with menu actions.
             timeout=180,
             is_async=True,
+            enqueue_after_commit=True,
             inbound_log_name=inbound_log.name,
             message_id=message_id,
             wa_id=wa_id,
@@ -489,6 +490,9 @@ def _process_receive():
         )
         return Response("ok", status=200, mimetype="text/plain")
 
+    from ai_workplace.whatsapp.idempotency import claim_worker, set_worker_state
+    if not claim_worker(message_id, inbound_log.name):
+        return Response('ok', status=200, mimetype='text/plain')
     # ── 8. Orchestrate conversation & generate reply (Synchronous / Test mode)
     from ai_workplace.services.hr_chat import (
         get_active_session_for_identity,
@@ -511,6 +515,7 @@ def _process_receive():
                 frappe.logger("ai_workplace").info(
                     f"AI Workplace [{trace_id}]: Routed inbound text to active HR session {hr_session_name} without bot reply."
                 )
+                set_worker_state(inbound_log.name, 'Skipped')
                 return Response("ok", status=200, mimetype="text/plain")
 
     outbound = None
@@ -557,6 +562,7 @@ def _process_receive():
                 outbound.session_id = session_id
             if username and not outbound.username:
                 outbound.username = username
+        set_worker_state(inbound_log.name, 'Sending')
         send_result = send_message(
             phone_number=identity.normalized_phone,
             outbound=outbound,
@@ -598,6 +604,7 @@ def _process_receive():
         _create_message_log(
             meta_message_id=send_result.get("message_id") or "",
             direction="Outbound",
+            reply_to_message_id=message_id,
             sender=receiver or "",
             recipient=identity.normalized_phone,
             wa_id=wa_id,
@@ -620,10 +627,10 @@ def _process_receive():
                 f"AI Workplace [{trace_id}]: Failed to send reply: {outbound_error}"
             )
 
+    set_worker_state(inbound_log.name, 'Skipped' if skip_send else ('Sent' if send_result.get('success') else 'Failed'))
     return Response("ok", status=200, mimetype="text/plain")
 
 
-@frappe.whitelist(allow_guest=True)
 def process_async_whatsapp_message(
     inbound_log_name: str = "",
     message_id: str = "",
@@ -653,14 +660,9 @@ def process_async_whatsapp_message(
         )
         return {"success": True, "skipped": True}
 
-    if frappe.db.exists(
-        "WhatsApp Message Log", {"meta_message_id": message_id, "direction": "Outbound"}
-    ):
-        frappe.logger("ai_workplace").info(
-            f"AI Workplace [{trace_id}]: Skipping background processing for message_id={message_id} (outbound already exists)"
-        )
-        frappe.cache().set_value(lock_key, "1")
-        return {"success": True, "skipped": True}
+    from ai_workplace.whatsapp.idempotency import claim_worker, set_worker_state
+    if not claim_worker(message_id, inbound_log_name):
+        return {"success": True, "skipped": True, "reason": "inbound already claimed"}
 
     start_ts = datetime.utcnow()
 
@@ -718,6 +720,7 @@ def process_async_whatsapp_message(
                 frappe.logger("ai_workplace").info(
                     f"AI Workplace [{trace_id}]: Routed async inbound text to active HR session {hr_session_name} without bot reply."
                 )
+                set_worker_state(inbound_log_name, 'Skipped')
                 frappe.cache().set_value(lock_key, "1")
                 return {"success": True}
 
@@ -759,6 +762,7 @@ def process_async_whatsapp_message(
             "a newer inbound message was received."
         )
         _finalize_log(inbound_log, status="Received")
+        set_worker_state(inbound_log_name, 'Skipped')
         frappe.cache().set_value(lock_key, "1")
         return {"success": True, "skipped": True, "reason": "superseded by newer inbound message"}
 
@@ -778,6 +782,7 @@ def process_async_whatsapp_message(
                 outbound.session_id = session_id
             if username and not outbound.username:
                 outbound.username = username
+        set_worker_state(inbound_log_name, 'Sending')
         send_result = send_message(
             phone_number=identity.normalized_phone,
             outbound=outbound,
@@ -812,6 +817,7 @@ def process_async_whatsapp_message(
         _create_message_log(
             meta_message_id=send_result.get("message_id") or "",
             direction="Outbound",
+            reply_to_message_id=message_id,
             sender=receiver or "",
             recipient=identity.normalized_phone,
             wa_id=wa_id,
@@ -829,6 +835,7 @@ def process_async_whatsapp_message(
             receiver_name=sender_name,
         )
 
+    set_worker_state(inbound_log_name, 'Skipped' if skip_send else ('Sent' if send_result.get('success') else 'Failed'))
     frappe.cache().set_value(lock_key, "1")
     return {"success": True}
 
@@ -872,6 +879,14 @@ def _handle_async_job_failure(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+def _receive_with_retry():
+    from ai_workplace.whatsapp.idempotency import InboundBusy
+    try:
+        return _process_receive()
+    except InboundBusy:
+        return Response('retry', status=503, mimetype='text/plain')
+
+
 @frappe.whitelist(allow_guest=True)
 def verify():
     """
@@ -883,7 +898,7 @@ def verify():
     has_hub_mode = bool(args.get("hub.mode") or args.get("hub_mode"))
 
     if method_str == "POST" or (method_str != "GET" and not has_hub_mode):
-        return _process_receive()
+        return _receive_with_retry()
     return _process_verify()
 
 
@@ -899,7 +914,7 @@ def receive():
 
     if method_str == "GET" or has_hub_mode:
         return _process_verify()
-    return _process_receive()
+    return _receive_with_retry()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -908,15 +923,8 @@ def receive():
 
 
 def _is_duplicate(message_id: str) -> bool:
-    """Return True if this Meta message_id has already been processed."""
-    if not message_id:
-        return False
-    return bool(
-        frappe.db.exists(
-            "WhatsApp Message Log",
-            {"meta_message_id": message_id, "direction": "Inbound"},
-        )
-    )
+    from ai_workplace.whatsapp.idempotency import duplicate_or_claim_inbound
+    return duplicate_or_claim_inbound(message_id)
 
 
 def _has_newer_inbound_message(inbound_log: Any, wa_id: str) -> bool:
@@ -964,6 +972,7 @@ def _create_message_log(
     media_file: str = "",
     sender_name: str = "",
     receiver_name: str = "",
+    reply_to_message_id: str = "",
 ) -> "frappe.Document":
     """Create and insert a WhatsApp Message Log record."""
     if not (message or "").strip() and not (media_file or "").strip():
@@ -990,6 +999,8 @@ def _create_message_log(
     doc.sender_name = sender_name or ""
     doc.receiver_name = receiver_name or ""
     doc.timestamp = frappe.utils.now_datetime()
+    if doc.meta.has_field('reply_to_message_id'):
+        doc.reply_to_message_id = reply_to_message_id
     doc.insert(ignore_permissions=True)
     frappe.db.commit()
     return doc
