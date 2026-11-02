@@ -11,7 +11,7 @@ from datetime import timedelta
 import frappe
 
 from ai_workplace.conversation_guidance import (
-    LEAVE_QUESTIONS, copy_for, eligible, load_memory, quiet_now,
+    LEAVE_QUESTIONS, COMPANY_QUESTIONS, COMPANY_SERVICE_QUESTIONS, is_company_question, copy_for, eligible, load_memory, quiet_now,
 )
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
@@ -89,6 +89,28 @@ def begin_turn(conv, text, context, *, human_owned=False):
                 {"id": "guide_dismiss", "title": copy["dismiss"]},
             ])
         return text, OutboundMessage(body_text=memory.get("question") or copy["policy"])
+    if memory.get("topic") == "company information":
+        company_reply = {
+            "services": "What services does MicroMerger provide?",
+            "خدمات": "What services does MicroMerger provide?",
+            "سروسز": "What services does MicroMerger provide?",
+            "ملازمت کے مواقع": "Show me career opportunities at MicroMerger.",
+            "کمپنی کا پس منظر": "Tell me about MicroMerger's company background.",
+            "service": "What services does MicroMerger provide?",
+            "company background": "Tell me about MicroMerger's company background.",
+            "background": "Tell me about MicroMerger's history and background.",
+            "career opportunities": "Show me career opportunities at MicroMerger.",
+            "careers": "Show me career opportunities at MicroMerger.",
+            "jobs": "Show me career opportunities at MicroMerger.",
+            "history": "Tell me about MicroMerger's history.",
+            "erp": "Tell me about MicroMerger's ERP services.",
+            "software development": "Tell me about MicroMerger's software development services.",
+            "bpo": "Tell me about MicroMerger's BPO services.",
+            "ai": "Tell me about MicroMerger's AI services.",
+        }.get(command)
+        memory["status"] = "suspended"
+        _save(conv, memory)
+        return company_reply or text, None
     if memory.get("topic") == "policy guidance":
         # Short answers to our question inherit the policy topic. Explicit new
         # intents still route normally, and service/button IDs are never rewritten.
@@ -146,8 +168,8 @@ def finish_turn(conv, context, outbound):
     return outbound
 
 
-def guide_policy(conv, context, outbound, intent_key, raw_data):
-    """Offer a next step only when retrieval supplied supporting content."""
+def guide_policy(conv, context, outbound, intent_key, raw_data, user_query=""):
+    """Offer a policy/company next step only when retrieval supplied content."""
     if not conv or not available(conv) or not settings().get("guided_conversations_enabled"):
         return outbound
     if not isinstance(raw_data, (dict, list)) or not raw_data:
@@ -156,13 +178,16 @@ def guide_policy(conv, context, outbound, intent_key, raw_data):
         return outbound
     if isinstance(raw_data, list) and not any(isinstance(row, dict) and (row.get("text") or row.get("content")) for row in raw_data):
         return outbound
-    if "policy" not in intent_key and "carry_forward" not in intent_key:
+    company = is_company_question(user_query)
+    if not company and "policy" not in intent_key and "carry_forward" not in intent_key:
         return outbound
     memory = load_memory(conv.get("guidance_memory"))
     if memory.get("opted_out"):
         return outbound
     copy = copy_for(context.get("preferred_language"))
-    question = copy["leave_policy"] if "leave" in intent_key else copy["policy"]
+    language = context.get("preferred_language", "English")
+    company_questions = COMPANY_SERVICE_QUESTIONS if "service" in user_query.lower() else COMPANY_QUESTIONS
+    question = company_questions.get(language, company_questions["English"]) if company else (copy["leave_policy"] if "leave" in intent_key else copy["policy"])
     # Do not tack on a second question when synthesis already asked one.
     if "?" not in outbound.body_text and "؟" not in outbound.body_text:
         outbound.body_text += "\n\n" + question
@@ -170,7 +195,7 @@ def guide_policy(conv, context, outbound, intent_key, raw_data):
             outbound.interactive["body"]["text"] = outbound.body_text
     outbound.follow_up = []
     now = frappe.utils.now_datetime()
-    memory.update(topic="policy guidance", intent=intent_key, status="awaiting_user",
+    memory.update(topic="company information" if company else "policy guidance", intent=intent_key, status="awaiting_user",
                   question=question, employee=context.get("employee"),
                   user=context.get("user") or conv.get("erp_user"), last_inbound_at=now.isoformat())
     _schedule(conv, memory, settings(), now)

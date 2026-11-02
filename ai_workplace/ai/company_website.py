@@ -12,7 +12,7 @@ import requests
 _BASE_URL = "https://micromerger.com"
 _MAX_RESPONSE_BYTES = 1_000_000
 _COMPANY_INFO_TERMS = {
-    "about", "company", "what is", "who is", "who are", "tell me about", "overview",
+    "know", "about", "company", "what is", "who is", "who are", "tell me about", "overview",
     "micro merger", "founded", "founder", "established", "history", "since",
     "services", "service", "business", "industry", "industries", "client",
     "clients", "sector", "sectors", "office", "offices", "location",

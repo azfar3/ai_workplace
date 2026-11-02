@@ -83,3 +83,45 @@ def eligible(conv, memory, now: datetime) -> bool:
         return False
     # Conservative free-form window; never send stale HR information or templates here.
     return due <= now and timedelta(0) <= now - last_inbound < timedelta(hours=23)
+
+
+COMPANY_QUESTIONS = {
+    "English": "Are you interested in MicroMerger's services, career opportunities, or company background?",
+    "Urdu": "کیا آپ مائیکرو مرجر کی خدمات، ملازمت کے مواقع یا کمپنی کے پس منظر کے بارے میں جاننا چاہتے ہیں؟",
+    "Roman Urdu": "Kya aap MicroMerger ki services, career opportunities, ya company background ke bare mein jaanna chahte hain?",
+}
+
+
+COMPANY_SERVICE_QUESTIONS = {
+    "English": "Which MicroMerger service would you like to explore further?",
+    "Urdu": "آپ مائیکرو مرجر کی کس خدمت کے بارے میں مزید جاننا چاہتے ہیں؟",
+    "Roman Urdu": "Aap MicroMerger ki kis service ke bare mein mazeed jaanna chahte hain?",
+}
+
+
+def is_company_question(query):
+    """Public company discovery, excluding personal and HR-policy questions."""
+    import re
+    query = " ".join((query or "").lower().replace("micro merger", "micromerger").split())
+    if not re.search(r"\b(micromerger|our company|the company)\b", query):
+        return False
+    if re.search(r"\b(policy|policies|leave|salary|payroll|attendance|benefits?|employee|employees|jobs?|careers?|vacancies|recruitment|tax|expense|claim|travel|medical|insurance)\b", query):
+        return False
+    return bool(re.search(r"\b(know|about|company|what|who|services?|background|history|founded|founder|established|mission|vision|offices?|location|address|clients?|sectors?|business|industries|overview)\b", query))
+
+
+def concise_company_answer(text, limit=90):
+    """Keep complete sentences/lines; do not rewrite or invent company facts."""
+    import re
+    if len(text.split()) <= limit:
+        return text
+    chunks = re.split(r"(?<=[.!?۔؟])\s+|\n+", text.strip())
+    kept, count = [], 0
+    for chunk in chunks:
+        words = len(chunk.split())
+        if count + words > limit:
+            break
+        kept.append(chunk)
+        count += words
+    # Avoid truncating a single long sentence into a misleading factual claim.
+    return "\n".join(kept).strip() if kept and count >= 12 else text

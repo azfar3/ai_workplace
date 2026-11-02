@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
 
-from ai_workplace.conversation_guidance import eligible, load_memory, quiet_now
+from ai_workplace.conversation_guidance import eligible, load_memory, quiet_now, is_company_question, concise_company_answer
 from ai_workplace.whatsapp.outbound import OutboundMessage
 
 
@@ -238,6 +238,64 @@ class TestGuidance(unittest.TestCase):
         self.assertTrue(self.memory()["reminder_sent"])
         log.assert_called_once()
         self.assertEqual(log.call_args.kwargs["status"], "Sent")
+
+    def test_company_question_matches_reported_whatsapp_query(self):
+        self.assertTrue(is_company_question("what do you know about micromerger"))
+        self.assertTrue(is_company_question("Tell me about MicroMerger's ERP services"))
+        for query in ("What is MicroMerger's leave policy?", "MicroMerger salary", "careers at MicroMerger", "What is my leave balance?"):
+            self.assertFalse(is_company_question(query), query)
+
+    def test_company_answer_replaces_generic_closing(self):
+        out = OutboundMessage(body_text="MicroMerger provides software services.", follow_up=[OutboundMessage(body_text="Type another message")])
+        self.service.guide_policy(self.conv, self.context, out, "search_knowledge", [{"text": "approved company source"}], user_query="what do you know about micromerger")
+        self.assertIn("career opportunities", out.body_text)
+        self.assertEqual(out.follow_up, [])
+        self.assertEqual(self.memory()["topic"], "company information")
+        self.assertEqual(self.conv.followup_status, "Pending")
+
+    def test_company_requires_evidence(self):
+        out = OutboundMessage(body_text="I could not find company information.")
+        self.service.guide_policy(self.conv, self.context, out, "company_information", [], user_query="Tell me about MicroMerger")
+        self.assertNotIn("career opportunities", out.body_text)
+        self.assertIsNone(self.conv.guidance_memory)
+
+    def test_company_short_answers_resume_topic(self):
+        out = OutboundMessage(body_text="Company introduction.")
+        self.service.guide_policy(self.conv, self.context, out, "search_knowledge", [{"text": "source"}], user_query="Tell me about MicroMerger")
+        for reply, expected in (("services", "What services does MicroMerger provide?"), ("careers", "Show me career opportunities at MicroMerger."), ("ERP", "Tell me about MicroMerger's ERP services.")):
+            memory = self.memory()
+            memory["status"] = "awaiting_user"
+            self.conv.guidance_memory = json.dumps(memory)
+            text, response = self.service.begin_turn(self.conv, reply, self.context)
+            self.assertEqual(text, expected)
+            self.assertIsNone(response)
+
+    def test_company_service_answer_asks_a_more_specific_question(self):
+        out = OutboundMessage(body_text="Supported services.")
+        self.service.guide_policy(self.conv, self.context, out, "search_knowledge", [{"text": "source"}], user_query="What services does MicroMerger provide?")
+        self.assertIn("Which MicroMerger service", out.body_text)
+        self.assertNotIn("career opportunities", out.body_text)
+
+    def test_company_guidance_uses_selected_language(self):
+        for lang, expected in (("Urdu", "مائیکرو"), ("Roman Urdu", "Kya aap")):
+            context = dict(self.context, preferred_language=lang)
+            out = OutboundMessage(body_text="Company introduction.")
+            self.service.guide_policy(self.conv, context, out, "search_knowledge", [{"text": "source"}], user_query="Tell me about MicroMerger")
+            self.assertIn(expected, out.body_text)
+
+    def test_company_does_not_rewrite_explicit_topic_switch(self):
+        self.service.guide_policy(self.conv, self.context, OutboundMessage(body_text="Company information."), "search_knowledge", [{"text": "source"}], user_query="Tell me about MicroMerger")
+        text, response = self.service.begin_turn(self.conv, "what is my leave balance?", self.context)
+        self.assertEqual(text, "what is my leave balance?")
+        self.assertIsNone(response)
+
+    def test_company_summary_keeps_complete_sentences(self):
+        text = "MicroMerger provides software development and ERP services for organizations seeking digital transformation. " + "More supported company background details are available in this retrieved source. " * 12
+        short = concise_company_answer(text)
+        self.assertLessEqual(len(short.split()), 90)
+        self.assertTrue(short.endswith("."))
+        self.assertIn("MicroMerger provides", short)
+        self.assertEqual(concise_company_answer("A short factual answer."), "A short factual answer.")
 
     def test_worker_stays_quiet(self):
         self.frappe.utils.now_datetime.return_value = self.now.replace(hour=22)

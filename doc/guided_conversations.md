@@ -1,6 +1,7 @@
 # Guided conversations and unfinished-task reminders
 
-This first release extends existing leave workflows and hybrid policy responses.
+This first release extends existing leave workflows, hybrid policy responses, and company-information
+answers from both hybrid and agentic generation paths.
 It uses approved knowledge and ERP tools; it does not change leave submission,
 permission checks, or the requirement to confirm transactions.
 
@@ -32,7 +33,7 @@ AI Workplace Settings contains:
 
 | Setting | Default |
 | --- | --- |
-| Enable Guided Policy Conversations | On |
+| Enable Guided Conversations | On |
 | Enable Unfinished Conversation Reminders | Off |
 | Catch-up Delay (Minutes) | 60 |
 | Quiet Hours Start | 20 |
@@ -91,3 +92,20 @@ On a test site, run the existing Frappe suite and verify:
 4. A due reminder reaches the correct recipient and custom WhatsApp account once.
 5. Quiet hours, disabled users, reassigned identities, web chats, and stale windows
    suppress delivery.
+
+## Company discovery
+
+Public company questions such as “what do you know about micromerger” receive
+concise-answer instructions in both the hybrid handler and HR agent. Long
+answers are bounded at complete sentence/line boundaries when possible. A single
+long sentence is preserved rather than cutting a factual statement midway.
+The instructions avoid unsolicited statistics and promotional claims; all company
+facts must still come from the retrieved evidence.
+
+After a supported company introduction, the assistant asks whether the user wants
+services, careers, or company background, in the selected language. After a
+services answer it asks which service to explore. This replaces the separate
+“Type another message…” closing. Follow-up choices are routed through existing
+knowledge/careers services; explicit new HR questions keep normal routing.
+The optional catch-up settings and delivery restrictions apply to company topics.
+No reminder is sent to guest identities without a linked active employee/user.

@@ -383,6 +383,16 @@ def handle_hr_agent_message(
         Language: {ai_context.language}
 
     """
+    from ai_workplace.conversation_guidance import is_company_question, concise_company_answer
+    company_query = is_company_question(clean)
+    company_evidence = []
+    if company_query:
+        system_prompt += (
+            " For this company-information question, retrieve approved knowledge before answering. "
+            "Use at most 80 words: a brief introduction for broad questions, a direct answer for specific ones. "
+            "Avoid promotional claims and statistics unless the user asks and the sources support them. "
+            "Do not add a closing question; the application adds the relevant next step."
+        )
     # Build messages list: system → conversation history → current user message
     from ai_workplace.ai.conversation_memory import get_conversation_history
     history = get_conversation_history(conv, turns=5)
@@ -468,7 +478,13 @@ def handle_hr_agent_message(
                 except Exception:
                     pass
                 update_conversation(conv, state=ConversationState.AWAITING_SELECTION)
-                return _build_ai_response_message(final_text, context, conv)
+                if company_query:
+                    final_text = concise_company_answer(final_text)
+                outbound = _build_ai_response_message(final_text, context, conv)
+                if company_query and not _is_ai_failure_response(final_text):
+                    from ai_workplace.services.conversation_guidance import guide_policy
+                    return guide_policy(conv, context, outbound, "company_information", company_evidence, user_query=clean)
+                return outbound
 
             # Execute tools observed by the planner
             import json
@@ -481,6 +497,8 @@ def handle_hr_agent_message(
                     t_args = {}
 
                 raw_res = run_tool(t_name, context, **t_args)
+                if company_query and t_name == "search_knowledge" and isinstance(raw_res, list):
+                    company_evidence.extend(raw_res)
                 messages.append(
                     {
                         "role": "tool",

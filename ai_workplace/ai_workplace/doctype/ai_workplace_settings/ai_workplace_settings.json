@@ -318,7 +318,7 @@
   {
    "fieldname": "guided_conversations_enabled",
    "fieldtype": "Check",
-   "label": "Enable Guided Policy Conversations",
+   "label": "Enable Guided Conversations",
    "default": "1"
   },
   {

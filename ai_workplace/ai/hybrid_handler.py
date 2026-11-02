@@ -132,6 +132,15 @@ def handle_hybrid(
         else str(raw_data)
     )
 
+    from ai_workplace.conversation_guidance import is_company_question, concise_company_answer
+    if is_company_question(user_query):
+        synthesis_system += (
+            " For public company questions, give a concise WhatsApp answer of at most 80 words. "
+            "For a broad introduction, use 2–3 sentences covering the company and its main services. "
+            "For a specific question, answer that question directly. Avoid promotional language, "
+            "long service lists, and company statistics unless explicitly asked and supported by the retrieved source. "
+            "Do not calculate years of experience from old website copy. Do not add a closing question; the application supplies it."
+        )
     messages: list[dict] = [{"role": "system", "content": synthesis_system}]
 
     # Inject conversation history so the LLM understands follow-up questions
@@ -181,11 +190,13 @@ def handle_hybrid(
 
     from ai_workplace.ai.response_formatter import ResponseFormatter
     text = ResponseFormatter.sanitize_whatsapp_text(res.get("text") or "")
+    if is_company_question(user_query):
+        text = concise_company_answer(text)
     from ai_workplace.services.hr_agent import _build_ai_response_message
 
     outbound = _build_ai_response_message(text, context, conv, llm_answered=True)
     from ai_workplace.services.conversation_guidance import guide_policy
-    return guide_policy(conv, context, outbound, intent_key, raw_data)
+    return guide_policy(conv, context, outbound, intent_key, raw_data, user_query=user_query)
 
 
 def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_query: str = "", *, conv: Any = None) -> OutboundMessage:
@@ -217,9 +228,12 @@ def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_quer
 
     from ai_workplace.services.hr_agent import _build_ai_response_message
 
+    from ai_workplace.conversation_guidance import is_company_question, concise_company_answer
+    if is_company_question(user_query):
+        text = concise_company_answer(text)
     outbound = _build_ai_response_message(text, context, conv, llm_answered=False)
     from ai_workplace.services.conversation_guidance import guide_policy
-    return guide_policy(conv, context, outbound, intent_key, raw_data)
+    return guide_policy(conv, context, outbound, intent_key, raw_data, user_query=user_query)
 
 
 def _log_hybrid(
