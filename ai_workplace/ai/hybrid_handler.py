@@ -85,11 +85,11 @@ def handle_hybrid(
 
     # ── 2. If no data worth synthesising, return deterministic fallback ────────
     if not raw_data or (isinstance(raw_data, (list, dict)) and not raw_data):
-        return _fallback(intent_key, raw_data, context, user_query)
+        return _fallback(intent_key, raw_data, context, user_query, conv=conv)
 
     # ── 3. If AI is disabled, return deterministic fallback ───────────────────
     if not is_ai_chat_enabled():
-        return _fallback(intent_key, raw_data, context, user_query)
+        return _fallback(intent_key, raw_data, context, user_query, conv=conv)
 
     # ── 4. LLM synthesis — narrate, don't calculate ───────────────────────────
     lang = context.get("preferred_language", "English")
@@ -164,7 +164,7 @@ def handle_hybrid(
         frappe.logger("ai_workplace").warning(
             f"HybridHandler: LLM synthesis failed for {intent_key!r}: {exc}"
         )
-        return _fallback(intent_key, raw_data, context, user_query)
+        return _fallback(intent_key, raw_data, context, user_query, conv=conv)
 
     if not res.get("success") or not res.get("text"):
         frappe.log_error(
@@ -174,7 +174,7 @@ def handle_hybrid(
         frappe.logger("ai_workplace").warning(
             f"HybridHandler: LLM returned no text for {intent_key!r}"
         )
-        return _fallback(intent_key, raw_data, context, user_query)
+        return _fallback(intent_key, raw_data, context, user_query, conv=conv)
 
     # ── 5. Build AI response with a single Main Menu action ───────────────────
     _log_hybrid(intent_key, tool_name, context, conv, trace_id, res)
@@ -183,10 +183,12 @@ def handle_hybrid(
     text = ResponseFormatter.sanitize_whatsapp_text(res.get("text") or "")
     from ai_workplace.services.hr_agent import _build_ai_response_message
 
-    return _build_ai_response_message(text, context, conv, llm_answered=True)
+    outbound = _build_ai_response_message(text, context, conv, llm_answered=True)
+    from ai_workplace.services.conversation_guidance import guide_policy
+    return guide_policy(conv, context, outbound, intent_key, raw_data)
 
 
-def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_query: str = "") -> OutboundMessage:
+def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_query: str = "", *, conv: Any = None) -> OutboundMessage:
     """Return a deterministically-formatted response when LLM is unavailable."""
     from ai_workplace.ai.response_formatter import ResponseFormatter
 
@@ -215,7 +217,9 @@ def _fallback(intent_key: str, raw_data: Any, context: dict[str, Any], user_quer
 
     from ai_workplace.services.hr_agent import _build_ai_response_message
 
-    return _build_ai_response_message(text, context, llm_answered=False)
+    outbound = _build_ai_response_message(text, context, conv, llm_answered=False)
+    from ai_workplace.services.conversation_guidance import guide_policy
+    return guide_policy(conv, context, outbound, intent_key, raw_data)
 
 
 def _log_hybrid(

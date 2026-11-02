@@ -48,7 +48,13 @@
   "section_web_push",
   "vapid_public_key",
   "vapid_private_key",
-  "vapid_subject"
+  "vapid_subject",
+  "section_guided_conversations",
+  "guided_conversations_enabled",
+  "conversation_followups_enabled",
+  "conversation_followup_minutes",
+  "followup_quiet_start",
+  "followup_quiet_end"
  ],
  "fields": [
   {
@@ -303,6 +309,42 @@
    "fieldname": "vapid_subject",
    "fieldtype": "Data",
    "label": "VAPID Subject"
+  },
+  {
+   "fieldname": "section_guided_conversations",
+   "fieldtype": "Section Break",
+   "label": "Guided Conversations"
+  },
+  {
+   "fieldname": "guided_conversations_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Guided Policy Conversations",
+   "default": "1"
+  },
+  {
+   "fieldname": "conversation_followups_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Unfinished Conversation Reminders",
+   "default": "0",
+   "description": "One catch-up per unfinished conversation. No reminders outside the free-form messaging window. Enable after validating outbound routing on your site."
+  },
+  {
+   "fieldname": "conversation_followup_minutes",
+   "fieldtype": "Int",
+   "label": "Catch-up Delay (Minutes)",
+   "default": "60"
+  },
+  {
+   "fieldname": "followup_quiet_start",
+   "fieldtype": "Int",
+   "label": "Quiet Hours Start (0–23, Site Timezone)",
+   "default": "20"
+  },
+  {
+   "fieldname": "followup_quiet_end",
+   "fieldtype": "Int",
+   "label": "Quiet Hours End (0–23, Site Timezone)",
+   "default": "9"
   }
  ],
  "icon": "fa fa-cog",

@@ -499,6 +499,9 @@ def process_message(
                 body_obj = result.interactive.get("body", {})
                 if isinstance(body_obj, dict) and body_obj.get("text"):
                     body_obj["text"] = f"{shared['prepend_welcome_text']}\n\n{body_obj['text']}"
+        if shared.get("guidance_conv") and not shared.get("guidance_handled"):
+            from ai_workplace.services.conversation_guidance import finish_turn
+            result = finish_turn(shared["guidance_conv"], shared["guidance_context"], result)
         return result
     except Exception as exc:
         frappe.log_error(
@@ -583,6 +586,18 @@ def _process_message_internal(
         )
 
     session_to_use = active_hr_session or conv.active_hr_chat_session
+
+    from ai_workplace.services.conversation_guidance import begin_turn
+    if shared_state is not None:
+        shared_state["guidance_conv"] = conv
+        shared_state["guidance_context"] = context
+    clean_text, guidance_response = begin_turn(conv, clean_text, context, human_owned=bool(session_to_use))
+    if guidance_response is not None:
+        if shared_state is not None:
+            shared_state["guidance_handled"] = True
+        return guidance_response
+
+    cmd_lower = clean_text.lower()
 
     if current_state == ConversationState.LIVE_HR_CHAT or session_to_use:
         from ai_workplace.services.hr_chat import handle_live_hr_inbound, get_session_doc, close_session

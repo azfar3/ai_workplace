@@ -24,7 +24,10 @@
   "trace_id",
   "active_hr_chat_session",
   "section_draft",
-  "draft_payload"
+  "draft_payload",
+  "guidance_memory",
+  "followup_due_at",
+  "followup_status"
  ],
  "fields": [
   {
@@ -151,6 +154,27 @@
    "fieldname": "draft_payload",
    "fieldtype": "Long Text",
    "label": "Draft Payload"
+  },
+  {
+   "fieldname": "guidance_memory",
+   "fieldtype": "Long Text",
+   "label": "Guided Conversation Memory",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "followup_due_at",
+   "fieldtype": "Datetime",
+   "label": "Conversation Follow-up Due",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "followup_status",
+   "fieldtype": "Select",
+   "label": "Conversation Follow-up Status",
+   "options": "\nPending\nClaimed\nSent\nCancelled\nFailed",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-comments-o",

@@ -41,6 +41,14 @@ class AIWorkplaceSettings(Document):
                 frappe.ValidationError,
             )
 
+        for field in ("followup_quiet_start", "followup_quiet_end"):
+            value = self.get(field)
+            if value is not None and not 0 <= cint(value) <= 23:
+                frappe.throw("Follow-up quiet-hour values must be between 0 and 23")
+        delay = self.get("conversation_followup_minutes")
+        if delay is not None and not 5 <= cint(delay) <= 720:
+            frappe.throw("Conversation follow-up delay must be between 5 and 720 minutes")
+
         graph_ver = self.get("graph_api_version")
         if graph_ver and not graph_ver.startswith("v"):
             self.graph_api_version = f"v{graph_ver}"

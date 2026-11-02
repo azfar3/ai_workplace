@@ -146,6 +146,7 @@ scheduler_events = {
 		"ai_workplace.tasks.close_inactive_sessions_task",
 	],
 	"all": [
+		"ai_workplace.services.conversation_guidance.send_due_followups",
 		"ai_workplace.tasks.close_inactive_sessions_task",
 	],
 }
