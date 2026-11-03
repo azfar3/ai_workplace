@@ -55,9 +55,11 @@ class TestWhatsAppGuard(unittest.TestCase):
     def test_missing_id_is_not_processed(self):
         self.assertTrue(guard.duplicate_or_claim_inbound(''))
 
-    def test_missing_gateway_identity_is_rejected_instead_of_random_uuid(self):
-        with self.assertRaises(guard.MissingMessageIdentity):
-            guard.custom_message_id({'number':'923001234567','message':'company overview'})
+    def test_legacy_gateway_identity_gets_a_unique_internal_id(self):
+        payload = {"number": "923001234567", "message": "company overview"}
+        first = guard.custom_message_id(payload)
+        self.assertTrue(first.startswith("custom_"))
+        self.assertNotEqual(first, guard.custom_message_id(payload))
 
     def test_top_level_and_nested_provider_ids_are_preserved(self):
         for payload in [{'message_id':'M1'},{'id':'M1'},{'messageId':'M1'},{'key':{'id':'M1'}}]:
@@ -145,9 +147,20 @@ class TestGatewayParser(unittest.TestCase):
         result=self.parser.parse_webhook_payload(self.payload(fromMe='false'))
         self.assertEqual(result['message_id'],'M1')
 
-    def test_idless_payload_requires_stable_identity(self):
-        with self.assertRaises(self.parser.ParseError):
-            self.parser.parse_webhook_payload({'number':'923001234567','message':'Tell me about MicroMerger'})
+    def test_previous_baileys_payload_is_accepted_without_sender_changes(self):
+        payload = dict(number='923001234567', message='AOA',
+                       sender_name='Test User', receiver_name='MicroMerger',
+                       receiver='923184221489', receiver_number='923184221489',
+                       session_id='administrator', username='administrator',
+                       domain='192.168.10.43', erp_url='http://192.168.10.43',
+                       media_base64='', mime_type='')
+        first = self.parser.parse_webhook_payload(payload)
+        second = self.parser.parse_webhook_payload(payload)
+        self.assertEqual(first['text'], 'AOA')
+        self.assertEqual(first['sender_name'], 'Test User')
+        self.assertEqual(first['receiver'], payload['receiver'])
+        self.assertTrue(first['message_id'].startswith('custom_'))
+        self.assertNotEqual(first['message_id'], second['message_id'])
 
     def test_provider_retries_retain_the_same_id(self):
         first=self.parser.parse_webhook_payload(self.payload())

@@ -291,6 +291,10 @@ def _process_receive():
         frappe.logger("ai_workplace").error(
             f"AI Workplace [{trace_id}]: ParseError: {exc}"
         )
+        # Custom gateways need actionable failure responses, otherwise a
+        # malformed message looks successfully delivered to Baileys.
+        if is_custom_api:
+            return Response(str(exc), status=400, mimetype="text/plain")
         return Response("ok", status=200, mimetype="text/plain")
 
     if parsed is None:

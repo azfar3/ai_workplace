@@ -87,7 +87,7 @@ def get_or_create_conversation(
     )
 
     if active_conv_name:
-        conv = frappe.get_doc("WhatsApp Conversation", active_conv_name)
+        conv = frappe.get_doc("WhatsApp Conversation", active_conv_name, for_update=True)
         # Check Expiry
         is_custom_api = False
         try:
@@ -156,7 +156,12 @@ def update_conversation(
     clear_active_hr_chat_session: bool = False,
     clear_active_fields: bool = False,
 ) -> "frappe.Document":
-    """Update conversation state, fields, and activity timestamp."""
+    """Apply explicit updates to the latest persisted conversation under a row lock."""
+    # A conversation can be held across slow LLM/tool calls while other requests
+    # update it. Reload under lock before applying this call's explicit fields,
+    # retaining the same object so callers also receive the current version.
+    conversation.flags.for_update = True
+    conversation.reload()
     now = frappe.utils.now_datetime()
     ttl_minutes = get_default_ttl_minutes()
 

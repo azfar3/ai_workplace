@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 
 
 class MissingMessageIdentity(ValueError):
@@ -30,7 +31,7 @@ def claim_once(kind, value, seconds=600):
 
 
 def custom_message_id(payload):
-    """Use the gateway's real WhatsApp ID, including common nested formats."""
+    """Prefer provider identity; accept legacy ID-less gateway deliveries too."""
     key = payload.get('key') if isinstance(payload.get('key'),dict) else {}
     supplied = payload.get('message_id') or payload.get('id') or payload.get('messageId') or key.get('id')
     if supplied:
@@ -44,10 +45,10 @@ def custom_message_id(payload):
     digest = hashlib.sha256(encoded.encode()).hexdigest()
     if payload.get('timestamp') not in (None, '', 0, '0'):
         return 'custom_'+digest
-    raise MissingMessageIdentity(
-        'Custom WhatsApp gateway must forward the original message_id (or key.id) '
-        'or original stable message timestamp. ID-less events are not processed.'
-    )
+    # Legacy Baileys sends only number/message and routing metadata. Preserve
+    # compatibility without suppressing legitimate repeated questions by text.
+    # Such deliveries cannot be deduplicated across gateway retries.
+    return "custom_" + uuid.uuid4().hex
 
 
 def is_outgoing(payload):

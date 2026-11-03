@@ -51,10 +51,12 @@ Prefer forwarding the original WhatsApp event like this:
 `id`, `messageId`, or `key.id` can substitute for `message_id`. If the gateway
 cannot supply an ID, the original stable event timestamp permits a deterministic
 fallback fingerprint. It must not be replaced with the current delivery time on
-retries. Payloads without both ID and original timestamp are logged as ParseError
-and acknowledged without AI processing, avoiding an endless retry loop. This is
-an intentional compatibility change: update the gateway before rollout if it
-currently sends only `number` and `message`.
+retries. Legacy payloads without both ID and original timestamp remain accepted:
+the receiver generates a unique internal `custom_` ID, as the previous receiver did.
+Those deliveries are logged and processed normally, but gateway retries cannot be
+deduplicated reliably. Forward original IDs when available; repeated text alone
+must not be used to suppress legitimate messages. Invalid custom payloads that
+raise ParseError return HTTP 400 instead of a misleading success response.
 
 Two messages with different real provider IDs are distinct, even if their text
 is identical. This prevents legitimate repeated questions or menu choices from

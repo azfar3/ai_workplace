@@ -288,7 +288,10 @@ def get_or_create_whatsapp_identity(identity: IdentityResult | dict, wa_id: str 
         docname = frappe.db.get_value("WhatsApp Identity", {"guest_email": guest_email}, "name")
 
     if docname:
-        doc = frappe.get_doc("WhatsApp Identity", docname)
+        # Lock before reading: concurrent messages may update the same identity.
+        # The commit below releases the lock after save, preserving Frappe's
+        # timestamp checks and any fields written by the previous transaction.
+        doc = frappe.get_doc("WhatsApp Identity", docname, for_update=True)
         doc.status = db_status
         if user:
             doc.erp_user = user
