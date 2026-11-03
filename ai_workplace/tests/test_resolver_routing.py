@@ -36,6 +36,34 @@ class TestQueryResolverLayer1Alias(unittest.TestCase):
     def test_carry_forward_exact(self):
         self._check("can i carry forward my remaining 4 leaves", "carry_forward_leave", "hybrid")
 
+    def test_umrah_entitlement_uses_policy_search(self):
+        for query in (
+            "how many leave i can get for umrah?",
+            "how many leaves days i can get for umrah",
+            "pilgrimage leave",
+            "Umrah leave",
+        ):
+            intent, meta, score = QueryResolver.resolve(query)
+            self.assertEqual(intent, "search_knowledge", query)
+            self.assertEqual(meta["tool"], "search_knowledge")
+            self.assertTrue(meta["requires_authentication"])
+            self.assertGreaterEqual(score, 0.7)
+
+    def test_general_leave_policy_uses_published_knowledge(self):
+        intent, meta, _ = QueryResolver.resolve("what is the leave policy?")
+        self.assertEqual(intent, "search_knowledge")
+        self.assertEqual(meta["tool"], "search_knowledge")
+
+    def test_personal_leave_balance_stays_on_employee_tool(self):
+        intent, meta, _ = QueryResolver.resolve("how many leaves do i have remaining")
+        self.assertEqual(intent, "leave_balance")
+        self.assertEqual(meta["tool"], "get_leave_balance")
+
+    def test_applying_for_umrah_leave_stays_on_application_flow(self):
+        intent, meta, _ = QueryResolver.resolve("apply for umrah leave")
+        self.assertEqual(intent, "apply_leave")
+        self.assertEqual(meta["response_mode"], "workflow")
+
 
 class TestQueryResolverLayer2Substring(unittest.TestCase):
     """Layer 2: alias substring match (score 0.8)"""

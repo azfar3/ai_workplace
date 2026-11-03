@@ -353,6 +353,23 @@ class QueryResolver:
         raw = (message or "").strip()
         normalized = cls.normalize_text(raw)
 
+        # Named special-leave entitlement questions are policy lookups, not
+        # personal balance checks or menu navigation. The structured ERP
+        # leave-policy tool can be incomplete; the published handbook is the
+        # authoritative source for eligibility and special-leave limits.
+        special_leave_terms = ("umrah", "umra", "pilgrimage", "hajj", "haj")
+        asks_leave_policy = any(term in normalized for term in special_leave_terms) and any(
+            term in normalized for term in (
+                "leave", "leaves", "days", "day", "policy", "eligible",
+                "eligibility", "allow", "allowed", "get", "take", "mil",
+            )
+        )
+        is_leave_action = any(term in normalized for term in ("apply", "request", "application"))
+        if asks_leave_policy and not is_leave_action:
+            meta = dict(INTENT_CATALOG["search_knowledge"])
+            meta["requires_authentication"] = True
+            return "search_knowledge", meta, 0.95
+
         best_intent: Optional[str] = None
         best_meta: Optional[dict[str, Any]] = None
         best_score: float = 0.0
@@ -393,6 +410,13 @@ class QueryResolver:
                     best_score = max(best_score, 0.95)
 
         if best_score >= CONFIDENCE_THRESHOLD and best_intent:
+            # General employee leave-policy questions need the published
+            # handbook as well as ERP data; the latter may contain only a
+            # partial allocation record.
+            if best_intent == "employee_leave_policy":
+                meta = dict(INTENT_CATALOG["search_knowledge"])
+                meta["requires_authentication"] = True
+                return "search_knowledge", meta, best_score
             return best_intent, best_meta, best_score
 
         return "unknown", None, 0.0
