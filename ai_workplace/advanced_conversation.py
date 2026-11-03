@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, timedelta
+from ai_workplace.procedure_intent import procedure_intent
 
 # Workflow drafts can be resumed; never snapshot credentials or active HR chats.
 RESUMABLE_WORKFLOWS = {
@@ -14,6 +15,8 @@ RESUMABLE_WORKFLOWS = {
 
 
 def leave_request(text):
+    if procedure_intent(text):
+        return False
     return bool(re.search(r'\b(?:apply|request|need|take|want)\b.{0,35}\bleave\b|\bleave\b.{0,20}\b(?:apply|request)\b|chutti (?:chahiye|leni)', text, re.I))
 
 

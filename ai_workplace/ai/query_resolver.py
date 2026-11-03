@@ -23,6 +23,7 @@ import string
 from typing import Any, Dict, Optional, Tuple
 
 from ai_workplace.ai.intent_catalog import INTENT_CATALOG
+from ai_workplace.procedure_intent import procedure_intent
 
 # Minimum score to accept a classification as deterministic
 CONFIDENCE_THRESHOLD = 0.70
@@ -352,6 +353,12 @@ class QueryResolver:
         """
         raw = (message or "").strip()
         normalized = cls.normalize_text(raw)
+
+        # Instructions take precedence over embedded action aliases such as
+        # "apply leave"; equal pattern scores otherwise favor catalog order.
+        procedure = procedure_intent(raw)
+        if procedure:
+            return procedure, INTENT_CATALOG[procedure], 0.95
 
         # Named special-leave entitlement questions are policy lookups, not
         # personal balance checks or menu navigation. The structured ERP

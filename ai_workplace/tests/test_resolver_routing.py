@@ -65,6 +65,62 @@ class TestQueryResolverLayer1Alias(unittest.TestCase):
         self.assertEqual(meta["response_mode"], "workflow")
 
 
+class TestProcedureRouting(unittest.TestCase):
+    def test_leave_instructions_do_not_start_application(self):
+        from ai_workplace.advanced_conversation import leave_request
+
+        for query in (
+            "mjhe leave apply kaarne ke steps batao",
+            "how can I apply for leave?",
+            "How to apply leave",
+            "Explain the process of applying for annual leave",
+            "leave apply kaise karun?",
+            "chutti lene ka tareeqa batao",
+            "چھٹی کے لیے درخواست کیسے دوں؟",
+        ):
+            with self.subTest(query=query):
+                intent, meta, score = QueryResolver.resolve(query)
+                self.assertEqual(intent, "leave_application_procedure")
+                self.assertEqual(meta["tool"], "search_knowledge")
+                self.assertTrue(meta["read_only"])
+                self.assertEqual(meta["response_mode"], "hybrid")
+                self.assertGreaterEqual(score, 0.7)
+                self.assertFalse(leave_request(query))
+
+    def test_expense_instructions_use_knowledge_search(self):
+        for query in (
+            "what is the process of getting expense claim?",
+            "How do I submit an expense claim?",
+            "expense claim karne ke steps batao",
+            "reimbursement kaise milegi?",
+        ):
+            with self.subTest(query=query):
+                intent, meta, score = QueryResolver.resolve(query)
+                self.assertEqual(intent, "expense_claim_procedure")
+                self.assertEqual(meta["tool"], "search_knowledge")
+                self.assertTrue(meta["read_only"])
+                self.assertEqual(meta["response_mode"], "hybrid")
+                self.assertGreaterEqual(score, 0.7)
+
+    def test_explicit_leave_actions_still_start_workflow(self):
+        from ai_workplace.advanced_conversation import leave_request
+
+        for query in ("apply leave", "leave apply karna hai", "I need leave tomorrow", "chutti chahiye"):
+            with self.subTest(query=query):
+                _, meta, _ = QueryResolver.resolve(query)
+                self.assertEqual(meta["response_mode"], "workflow")
+                self.assertTrue(leave_request(query))
+
+    def test_non_procedure_queries_keep_their_intent(self):
+        for query, expected in (
+            ("leave balance", "leave_balance"),
+            ("what are my expense claim limits", "employee_travel_expense_policy"),
+            ("how much can i claim for travel", "employee_travel_expense_policy"),
+        ):
+            with self.subTest(query=query):
+                self.assertEqual(QueryResolver.resolve(query)[0], expected)
+
+
 class TestQueryResolverLayer2Substring(unittest.TestCase):
     """Layer 2: alias substring match (score 0.8)"""
 
