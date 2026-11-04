@@ -58,6 +58,28 @@ def handle_hybrid(
     - The LLM call fails / times out
     - The LLM returns an empty response
     """
+    # The approved workflow for expense claims is ERP-only. Do not let stale
+    # policy chunks or model synthesis introduce email/manual submission paths.
+    if intent_key == "expense_claim_procedure":
+        from ai_workplace.services.hr_agent import _build_ai_response_message
+        from ai_workplace.services.conversation_guidance import guide_answer
+
+        text = (
+            "*Expense Claim Submission*\n\n"
+            "Submit and track your travel expense claim through the ERP system. "
+            "The Trip Report must be completed and endorsed in ERP before you "
+            "submit the claim. Expense claim approvals must also be recorded in ERP. "
+            "Email or other off-system submission or approval methods are not accepted.\n\n"
+            "If ERP is unavailable or you cannot access the workflow, contact HR "
+            "or your supervisor for help restoring access; do not submit or seek "
+            "approval through another channel."
+        )
+        outbound = _build_ai_response_message(text, context, conv, llm_answered=False)
+        return guide_answer(
+            conv, context, outbound, intent_key,
+            {"source": "ERP-only expense claim procedure"}, user_query=user_query,
+        )
+
     from ai_workplace.ai.tools import run_tool
     from ai_workplace.ai.router import complete, is_ai_chat_enabled
     from ai_workplace.ai.response_formatter import ResponseFormatter
